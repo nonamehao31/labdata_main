@@ -10,7 +10,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class AddDeviceActivity extends AppCompatActivity {
-    private EditText etDeviceName;
+    private EditText etDeviceName; 
     private Button btnNext;
     private ImageButton btnBack;
 
