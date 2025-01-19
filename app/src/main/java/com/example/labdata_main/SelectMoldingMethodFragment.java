@@ -37,6 +37,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private MoldingMethodAdapter moldingMethodAdapter;
     private List<MoldingMethod> moldingMethods = new ArrayList<>();
     private ViewPager2 viewPager;
+    public BottomSheetDialog currentBottomSheet;
 
     @Nullable
     @Override
@@ -68,7 +69,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     }
 
     private void showMoldingMethodBottomSheet() {
-        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(requireContext());
+        currentBottomSheet = new BottomSheetDialog(requireContext());
         View bottomSheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_molding_method, null);
         
         TabLayout tabLayout = bottomSheetView.findViewById(R.id.tabLayoutMoldingMethod);
@@ -83,8 +84,8 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
             tab.setText(position == 0 ? "拌合方式" : "压实方法");
         }).attach();
         
-        bottomSheetDialog.setContentView(bottomSheetView);
-        bottomSheetDialog.show();
+        currentBottomSheet.setContentView(bottomSheetView);
+        currentBottomSheet.show();
     }
 
     // ViewPager 适配器

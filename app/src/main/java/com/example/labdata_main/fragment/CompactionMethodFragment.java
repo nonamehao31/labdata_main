@@ -89,6 +89,10 @@ public class CompactionMethodFragment extends Fragment {
                 requireActivity().runOnUiThread(() -> {
                     Toast.makeText(requireContext(), "制件方法保存成功", Toast.LENGTH_SHORT).show();
                     parentFragment.addMoldingMethod(moldingMethod);
+                    // 通过父Fragment关闭底部弹窗
+                    if (parentFragment.currentBottomSheet != null) {
+                        parentFragment.currentBottomSheet.dismiss();
+                    }
                 });
             }).start();
         } else {
