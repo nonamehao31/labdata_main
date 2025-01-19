@@ -1,5 +1,6 @@
 package com.example.labdata_main;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -13,16 +14,25 @@ import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.labdata_main.adapter.ExperimentTaskAdapter;
+import com.example.labdata_main.model.ExperimentTask;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 public class OverviewFragment extends Fragment {
     private TextView mixText;
     private TextView welcomeText;
     private Spinner spinner;
     private SharedPrefsManager sharedPrefsManager;
+    private RecyclerView rvExperimentTasks;
+    private ExperimentTaskAdapter experimentTaskAdapter;
+    private List<ExperimentTask> experimentTasks;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -37,6 +47,14 @@ public class OverviewFragment extends Fragment {
         mixText = view.findViewById(R.id.mix_text);
         welcomeText = view.findViewById(R.id.welcome_text);
         spinner = view.findViewById(R.id.experiment_spinner);
+
+        // 初始化实验任务 RecyclerView
+        rvExperimentTasks = view.findViewById(R.id.rvExperimentTasks);
+        rvExperimentTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
+
+        experimentTasks = generateSampleTasks();
+        experimentTaskAdapter = new ExperimentTaskAdapter(requireContext(), experimentTasks, this::onTaskClick);
+        rvExperimentTasks.setAdapter(experimentTaskAdapter);
 
         // 初始化添加配合比按钮
         MaterialButton addMixButton = view.findViewById(R.id.add_mix_button);
@@ -109,6 +127,22 @@ public class OverviewFragment extends Fragment {
         });
 
         return view;
+    }
+
+    private List<ExperimentTask> generateSampleTasks() {
+        List<ExperimentTask> tasks = new ArrayList<>();
+        tasks.add(new ExperimentTask("沥青混合料配比实验", "项目：城市道路建设 | 配比：A-1", false));
+        tasks.add(new ExperimentTask("水泥混凝土强度测试", "项目：高速公路建设 | 配比：C-2", true));
+        tasks.add(new ExperimentTask("骨料筛分实验", "项目：桥梁工程 | 配比：B-3", false));
+        return tasks;
+    }
+
+    private void onTaskClick(ExperimentTask task) {
+        Intent intent = new Intent(requireContext(), TaskDetailActivity.class);
+        intent.putExtra("TASK_NAME", task.getTaskName());
+        intent.putExtra("TASK_INFO", task.getTaskInfo());
+        intent.putExtra("TASK_COMPLETED", task.isCompleted());
+        startActivity(intent);
     }
 
     private void updateWelcomeMessage() {

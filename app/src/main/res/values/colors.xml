@@ -44,4 +44,10 @@
     <color name="gray_light_custom">#EEEEEE</color>
     <color name="gray_dark">#757575</color>
     <color name="selected_mix_ratio_background">#E6E6E6</color>
+    
+    <!-- 添加任务状态颜色资源 -->
+    <color name="task_completed_bg">#BDBDBD</color>
+    <color name="task_completed_text">#FFFFFF</color>
+    <color name="task_pending_bg">#FFFFFF</color>
+    <color name="task_pending_text">#757575</color>
 </resources>
