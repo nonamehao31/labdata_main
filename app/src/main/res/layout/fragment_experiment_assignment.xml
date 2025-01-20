@@ -20,11 +20,59 @@
             android:textColor="@color/black"
             android:layout_marginBottom="16dp"/>
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/inputLayoutSpecimenCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="试块数量"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editTextSpecimenCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:maxLength="2"/>
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <RadioGroup
+            android:id="@+id/radioGroupSpecimenShape"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <RadioButton
+                android:id="@+id/radioRectangular"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="长方体"
+                android:layout_marginEnd="16dp"/>
+
+            <RadioButton
+                android:id="@+id/radioCylindrical"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="圆柱体"/>
+
+        </RadioGroup>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:nestedScrollingEnabled="false"/>
+
+        <Button
+            android:id="@+id/buttonFinish"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="完成"
+            android:layout_marginTop="16dp"
+            android:backgroundTint="@color/blue"
+            android:textColor="@android:color/white"/>
 
     </LinearLayout>
 
