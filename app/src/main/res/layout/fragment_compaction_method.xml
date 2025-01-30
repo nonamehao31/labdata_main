@@ -6,24 +6,36 @@
     android:orientation="vertical"
     android:padding="16dp">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="压实方法"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"/>
+
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilCompactionMethod"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="24dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
 
         <AutoCompleteTextView
             android:id="@+id/actvCompactionMethod"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="选择压实方法"/>
+            android:hint="选择压实方法"
+            android:inputType="none"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnCompleteMoldingMethod"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="完成"/>
+        android:text="完成"
+        android:padding="12dp"
+        android:layout_gravity="bottom"
+        app:cornerRadius="8dp"/>
 
 </LinearLayout>

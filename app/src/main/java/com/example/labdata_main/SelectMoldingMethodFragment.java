@@ -37,6 +37,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private MoldingMethodAdapter moldingMethodAdapter;
     private List<MoldingMethod> moldingMethods = new ArrayList<>();
     private ViewPager2 viewPager;
+    private List<MoldingMethod> selectedMethods = new ArrayList<>();
 
     @Nullable
     @Override
@@ -61,10 +62,20 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     }
 
     private void setupRecyclerView() {
-        moldingMethodAdapter = new MoldingMethodAdapter(moldingMethods, this::onDeleteMoldingMethod);
+        moldingMethodAdapter = new MoldingMethodAdapter(
+            moldingMethods, 
+            this::onDeleteMoldingMethod,
+            this::onMoldingMethodSelectionChanged
+        );
         rvMoldingMethods.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvMoldingMethods.setAdapter(moldingMethodAdapter);
         updateEmptyView();
+    }
+
+    private void onMoldingMethodSelectionChanged(List<MoldingMethod> methods) {
+        selectedMethods.clear();
+        selectedMethods.addAll(methods);
+        // TODO: 根据需要处理选中状态变化
     }
 
     private void showMoldingMethodBottomSheet() {
@@ -151,5 +162,9 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     @Override
     public void onNextStep() {
         // 这是一个空实现，因为实际的页面切换逻辑已经在 ViewPagerAdapter 中处理
+    }
+
+    public List<MoldingMethod> getSelectedMethods() {
+        return new ArrayList<>(selectedMethods);
     }
 }

@@ -43,7 +43,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_add"
-                    app:tint="@color/design_default_color_primary"/>
+                    app:tint="@color/blue_light_custom"/>
 
                 <TextView
                     android:layout_width="0dp"
@@ -51,7 +51,7 @@
                     android:layout_weight="1"
                     android:layout_marginStart="16dp"
                     android:text="添加新项目"
-                    android:textColor="@color/design_default_color_primary"
+                    android:textColor="@color/blue_light_custom"
                     android:textSize="16sp"/>
 
             </LinearLayout>
