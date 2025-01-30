@@ -15,8 +15,8 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.labdata_main.R;
 import com.example.labdata_main.SelectMoldingMethodFragment;
-import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.MoldingMethod;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 public class CompactionMethodFragment extends Fragment {
     private AutoCompleteTextView actvCompactionMethod;
@@ -41,7 +41,7 @@ public class CompactionMethodFragment extends Fragment {
 
         view.findViewById(R.id.btnCompleteMoldingMethod).setOnClickListener(v -> {
             if (validateInput()) {
-                saveMoldingMethod();
+                createMoldingMethod();
             }
         });
 
@@ -59,38 +59,44 @@ public class CompactionMethodFragment extends Fragment {
         return true;
     }
 
-    private void saveMoldingMethod() {
+    private void createMoldingMethod() {
         SelectMoldingMethodFragment parentFragment = (SelectMoldingMethodFragment) 
             requireParentFragment();
 
         // 获取 ViewPager 和 MixingMethodFragment
-        ViewPager2 viewPager = requireActivity().findViewById(R.id.viewPagerMoldingMethod);
         MixingMethodFragment mixingMethodFragment = (MixingMethodFragment) 
             getParentFragmentManager().findFragmentByTag("f0");
 
         if (mixingMethodFragment != null) {
-            float mixingTemperature = mixingMethodFragment.getMixingTemperature();
-            float mixingSpeed = mixingMethodFragment.getMixingSpeed();
-            float mixingTime = mixingMethodFragment.getMixingTime();
-            String compactionMethod = actvCompactionMethod.getText().toString().trim();
+            try {
+                float mixingTemperature = mixingMethodFragment.getMixingTemperature();
+                float mixingSpeed = mixingMethodFragment.getMixingSpeed();
+                float mixingTime = mixingMethodFragment.getMixingTime();
+                String compactionMethod = actvCompactionMethod.getText().toString().trim();
 
-            MoldingMethod moldingMethod = new MoldingMethod(
-                mixingTemperature, 
-                mixingSpeed, 
-                mixingTime, 
-                compactionMethod
-            );
+                MoldingMethod moldingMethod = new MoldingMethod(
+                    mixingTemperature, 
+                    mixingSpeed, 
+                    mixingTime, 
+                    compactionMethod
+                );
 
-            new Thread(() -> {
-                long id = AppDatabase.getInstance(requireContext())
-                    .moldingMethodDao()
-                    .insert(moldingMethod);
+                // 添加到父Fragment，由父Fragment处理数据库操作
+                parentFragment.addMoldingMethod(moldingMethod);
 
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "制件方法保存成功", Toast.LENGTH_SHORT).show();
-                    parentFragment.addMoldingMethod(moldingMethod);
-                });
-            }).start();
+                // 关闭底部弹窗
+                View bottomSheet = requireView().getRootView();
+                if (bottomSheet.getParent() instanceof View) {
+                    View parent = (View) bottomSheet.getParent();
+                    if (parent.getParent() instanceof BottomSheetDialog) {
+                        ((BottomSheetDialog) parent.getParent()).dismiss();
+                    }
+                }
+            } catch (NumberFormatException e) {
+                Toast.makeText(requireContext(), "请输入有效的数值", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(requireContext(), "创建制件方法失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         } else {
             Toast.makeText(requireContext(), "无法获取拌合方法信息", Toast.LENGTH_SHORT).show();
         }

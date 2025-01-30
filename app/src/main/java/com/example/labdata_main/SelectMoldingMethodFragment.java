@@ -38,6 +38,13 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private List<MoldingMethod> moldingMethods = new ArrayList<>();
     private ViewPager2 viewPager;
     private List<MoldingMethod> selectedMethods = new ArrayList<>();
+    private AppDatabase database;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        database = AppDatabase.getInstance(requireContext());
+    }
 
     @Nullable
     @Override
@@ -47,6 +54,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         initViews(view);
         setupListeners();
         setupRecyclerView();
+        loadMoldingMethods();
 
         return view;
     }
@@ -70,6 +78,25 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         rvMoldingMethods.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvMoldingMethods.setAdapter(moldingMethodAdapter);
         updateEmptyView();
+    }
+
+    private void loadMoldingMethods() {
+        new Thread(() -> {
+            try {
+                List<MoldingMethod> methods = database.moldingMethodDao().getAllMoldingMethods();
+                requireActivity().runOnUiThread(() -> {
+                    moldingMethods.clear();
+                    moldingMethods.addAll(methods);
+                    moldingMethodAdapter.notifyDataSetChanged();
+                    updateEmptyView();
+                });
+            } catch (Exception e) {
+                requireActivity().runOnUiThread(() -> {
+                    android.util.Log.e("LoadMoldingMethods", "加载制件方法失败", e);
+                    Toast.makeText(requireContext(), "加载制件方法失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }).start();
     }
 
     private void onMoldingMethodSelectionChanged(List<MoldingMethod> methods) {
@@ -128,9 +155,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         new Thread(() -> {
             try {
                 // 从数据库中删除
-                AppDatabase.getInstance(requireContext())
-                    .moldingMethodDao()
-                    .delete(method);
+                database.moldingMethodDao().delete(method);
 
                 // 在主线程更新 UI
                 requireActivity().runOnUiThread(() -> {
@@ -150,9 +175,26 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     }
 
     public void addMoldingMethod(MoldingMethod method) {
-        moldingMethods.add(method);
-        moldingMethodAdapter.notifyItemInserted(moldingMethods.size() - 1);
-        updateEmptyView();
+        new Thread(() -> {
+            try {
+                // 保存到数据库
+                long id = database.moldingMethodDao().insert(method);
+                method.setId(id);
+
+                // 在主线程更新 UI
+                requireActivity().runOnUiThread(() -> {
+                    moldingMethods.add(method);
+                    moldingMethodAdapter.notifyItemInserted(moldingMethods.size() - 1);
+                    updateEmptyView();
+                    Toast.makeText(requireContext(), "制件方法添加成功", Toast.LENGTH_SHORT).show();
+                });
+            } catch (Exception e) {
+                requireActivity().runOnUiThread(() -> {
+                    android.util.Log.e("AddMoldingMethod", "添加制件方法失败", e);
+                    Toast.makeText(requireContext(), "添加制件方法失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }).start();
     }
 
     private void updateEmptyView() {
