@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 7,
-    "identityHash": "433880111b102887d58a17644d174438",
+    "identityHash": "391695648c1713c93227c760f2e67b74",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -368,7 +368,7 @@
       },
       {
         "tableName": "experiment_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `creation_time` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `notes` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `notes` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -379,6 +379,12 @@
           {
             "fieldPath": "taskId",
             "columnName": "taskId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "taskName",
+            "columnName": "taskName",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -396,7 +402,7 @@
           },
           {
             "fieldPath": "creationTime",
-            "columnName": "creation_time",
+            "columnName": "creationTime",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -444,7 +450,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '433880111b102887d58a17644d174438')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '391695648c1713c93227c760f2e67b74')"
     ]
   }
 }

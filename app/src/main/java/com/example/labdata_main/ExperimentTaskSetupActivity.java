@@ -16,11 +16,14 @@ import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.Project;
 import com.example.labdata_main.utils.TaskIdGenerator;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ExperimentTaskSetupActivity extends AppCompatActivity implements AddProjectBottomSheet.OnProjectAddedListener {
     private ViewPager2 viewPager;
@@ -165,7 +168,25 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
 
         ExperimentTask task = new ExperimentTask();
         task.setTaskId(taskId);
+        task.setTaskName(taskName);  // 设置任务名称
         task.setProjectId(selectedProject.getId());
+        task.setProjectName(selectedProject.getName());  // 设置项目名称
+        
+        // 将日期字符串转换为时间戳
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            String deadlineStr = selectedProject.getDeadline();
+            if (deadlineStr != null && !deadlineStr.isEmpty()) {
+                Date deadlineDate = dateFormat.parse(deadlineStr);
+                if (deadlineDate != null) {
+                    task.setDeadline(deadlineDate.getTime());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            task.setDeadline(0); // 如果转换失败，设置为0
+        }
+
         task.setSelectedMixRatios(mixRatioFragment.getSelectedMixRatios());
         task.setMoldingMethod(moldingMethodFragment.getSelectedMoldingMethod());
         task.setExperimentAssignments(assignmentFragment.getExperimentAssignments());

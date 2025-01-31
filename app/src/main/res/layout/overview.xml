@@ -101,79 +101,41 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
+                    android:orientation="horizontal"
+                    android:padding="12dp"
+                    android:gravity="center"
+                    android:weightSum="2">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="快速操作"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="12dp"/>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/assign_task_button"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="0.95"
+                        android:layout_marginEnd="8dp"
+                        android:text="制定实验任务"
+                        android:textSize="15sp"
+                        app:cornerRadius="8dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        style="@style/Widget.MaterialComponents.Button"/>
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <Button
-                            android:id="@+id/btn_add_project"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="添加项目"
-                            android:layout_marginEnd="8dp"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
-
-                        <Button
-                            android:id="@+id/btn_add_experiment"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="新建实验"
-                            android:layout_marginStart="8dp"
-                            style="@style/Widget.MaterialComponents.Button"/>
-
-                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/add_mix_button"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="0.95"
+                        android:layout_marginStart="8dp"
+                        android:text="添加配合比"
+                        android:textSize="15sp"
+                        app:cornerRadius="8dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        style="@style/Widget.MaterialComponents.Button"/>
 
                 </LinearLayout>
 
             </androidx.cardview.widget.CardView>
 
-            <!-- 实验任务列表卡片 -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="实验任务"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="12dp"/>
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/task_list"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:nestedScrollingEnabled="false"/>
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
 
             <!-- 实验概览卡片 -->
             <androidx.cardview.widget.CardView
@@ -198,18 +160,26 @@
                         android:layout_marginBottom="12dp"/>
 
                     <FrameLayout
-                        android:id="@+id/fragment_container"
+                        android:id="@+id/experiment_container"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
 
-                        <TextView
-                            android:id="@+id/mix_text"
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/task_recycler_view"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:nestedScrollingEnabled="false"/>
+
+                        <TextView
+                            android:id="@+id/empty_task_text"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="暂无实验任务"
                             android:textSize="14sp"
                             android:textColor="@color/text_secondary"
-                            android:lineSpacingExtra="4dp"
-                            android:text="这是沥青混合料的概览界面"/>
+                            android:gravity="center"
+                            android:padding="16dp"
+                            android:visibility="gone"/>
 
                     </FrameLayout>
 

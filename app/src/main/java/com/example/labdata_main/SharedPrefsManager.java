@@ -14,6 +14,7 @@ public class SharedPrefsManager {
     private static final String KEY_EQUIPMENT_LIST = "equipment_list";
     private static final String KEY_INITIALIZED = "initialized";
     private static final String KEY_USER_TYPE = "user_type";  // 添加用户类型的key
+    private static final String KEY_USER_NAME = "user_name";  // 添加用户名的key
 
     private final SharedPreferences sharedPreferences;
     private final Gson gson;
@@ -66,8 +67,14 @@ public class SharedPrefsManager {
         editor.apply();
     }
 
+    public void setUserName(String userName) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(KEY_USER_NAME, userName);
+        editor.apply();
+    }
+
     public String getUserName() {
-        return sharedPreferences.getString("name", "");
+        return sharedPreferences.getString(KEY_USER_NAME, "");
     }
 
     public String getUserEmail() {

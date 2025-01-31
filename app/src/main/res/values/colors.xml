@@ -44,5 +44,4 @@
     <color name="gray_light_custom">#EEEEEE</color>
     <color name="gray_dark">#757575</color>
     <color name="selected_mix_ratio_background">#E6E6E6</color>
-    <color name="ripple_color">#1A000000</color>
 </resources>
