@@ -73,7 +73,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         moldingMethodAdapter = new MoldingMethodAdapter(
             moldingMethods, 
             this::onDeleteMoldingMethod,
-            this::onMoldingMethodSelectionChanged
+            this::onMoldingMethodSelected
         );
         rvMoldingMethods.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvMoldingMethods.setAdapter(moldingMethodAdapter);
@@ -99,10 +99,19 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         }).start();
     }
 
-    private void onMoldingMethodSelectionChanged(List<MoldingMethod> methods) {
+    private void onMoldingMethodSelected(List<MoldingMethod> methods) {
         selectedMethods.clear();
         selectedMethods.addAll(methods);
-        // TODO: 根据需要处理选中状态变化
+        checkInputValidity();
+    }
+
+    private void onMoldingMethodSelectionChanged(MoldingMethod method, boolean isSelected) {
+        if (isSelected) {
+            selectedMethods.add(method);
+        } else {
+            selectedMethods.remove(method);
+        }
+        checkInputValidity();
     }
 
     private void showMoldingMethodBottomSheet() {
@@ -202,11 +211,35 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        // 在 Fragment 恢复时更新按钮状态
+        if (getActivity() instanceof ExperimentTaskSetupActivity) {
+            ((ExperimentTaskSetupActivity) getActivity()).updateNextButton();
+        }
+    }
+
+    private void checkInputValidity() {
+        // 通知 Activity 更新按钮状态
+        if (getActivity() instanceof ExperimentTaskSetupActivity) {
+            ((ExperimentTaskSetupActivity) getActivity()).updateNextButton();
+        }
+    }
+
+    @Override
     public void onNextStep() {
         // 这是一个空实现，因为实际的页面切换逻辑已经在 ViewPagerAdapter 中处理
     }
 
     public List<MoldingMethod> getSelectedMethods() {
         return new ArrayList<>(selectedMethods);
+    }
+
+    public String getSelectedMoldingMethod() {
+        if (selectedMethods.isEmpty()) {
+            return "";
+        }
+        // 只返回第一个选中的制件方法的描述
+        return selectedMethods.get(0).toString();
     }
 }

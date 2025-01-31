@@ -100,74 +100,82 @@ public class ExperimentAssignmentFragment extends Fragment {
 
     private ChipGroup createExperimentChipGroup() {
         ChipGroup chipGroup = new ChipGroup(requireContext());
-        chipGroup.setSelectionRequired(true);
+        chipGroup.setSelectionRequired(false);
         chipGroup.setSingleSelection(false);
 
         // 添加实验类型选项
-        String[] experimentTypes = {"抗压强度", "抗折强度", "劈裂抗拉", "弹性模量"};
-        String[] experimentIds = {
-            ExperimentAssignment.EXPERIMENT_COMPRESSION,
-            ExperimentAssignment.EXPERIMENT_FLEXURAL,
-            ExperimentAssignment.EXPERIMENT_SPLITTING,
-            ExperimentAssignment.EXPERIMENT_ELASTIC
+        String[] experimentTypes = {
+            "抗压强度",
+            "抗折强度",
+            "抗渗性能",
+            "抗冻性能",
+            "收缩性能",
+            "其他性能"
         };
 
-        for (int i = 0; i < experimentTypes.length; i++) {
+        for (String type : experimentTypes) {
             Chip chip = new Chip(requireContext());
-            chip.setText(experimentTypes[i]);
+            chip.setText(type);
             chip.setCheckable(true);
-            chip.setTag(experimentIds[i]);
             chipGroup.addView(chip);
         }
 
-        // 添加选择监听器
-        chipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> checkInputValidity());
+        // 添加选择状态变化监听
+        chipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            checkInputValidity();
+        });
 
         return chipGroup;
     }
 
     private void checkInputValidity() {
+        // 检查是否每个配比都至少选择了一个实验类型
         boolean isValid = true;
-        
-        // 检查每个配比是否都选择了至少一个实验类型
-        for (ChipGroup chipGroup : experimentChipGroups.values()) {
-            if (chipGroup.getCheckedChipIds().isEmpty()) {
+        for (MixRatio mixRatio : selectedMixRatios) {
+            ChipGroup chipGroup = experimentChipGroups.get(mixRatio.getId());
+            if (chipGroup == null || chipGroup.getCheckedChipIds().isEmpty()) {
                 isValid = false;
                 break;
             }
         }
-        
-        // 通知Activity更新下一步按钮状态
+
+        // 通知 Activity 更新按钮状态
         if (getActivity() instanceof ExperimentTaskSetupActivity) {
-            ((ExperimentTaskSetupActivity) getActivity()).enableNextButton(isValid);
+            ((ExperimentTaskSetupActivity) getActivity()).updateNextButton();
         }
     }
 
-    public ExperimentAssignment getExperimentAssignment() {
-        ExperimentAssignment assignment = new ExperimentAssignment();
+    public Map<Long, List<String>> getExperimentAssignments() {
+        Map<Long, List<String>> assignments = new HashMap<>();
         
-        // 获取每个配比的实验类型
         for (MixRatio mixRatio : selectedMixRatios) {
             ChipGroup chipGroup = experimentChipGroups.get(mixRatio.getId());
             if (chipGroup != null) {
-                List<String> experimentTypes = new ArrayList<>();
-                for (int chipId : chipGroup.getCheckedChipIds()) {
-                    Chip chip = chipGroup.findViewById(chipId);
-                    if (chip != null) {
-                        experimentTypes.add((String) chip.getTag());
+                List<String> selectedTypes = new ArrayList<>();
+                for (int i = 0; i < chipGroup.getChildCount(); i++) {
+                    View child = chipGroup.getChildAt(i);
+                    if (child instanceof Chip) {
+                        Chip chip = (Chip) child;
+                        if (chip.isChecked()) {
+                            selectedTypes.add(chip.getText().toString());
+                        }
                     }
                 }
-                
-                assignment.addMixRatioExperiments(mixRatio.getId(), experimentTypes);
+                assignments.put(mixRatio.getId(), selectedTypes);
             }
         }
         
-        // 获取备注说明
-        String notes = etNotes.getText().toString();
-        if (!TextUtils.isEmpty(notes)) {
-            assignment.setNotes(notes);
-        }
-        
-        return assignment;
+        return assignments;
+    }
+
+    public String getNotes() {
+        return etNotes != null ? etNotes.getText().toString() : "";
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 在 Fragment 恢复时更新按钮状态
+        checkInputValidity();
     }
 }

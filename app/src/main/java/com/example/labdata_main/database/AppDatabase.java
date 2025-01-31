@@ -9,17 +9,26 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+import com.example.labdata_main.dao.ExperimentTaskDao;
 import com.example.labdata_main.dao.MaterialDao;
 import com.example.labdata_main.dao.MixRatioDao;
 import com.example.labdata_main.dao.MoldingMethodDao;
 import com.example.labdata_main.dao.SpecimenDao;
+import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.Material;
 import com.example.labdata_main.model.MixDesign;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
 import com.example.labdata_main.model.Specimen;
 
-@Database(entities = {MixRatio.class, Specimen.class, Material.class, MixDesign.class, MoldingMethod.class}, version = 6)
+@Database(entities = {
+    MixRatio.class, 
+    Specimen.class, 
+    Material.class, 
+    MixDesign.class, 
+    MoldingMethod.class,
+    ExperimentTask.class
+}, version = 7)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
@@ -30,6 +39,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract SpecimenDao specimenDao();
     public abstract MaterialDao materialDao();
     public abstract MoldingMethodDao moldingMethodDao();
+    public abstract ExperimentTaskDao experimentTaskDao();
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -128,16 +138,34 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 6 to version 7");
+            database.execSQL("CREATE TABLE IF NOT EXISTS experiment_tasks (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "taskId TEXT NOT NULL, " +
+                    "projectId INTEGER NOT NULL, " +
+                    "projectName TEXT NOT NULL, " +
+                    "creationTime INTEGER NOT NULL, " +
+                    "selectedMixRatios TEXT NOT NULL, " +
+                    "experimentAssignments TEXT NOT NULL, " +
+                    "moldingMethod TEXT NOT NULL, " +
+                    "notes TEXT)");
+            
+            database.execSQL("CREATE INDEX index_experiment_tasks_taskId ON experiment_tasks(taskId)");
+            database.execSQL("CREATE INDEX index_experiment_tasks_projectId ON experiment_tasks(projectId)");
+        }
+    };
+
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
-            Log.d(TAG, "Creating new database instance");
-            instance = Room.databaseBuilder(
-                    context.getApplicationContext(),
-                    AppDatabase.class,
-                    DATABASE_NAME)
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            instance = Room.databaseBuilder(context.getApplicationContext(),
+                    AppDatabase.class, DATABASE_NAME)
+                    .addMigrations(
+                            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build();
-            Log.d(TAG, "Database instance created");
         }
         return instance;
     }

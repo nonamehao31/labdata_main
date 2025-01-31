@@ -51,6 +51,10 @@ public class ExperimentTaskPagerAdapter extends FragmentStateAdapter {
         return (SelectMixRatioFragment) fragments.get(1);
     }
 
+    public SelectMoldingMethodFragment getMoldingMethodFragment() {
+        return (SelectMoldingMethodFragment) fragments.get(2);
+    }
+
     public ExperimentAssignmentFragment getExperimentAssignmentFragment() {
         return (ExperimentAssignmentFragment) fragments.get(3);
     }

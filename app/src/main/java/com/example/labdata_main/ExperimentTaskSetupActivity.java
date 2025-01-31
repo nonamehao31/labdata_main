@@ -6,18 +6,28 @@ import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
+import com.example.labdata_main.database.AppDatabase;
+import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.Project;
+import com.example.labdata_main.utils.TaskIdGenerator;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.Map;
+import java.util.List;
 
 public class ExperimentTaskSetupActivity extends AppCompatActivity implements AddProjectBottomSheet.OnProjectAddedListener {
     private ViewPager2 viewPager;
     private MaterialButton btnNext;
     private String taskName;
     private Project selectedProject;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     // 步骤导航视图
     private TextView[] stepCircles;
@@ -48,6 +58,12 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         
         // 初始时禁用下一步按钮，直到选择了项目
         enableNextButton(false);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executor.shutdown();
     }
 
     private void initViews() {
@@ -92,15 +108,17 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
                 updateNextButton();
 
                 // 当切换到实验指派页面时，传递选中的配比
-                if (position == 3) {
-                    ExperimentTaskPagerAdapter pagerAdapter = (ExperimentTaskPagerAdapter) viewPager.getAdapter();
-                    if (pagerAdapter != null) {
+                ExperimentTaskPagerAdapter pagerAdapter = (ExperimentTaskPagerAdapter) viewPager.getAdapter();
+                if (pagerAdapter != null) {
+                    if (position == 3) {
                         SelectMixRatioFragment mixRatioFragment = pagerAdapter.getMixRatioFragment();
                         ExperimentAssignmentFragment assignmentFragment = pagerAdapter.getExperimentAssignmentFragment();
                         if (mixRatioFragment != null && assignmentFragment != null) {
                             assignmentFragment.setSelectedMixRatios(mixRatioFragment.getSelectedMixRatios());
                         }
                     }
+                    // 延迟更新按钮状态，确保 Fragment 已完全初始化
+                    viewPager.post(() -> updateNextButton());
                 }
             }
         });
@@ -111,10 +129,50 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
             if (currentStep < TOTAL_STEPS - 1) {
                 viewPager.setCurrentItem(currentStep + 1);
             } else {
-                // 完成设置
-                finish();
+                // 在后台线程中保存任务
+                executor.execute(() -> {
+                    try {
+                        saveExperimentTask();
+                        // 在主线程中显示成功消息并关闭页面
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, "任务保存成功", Toast.LENGTH_SHORT).show();
+                            finish();
+                        });
+                    } catch (Exception e) {
+                        // 在主线程中显示错误消息
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, "保存失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
             }
         });
+    }
+
+    private void saveExperimentTask() {
+        ExperimentTaskPagerAdapter pagerAdapter = (ExperimentTaskPagerAdapter) viewPager.getAdapter();
+        if (pagerAdapter == null) return;
+
+        SelectMixRatioFragment mixRatioFragment = pagerAdapter.getMixRatioFragment();
+        SelectMoldingMethodFragment moldingMethodFragment = pagerAdapter.getMoldingMethodFragment();
+        ExperimentAssignmentFragment assignmentFragment = pagerAdapter.getExperimentAssignmentFragment();
+
+        if (mixRatioFragment == null || moldingMethodFragment == null || assignmentFragment == null) {
+            throw new IllegalStateException("必要的Fragment未初始化");
+        }
+
+        String taskId = TaskIdGenerator.generateTaskId(this);
+
+        ExperimentTask task = new ExperimentTask();
+        task.setTaskId(taskId);
+        task.setProjectId(selectedProject.getId());
+        task.setSelectedMixRatios(mixRatioFragment.getSelectedMixRatios());
+        task.setMoldingMethod(moldingMethodFragment.getSelectedMoldingMethod());
+        task.setExperimentAssignments(assignmentFragment.getExperimentAssignments());
+        task.setNotes(assignmentFragment.getNotes());
+        task.setCreationTime(System.currentTimeMillis());
+
+        AppDatabase.getInstance(this).experimentTaskDao().insert(task);
     }
 
     private void updateStepIndicators() {
@@ -147,11 +205,56 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         }
     }
 
-    private void updateNextButton() {
-        if (currentStep == TOTAL_STEPS - 1) {
-            btnNext.setText("完成");
+    public void updateNextButton() {
+        updateNextButton(currentStep);
+    }
+
+    private void updateNextButton(int step) {
+        ExperimentTaskPagerAdapter pagerAdapter = (ExperimentTaskPagerAdapter) viewPager.getAdapter();
+        if (pagerAdapter == null) return;
+
+        if (step == TOTAL_STEPS - 1) {
+            // 在最后一步，检查所有必要数据是否完整
+            SelectMixRatioFragment mixRatioFragment = pagerAdapter.getMixRatioFragment();
+            SelectMoldingMethodFragment moldingMethodFragment = pagerAdapter.getMoldingMethodFragment();
+            ExperimentAssignmentFragment assignmentFragment = pagerAdapter.getExperimentAssignmentFragment();
+
+            boolean isComplete = selectedProject != null &&
+                    mixRatioFragment != null && !mixRatioFragment.getSelectedMixRatios().isEmpty() &&
+                    moldingMethodFragment != null && !moldingMethodFragment.getSelectedMethods().isEmpty() &&
+                    assignmentFragment != null && !assignmentFragment.getExperimentAssignments().isEmpty();
+
+            // 检查每个配比是否都分配了实验
+            if (isComplete && assignmentFragment != null) {
+                Map<Long, List<String>> assignments = assignmentFragment.getExperimentAssignments();
+                for (List<String> experiments : assignments.values()) {
+                    if (experiments.isEmpty()) {
+                        isComplete = false;
+                        break;
+                    }
+                }
+            }
+
+            btnNext.setText("保存");
+            btnNext.setEnabled(isComplete);
         } else {
             btnNext.setText("下一步");
+            // 根据当前步骤检查是否可以进入下一步
+            switch (step) {
+                case 0: // 项目选择
+                    btnNext.setEnabled(selectedProject != null);
+                    break;
+                case 1: // 配比选择
+                    SelectMixRatioFragment mixRatioFragment = pagerAdapter.getMixRatioFragment();
+                    btnNext.setEnabled(mixRatioFragment != null && !mixRatioFragment.getSelectedMixRatios().isEmpty());
+                    break;
+                case 2: // 制件方法
+                    SelectMoldingMethodFragment moldingMethodFragment = pagerAdapter.getMoldingMethodFragment();
+                    btnNext.setEnabled(moldingMethodFragment != null && !moldingMethodFragment.getSelectedMethods().isEmpty());
+                    break;
+                default:
+                    btnNext.setEnabled(true);
+            }
         }
     }
 
@@ -173,7 +276,6 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
     public void setSelectedProject(Project project) {
         this.selectedProject = project;
         enableNextButton(true);
-        // TODO: 更新项目列表的显示
     }
 
     @Override
