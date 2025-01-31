@@ -19,21 +19,28 @@ import com.example.labdata_main.model.Material;
 import com.example.labdata_main.model.MixDesign;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
+import com.example.labdata_main.model.Project;
 import com.example.labdata_main.model.Specimen;
 
-@Database(entities = {
-    MixRatio.class, 
-    Specimen.class, 
-    Material.class, 
-    MixDesign.class, 
-    MoldingMethod.class,
-    ExperimentTask.class
-}, version = 7)
+@Database(
+    entities = {
+        Project.class,
+        MixRatio.class,
+        Specimen.class,
+        Material.class,
+        MixDesign.class,
+        MoldingMethod.class,
+        ExperimentTask.class
+    },
+    version = 8,  
+    exportSchema = false
+)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
     private static final String DATABASE_NAME = "labdata_db";
-    private static AppDatabase instance;
+    private static volatile AppDatabase INSTANCE;
+    private static final Object sLock = new Object();
 
     public abstract MixRatioDao mixRatioDao();
     public abstract SpecimenDao specimenDao();
@@ -158,15 +165,29 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
-    public static synchronized AppDatabase getInstance(Context context) {
-        if (instance == null) {
-            instance = Room.databaseBuilder(context.getApplicationContext(),
-                    AppDatabase.class, DATABASE_NAME)
-                    .addMigrations(
-                            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
-                    .build();
+    static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 7 to version 8");
         }
-        return instance;
+    };
+
+    public static AppDatabase getInstance(Context context) {
+        if (INSTANCE == null) {
+            synchronized (sLock) {
+                if (INSTANCE == null) {
+                    INSTANCE = Room.databaseBuilder(
+                            context.getApplicationContext(),
+                            AppDatabase.class,
+                            DATABASE_NAME)
+                            .addMigrations(
+                                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                            .fallbackToDestructiveMigration()
+                            .build();
+                }
+            }
+        }
+        return INSTANCE;
     }
 }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 7,
-    "identityHash": "d9686b6fc86cc1be46d0d6f1d83949ec",
+    "identityHash": "433880111b102887d58a17644d174438",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -368,7 +368,7 @@
       },
       {
         "tableName": "experiment_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `creationTime` INTEGER NOT NULL, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `notes` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `creation_time` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `notes` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -396,7 +396,13 @@
           },
           {
             "fieldPath": "creationTime",
-            "columnName": "creationTime",
+            "columnName": "creation_time",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deadline",
+            "columnName": "deadline",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -438,7 +444,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd9686b6fc86cc1be46d0d6f1d83949ec')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '433880111b102887d58a17644d174438')"
     ]
   }
 }

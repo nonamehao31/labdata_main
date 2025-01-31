@@ -13,15 +13,26 @@ import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.labdata_main.adapter.TaskCardAdapter;
+import com.example.labdata_main.database.AppDatabase;
+import com.example.labdata_main.model.ExperimentTask;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.Calendar;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class OverviewFragment extends Fragment {
+public class OverviewFragment extends Fragment implements TaskCardAdapter.OnTaskClickListener {
     private TextView mixText;
     private TextView welcomeText;
     private Spinner spinner;
+    private RecyclerView taskList;
+    private TaskCardAdapter taskAdapter;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private SharedPrefsManager sharedPrefsManager;
 
     @Override
@@ -37,17 +48,24 @@ public class OverviewFragment extends Fragment {
         mixText = view.findViewById(R.id.mix_text);
         welcomeText = view.findViewById(R.id.welcome_text);
         spinner = view.findViewById(R.id.experiment_spinner);
+        taskList = view.findViewById(R.id.task_list);
+
+        // 初始化任务列表
+        taskList.setLayoutManager(new LinearLayoutManager(requireContext()));
+        taskAdapter = new TaskCardAdapter(this);
+        taskList.setAdapter(taskAdapter);
+
+        // 加载任务数据
+        loadTasks();
 
         // 初始化添加配合比按钮
-        MaterialButton addMixButton = view.findViewById(R.id.add_mix_button);
-        addMixButton.setOnClickListener(v -> {
+        view.findViewById(R.id.btn_add_project).setOnClickListener(v -> {
             MixRatioBottomSheetFragment bottomSheet = MixRatioBottomSheetFragment.newInstance();
             bottomSheet.show(getChildFragmentManager(), "MixRatioBottomSheet");
         });
 
         // 初始化添加实验任务按钮
-        MaterialButton addExperimentButton = view.findViewById(R.id.assign_task_button);
-        addExperimentButton.setOnClickListener(v -> {
+        view.findViewById(R.id.btn_add_experiment).setOnClickListener(v -> {
             AddExperimentBottomSheet bottomSheet = AddExperimentBottomSheet.newInstance();
             bottomSheet.setOnExperimentNameSubmitListener(experimentName -> {
                 // TODO: 处理实验任务名称的提交
@@ -61,7 +79,7 @@ public class OverviewFragment extends Fragment {
 
         // 创建下拉菜单选项
         String[] items = new String[]{"请选择实验类型", "混合料实验", "沥青试验"};
-        
+
         // 创建并设置适配器（使用自定义布局）
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 getContext(),
@@ -81,7 +99,7 @@ public class OverviewFragment extends Fragment {
                     getParentFragmentManager().popBackStack();
                     return;
                 }
-                
+
                 if (position == 1) {
                     // 显示混合料实验文本，并清除沥青试验Fragment
                     mixText.setVisibility(View.VISIBLE);
@@ -103,12 +121,31 @@ public class OverviewFragment extends Fragment {
         });
 
         // 设置制订实验任务按钮点击事件
-        view.findViewById(R.id.assign_task_button).setOnClickListener(v -> {
+        view.findViewById(R.id.btn_add_project).setOnClickListener(v -> {
             ExperimentTaskBottomSheet.newInstance()
-                .show(getParentFragmentManager(), "ExperimentTaskBottomSheet");
+                    .show(getParentFragmentManager(), "ExperimentTaskBottomSheet");
         });
 
         return view;
+    }
+
+    private void loadTasks() {
+        executor.execute(() -> {
+            try {
+                List<ExperimentTask> tasks = AppDatabase.getInstance(requireContext())
+                        .experimentTaskDao()
+                        .getAllTasks();
+
+                // 在主线程更新UI
+                requireActivity().runOnUiThread(() -> {
+                    taskAdapter.setTasks(tasks);
+                });
+            } catch (Exception e) {
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "加载任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void updateWelcomeMessage() {
@@ -117,10 +154,10 @@ public class OverviewFragment extends Fragment {
         // 获取用户信息
         String userName = sharedPrefsManager.getUserName();
         int userType = sharedPrefsManager.getUserType();
-        
+
         // 添加日志
         Log.d("OverviewFragment", "User type from SharedPrefs: " + userType);
-        
+
         // 根据用户类型确定显示文本
         String userTypeStr;
         if (userType == 1) {
@@ -157,6 +194,12 @@ public class OverviewFragment extends Fragment {
     }
 
     @Override
+    public void onTaskClick(ExperimentTask task) {
+        // TODO: 实现任务点击事件，跳转到任务详情页面
+        Toast.makeText(requireContext(), "点击了任务: " + task.getTaskId(), Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         // 当Fragment恢复时，更新欢迎语
@@ -168,5 +211,13 @@ public class OverviewFragment extends Fragment {
         if (spinner != null) {
             spinner.setSelection(1); // 设置为"混合料实验"
         }
+        // 每次恢复时重新加载任务列表
+        loadTasks();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executor.shutdown();
     }
 }

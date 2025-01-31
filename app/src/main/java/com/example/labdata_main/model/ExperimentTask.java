@@ -1,8 +1,10 @@
 package com.example.labdata_main.model;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.TypeConverters;
+import androidx.room.ColumnInfo;
 import com.example.labdata_main.database.Converters;
 
 import java.util.List;
@@ -10,32 +12,38 @@ import java.util.Map;
 
 @Entity(tableName = "experiment_tasks")
 public class ExperimentTask {
-    @PrimaryKey(autoGenerate = true)
-    private long id;
+    @PrimaryKey
+    @NonNull
+    @ColumnInfo(name = "task_id")
+    private String taskId;
 
-    private String taskId; // 格式：TASK_yyyyMMdd_HHmmss_序号
+    @ColumnInfo(name = "project_id")
     private long projectId;
+
+    @ColumnInfo(name = "project_name")
     private String projectName;
+    
+    @ColumnInfo(name = "creation_time")
     private long creationTime;
     
+    @ColumnInfo(name = "deadline")
+    private long deadline;
+
     @TypeConverters(Converters.class)
+    @ColumnInfo(name = "selected_mix_ratios")
     private List<MixRatio> selectedMixRatios;
     
-    @TypeConverters(Converters.class)
-    private Map<Long, List<String>> experimentAssignments; // Map<配比ID, 实验类型列表>
-    
+    @ColumnInfo(name = "molding_method")
     private String moldingMethod;
+    
+    @TypeConverters(Converters.class)
+    @ColumnInfo(name = "experiment_assignments")
+    private Map<Long, List<String>> experimentAssignments;
+    
+    @ColumnInfo(name = "notes")
     private String notes;
 
     // Getters and setters
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
-
     public String getTaskId() {
         return taskId;
     }
@@ -68,6 +76,14 @@ public class ExperimentTask {
         this.creationTime = creationTime;
     }
 
+    public long getDeadline() {
+        return deadline;
+    }
+
+    public void setDeadline(long deadline) {
+        this.deadline = deadline;
+    }
+
     public List<MixRatio> getSelectedMixRatios() {
         return selectedMixRatios;
     }
@@ -76,20 +92,20 @@ public class ExperimentTask {
         this.selectedMixRatios = selectedMixRatios;
     }
 
-    public Map<Long, List<String>> getExperimentAssignments() {
-        return experimentAssignments;
-    }
-
-    public void setExperimentAssignments(Map<Long, List<String>> experimentAssignments) {
-        this.experimentAssignments = experimentAssignments;
-    }
-
     public String getMoldingMethod() {
         return moldingMethod;
     }
 
     public void setMoldingMethod(String moldingMethod) {
         this.moldingMethod = moldingMethod;
+    }
+
+    public Map<Long, List<String>> getExperimentAssignments() {
+        return experimentAssignments;
+    }
+
+    public void setExperimentAssignments(Map<Long, List<String>> experimentAssignments) {
+        this.experimentAssignments = experimentAssignments;
     }
 
     public String getNotes() {
