@@ -18,13 +18,15 @@ import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ExperimentAssignmentFragment extends Fragment {
     private LinearLayout containerMixRatioExperiments;
     private TextInputEditText etNotes;
     private List<MixRatio> selectedMixRatios = new ArrayList<>();
-    private List<ChipGroup> experimentChipGroups = new ArrayList<>();
+    private Map<Long, ChipGroup> experimentChipGroups = new HashMap<>();
 
     @Nullable
     @Override
@@ -32,8 +34,6 @@ public class ExperimentAssignmentFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_experiment_assignment, container, false);
         
         initViews(view);
-        setupExperimentCards();
-        
         return view;
     }
 
@@ -43,36 +43,59 @@ public class ExperimentAssignmentFragment extends Fragment {
     }
 
     public void setSelectedMixRatios(List<MixRatio> mixRatios) {
-        this.selectedMixRatios = mixRatios;
-        setupExperimentCards();
+        if (mixRatios == null) return;
+        
+        // 清除已移除的配比卡片
+        List<Long> toRemove = new ArrayList<>();
+        for (Long mixRatioId : experimentChipGroups.keySet()) {
+            boolean found = false;
+            for (MixRatio mixRatio : mixRatios) {
+                if (mixRatio.getId() == mixRatioId) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                toRemove.add(mixRatioId);
+            }
+        }
+        
+        for (Long mixRatioId : toRemove) {
+            ChipGroup chipGroup = experimentChipGroups.get(mixRatioId);
+            if (chipGroup != null) {
+                View cardView = (View) chipGroup.getParent().getParent();
+                containerMixRatioExperiments.removeView(cardView);
+                experimentChipGroups.remove(mixRatioId);
+            }
+        }
+        
+        // 添加新的配比卡片
+        for (MixRatio mixRatio : mixRatios) {
+            if (!experimentChipGroups.containsKey(mixRatio.getId())) {
+                addExperimentCard(mixRatio);
+            }
+        }
+        
+        this.selectedMixRatios = new ArrayList<>(mixRatios);
+        checkInputValidity();
     }
 
-    private void setupExperimentCards() {
-        if (containerMixRatioExperiments == null) return;
+    private void addExperimentCard(MixRatio mixRatio) {
+        View cardView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.item_mix_ratio_experiment, containerMixRatioExperiments, false);
 
-        // 清空现有卡片和芯片组列表
-        containerMixRatioExperiments.removeAllViews();
-        experimentChipGroups.clear();
+        // 设置卡片标题
+        TextView tvTitle = cardView.findViewById(R.id.tvMixRatioTitle);
+        tvTitle.setText(String.format("选择%s的实验类型", mixRatio.getName()));
 
-        // 为每个选中的配比创建一个卡片
-        for (int i = 0; i < selectedMixRatios.size(); i++) {
-            MixRatio mixRatio = selectedMixRatios.get(i);
-            View cardView = LayoutInflater.from(requireContext())
-                    .inflate(R.layout.item_mix_ratio_experiment, containerMixRatioExperiments, false);
+        // 创建实验类型选择区域
+        LinearLayout experimentContainer = cardView.findViewById(R.id.experimentContainer);
+        ChipGroup chipGroup = createExperimentChipGroup();
+        experimentContainer.addView(chipGroup);
+        experimentChipGroups.put(mixRatio.getId(), chipGroup);
 
-            // 设置卡片标题
-            TextView tvTitle = cardView.findViewById(R.id.tvMixRatioTitle);
-            tvTitle.setText(String.format("选择%s的实验类型", mixRatio.getName()));
-
-            // 创建实验类型选择区域
-            LinearLayout experimentContainer = cardView.findViewById(R.id.experimentContainer);
-            ChipGroup chipGroup = createExperimentChipGroup();
-            experimentContainer.addView(chipGroup);
-            experimentChipGroups.add(chipGroup);
-
-            // 添加到容器
-            containerMixRatioExperiments.addView(cardView);
-        }
+        // 添加到容器
+        containerMixRatioExperiments.addView(cardView);
     }
 
     private ChipGroup createExperimentChipGroup() {
@@ -93,7 +116,7 @@ public class ExperimentAssignmentFragment extends Fragment {
             Chip chip = new Chip(requireContext());
             chip.setText(experimentTypes[i]);
             chip.setCheckable(true);
-            chip.setTag(experimentIds[i]); // 使用 Tag 存储实验类型ID
+            chip.setTag(experimentIds[i]);
             chipGroup.addView(chip);
         }
 
@@ -107,7 +130,7 @@ public class ExperimentAssignmentFragment extends Fragment {
         boolean isValid = true;
         
         // 检查每个配比是否都选择了至少一个实验类型
-        for (ChipGroup chipGroup : experimentChipGroups) {
+        for (ChipGroup chipGroup : experimentChipGroups.values()) {
             if (chipGroup.getCheckedChipIds().isEmpty()) {
                 isValid = false;
                 break;
@@ -124,19 +147,19 @@ public class ExperimentAssignmentFragment extends Fragment {
         ExperimentAssignment assignment = new ExperimentAssignment();
         
         // 获取每个配比的实验类型
-        for (int i = 0; i < selectedMixRatios.size(); i++) {
-            MixRatio mixRatio = selectedMixRatios.get(i);
-            ChipGroup chipGroup = experimentChipGroups.get(i);
-            
-            List<String> experimentTypes = new ArrayList<>();
-            for (int chipId : chipGroup.getCheckedChipIds()) {
-                Chip chip = chipGroup.findViewById(chipId);
-                if (chip != null) {
-                    experimentTypes.add((String) chip.getTag());
+        for (MixRatio mixRatio : selectedMixRatios) {
+            ChipGroup chipGroup = experimentChipGroups.get(mixRatio.getId());
+            if (chipGroup != null) {
+                List<String> experimentTypes = new ArrayList<>();
+                for (int chipId : chipGroup.getCheckedChipIds()) {
+                    Chip chip = chipGroup.findViewById(chipId);
+                    if (chip != null) {
+                        experimentTypes.add((String) chip.getTag());
+                    }
                 }
+                
+                assignment.addMixRatioExperiments(mixRatio.getId(), experimentTypes);
             }
-            
-            assignment.addMixRatioExperiments(mixRatio.getId(), experimentTypes);
         }
         
         // 获取备注说明

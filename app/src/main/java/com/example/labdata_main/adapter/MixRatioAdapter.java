@@ -19,11 +19,16 @@ import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.view.PieChartView;
 import com.google.android.material.card.MaterialCardView;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 public class MixRatioAdapter extends ListAdapter<MixRatio, MixRatioAdapter.MixRatioViewHolder> {
 
     private final OnMixRatioSelectedListener listener;
     private final OnMixRatioDeleteListener deleteListener;
-    private int selectedPosition = RecyclerView.NO_POSITION;
+    private final Set<Long> selectedMixRatioIds = new HashSet<>();
     private static final int[] pieChartColors = {
         Color.parseColor("#FF6384"),
         Color.parseColor("#36A2EB"),
@@ -66,21 +71,20 @@ public class MixRatioAdapter extends ListAdapter<MixRatio, MixRatioAdapter.MixRa
         MixRatio mixRatio = getItem(position);
         
         // 设置选中状态
-        holder.cardView.setSelected(position == selectedPosition);
+        holder.cardView.setChecked(selectedMixRatioIds.contains(mixRatio.getId()));
         
-        holder.bind(mixRatio, position == selectedPosition);
+        holder.bind(mixRatio, selectedMixRatioIds.contains(mixRatio.getId()));
 
         holder.cardView.setOnClickListener(v -> {
-            int previousPosition = selectedPosition;
-            selectedPosition = holder.getAdapterPosition();
-            
-            // 通知之前选中的项目更新
-            if (previousPosition != RecyclerView.NO_POSITION) {
-                notifyItemChanged(previousPosition);
+            boolean isSelected = selectedMixRatioIds.contains(mixRatio.getId());
+            if (isSelected) {
+                selectedMixRatioIds.remove(mixRatio.getId());
+            } else {
+                selectedMixRatioIds.add(mixRatio.getId());
             }
             
-            // 通知当前选中的项目更新
-            notifyItemChanged(selectedPosition);
+            // 通知当前项更新
+            notifyItemChanged(holder.getAdapterPosition());
             
             // 调用选择监听器
             if (listener != null) {
@@ -95,93 +99,63 @@ public class MixRatioAdapter extends ListAdapter<MixRatio, MixRatioAdapter.MixRa
         });
     }
 
-    public void setSelectedPosition(int position) {
-        int previousPosition = selectedPosition;
-        selectedPosition = position;
-        
-        // 通知之前选中的项目更新
-        if (previousPosition != RecyclerView.NO_POSITION) {
-            notifyItemChanged(previousPosition);
-        }
-        
-        // 通知当前选中的项目更新
-        notifyItemChanged(selectedPosition);
-    }
-
-    public int getSelectedPosition() {
-        return selectedPosition;
-    }
-
-    public MixRatio getSelectedMixRatio() {
-        if (selectedPosition != RecyclerView.NO_POSITION && selectedPosition < getCurrentList().size()) {
-            return getCurrentList().get(selectedPosition);
-        }
-        return null;
-    }
-
-    @Override
-    public void submitList(java.util.List<MixRatio> list) {
-        if (list != null) {
-            Log.d("MixRatioAdapter", "Submitting list with size: " + list.size());
-            for (MixRatio ratio : list) {
-                Log.d("MixRatioAdapter", "MixRatio: " + ratio.getName() + ", Description: " + ratio.getDescription());
-            }
-        } else {
-            Log.d("MixRatioAdapter", "Submitting null list");
-        }
-        super.submitList(list);
-    }
-
     public void removeMixRatio(MixRatio mixRatio) {
-        int position = getCurrentList().indexOf(mixRatio);
-        if (position != -1) {
-            getCurrentList().remove(position);
-            notifyItemRemoved(position);
-        }
+        List<MixRatio> currentList = new ArrayList<>(getCurrentList());
+        currentList.remove(mixRatio);
+        submitList(currentList);
+        selectedMixRatioIds.remove(mixRatio.getId());
     }
 
     static class MixRatioViewHolder extends RecyclerView.ViewHolder {
-        private final MaterialCardView cardView;
-        private final TextView tvName;
-        private final TextView tvDescription;
-        private final PieChartView pieChartMaterials;
-        private final LinearLayout legendContainer;
-        private final ImageButton btnDelete;
+        MaterialCardView cardView;
+        TextView tvName;
+        TextView tvDescription;
+        LinearLayout legendContainer;
+        PieChartView pieChartMaterials;
+        ImageButton btnDelete;
 
-        MixRatioViewHolder(@NonNull View itemView) {
+        public MixRatioViewHolder(@NonNull View itemView) {
             super(itemView);
-            cardView = itemView.findViewById(R.id.cardMixRatio);
+            cardView = (MaterialCardView) itemView;
             tvName = itemView.findViewById(R.id.tvMixRatioName);
             tvDescription = itemView.findViewById(R.id.tvMixRatioDescription);
-            pieChartMaterials = itemView.findViewById(R.id.pieChartMaterials);
             legendContainer = itemView.findViewById(R.id.legendContainer);
+            pieChartMaterials = itemView.findViewById(R.id.pieChartMaterials);
             btnDelete = itemView.findViewById(R.id.btnDelete);
+            
+            // 设置卡片为可选中状态
+            cardView.setCheckable(true);
         }
 
-        void bind(MixRatio mixRatio, boolean isSelected) {
-            // 手动设置选中状态
+        public void bind(MixRatio mixRatio, boolean isSelected) {
             cardView.setChecked(isSelected);
             
-            // 如果选中，添加选中效果
-            cardView.setCardBackgroundColor(isSelected 
-                ? ContextCompat.getColor(itemView.getContext(), R.color.selected_mix_ratio_background)
-                : ContextCompat.getColor(itemView.getContext(), android.R.color.white));
-            
             tvName.setText(mixRatio.getName());
-            tvDescription.setText(mixRatio.getDescription());
+            if (mixRatio.getDescription() != null && !mixRatio.getDescription().isEmpty()) {
+                tvDescription.setVisibility(View.VISIBLE);
+                tvDescription.setText(mixRatio.getDescription());
+            } else {
+                tvDescription.setVisibility(View.GONE);
+            }
 
-            // 设置饼图
-            if (mixRatio.getMaterials() != null && !mixRatio.getMaterials().isEmpty()) {
-                pieChartMaterials.setMaterials(mixRatio.getMaterials());
-                
-                // 清除之前的图例
-                legendContainer.removeAllViews();
-                
-                // 添加新的图例
+            // 清除之前的图例
+            legendContainer.removeAllViews();
+
+            // 添加材料列表和图例
+            if (mixRatio.getMaterials() != null) {
+                float totalWeight = 0;
+                for (MaterialItem material : mixRatio.getMaterials()) {
+                    totalWeight += material.getAmount() != null ? Float.parseFloat(material.getAmount()) : 0;
+                }
+
+                float[] values = new float[mixRatio.getMaterials().size()];
+                int[] colors = new int[mixRatio.getMaterials().size()];
+                String[] labels = new String[mixRatio.getMaterials().size()];
+
                 for (int i = 0; i < mixRatio.getMaterials().size(); i++) {
                     MaterialItem material = mixRatio.getMaterials().get(i);
                     
-                    // 创建图例项
+                    // 添加图例项
                     View legendItem = LayoutInflater.from(itemView.getContext())
                             .inflate(R.layout.item_pie_chart_legend, legendContainer, false);
                     
@@ -191,65 +165,23 @@ public class MixRatioAdapter extends ListAdapter<MixRatio, MixRatioAdapter.MixRa
                     
                     tvLegendColor.setBackgroundColor(pieChartColors[i % pieChartColors.length]);
                     tvLegendName.setText(material.getName());
-                    
-                    // 计算百分比
-                    float total = 0;
-                    Log.d("MixRatioAdapter", "Total materials: " + mixRatio.getMaterials().size());
-                    
-                    // 首先尝试从 MixRatio 中获取总量
-                    String totalAmountStr = mixRatio.getTotalAmount();
-                    float totalAmount = 0;
-                    if (totalAmountStr != null && !totalAmountStr.trim().isEmpty()) {
-                        try {
-                            totalAmount = Float.parseFloat(totalAmountStr.trim());
-                        } catch (NumberFormatException e) {
-                            Log.e("MixRatioAdapter", "Invalid total amount: " + totalAmountStr);
-                        }
-                    }
-                    
-                    // 如果没有总量，则计算总量
-                    if (totalAmount <= 0) {
-                        for (MaterialItem item : mixRatio.getMaterials()) {
-                            Log.d("MixRatioAdapter", "Material: " + item.getName() + ", Amount: " + item.getAmount());
-                            if (item.getAmount() != null && !item.getAmount().trim().isEmpty()) {
-                                try {
-                                    total += Float.parseFloat(item.getAmount().trim());
-                                } catch (NumberFormatException e) {
-                                    Log.e("MixRatioAdapter", "Invalid amount: " + item.getAmount());
-                                }
-                            }
-                        }
-                        totalAmount = total;
-                    }
-                    
-                    // 如果总量仍然为0，尝试使用预设的百分比
-                    if (totalAmount <= 0) {
-                        for (MaterialItem item : mixRatio.getMaterials()) {
-                            if (item.getPercentage() > 0) {
-                                totalAmount += item.getPercentage();
-                            }
-                        }
-                    }
-                    
-                    Log.d("MixRatioAdapter", "Total amount: " + totalAmount);
-                    
+
                     float percentage = 0;
-                    if (material.getAmount() != null && !material.getAmount().trim().isEmpty() && totalAmount > 0) {
-                        try {
-                            percentage = (Float.parseFloat(material.getAmount().trim()) / totalAmount) * 100;
-                        } catch (NumberFormatException e) {
-                            Log.e("MixRatioAdapter", "Invalid material amount: " + material.getAmount());
-                        }
-                    } else if (material.getPercentage() > 0 && totalAmount > 0) {
-                        // 如果没有数量，使用预设百分比
-                        percentage = (material.getPercentage() / totalAmount) * 100;
+                    if (material.getAmount() != null && totalWeight > 0) {
+                        percentage = Float.parseFloat(material.getAmount()) / totalWeight * 100;
                     }
-                    
-                    Log.d("MixRatioAdapter", "Material: " + material.getName() + ", Percentage: " + percentage);
                     tvLegendPercentage.setText(String.format("%.1f%%", percentage));
                     
                     legendContainer.addView(legendItem);
+
+                    // 准备饼图数据
+                    values[i] = percentage;
+                    colors[i] = pieChartColors[i % pieChartColors.length];
+                    labels[i] = material.getName();
                 }
+
+                // 更新饼图
+                pieChartMaterials.setMaterials(mixRatio.getMaterials());
             }
         }
     }
