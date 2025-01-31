@@ -19,6 +19,7 @@ import com.example.labdata_main.model.MixRatio;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.snackbar.Snackbar;
 import android.util.Log;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,7 +31,7 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
     private MixRatioAdapter mixRatioAdapter;
     private DatabaseHelper databaseHelper;
     private ExecutorService executorService;
-    private MixRatio selectedMixRatio;
+    private List<MixRatio> selectedMixRatios = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -87,14 +88,20 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
     }
 
     private void checkInputValidity() {
-        boolean isValid = selectedMixRatio != null;
+        boolean isValid = !selectedMixRatios.isEmpty();
         // 通知Activity更新下一步按钮状态
-        ((ExperimentTaskSetupActivity) requireActivity()).enableNextButton(isValid);
+        if (getActivity() instanceof ExperimentTaskSetupActivity) {
+            ((ExperimentTaskSetupActivity) getActivity()).enableNextButton(isValid);
+        }
     }
 
     @Override
     public void onMixRatioSelected(MixRatio mixRatio) {
-        this.selectedMixRatio = mixRatio;
+        if (selectedMixRatios.contains(mixRatio)) {
+            selectedMixRatios.remove(mixRatio);
+        } else {
+            selectedMixRatios.add(mixRatio);
+        }
         checkInputValidity();
     }
 
@@ -144,7 +151,7 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
         executorService.shutdown();
     }
 
-    public MixRatio getMixRatio() {
-        return selectedMixRatio;
+    public List<MixRatio> getSelectedMixRatios() {
+        return new ArrayList<>(selectedMixRatios);
     }
 }

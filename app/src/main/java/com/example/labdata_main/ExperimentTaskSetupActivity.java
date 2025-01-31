@@ -90,6 +90,18 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
                 currentStep = position;
                 updateStepIndicators();
                 updateNextButton();
+
+                // 当切换到实验指派页面时，传递选中的配比
+                if (position == 3) {
+                    ExperimentTaskPagerAdapter pagerAdapter = (ExperimentTaskPagerAdapter) viewPager.getAdapter();
+                    if (pagerAdapter != null) {
+                        SelectMixRatioFragment mixRatioFragment = pagerAdapter.getMixRatioFragment();
+                        ExperimentAssignmentFragment assignmentFragment = pagerAdapter.getExperimentAssignmentFragment();
+                        if (mixRatioFragment != null && assignmentFragment != null) {
+                            assignmentFragment.setSelectedMixRatios(mixRatioFragment.getSelectedMixRatios());
+                        }
+                    }
+                }
             }
         });
     }

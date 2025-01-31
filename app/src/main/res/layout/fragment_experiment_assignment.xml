@@ -11,10 +11,18 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- 配比实验类型卡片容器 -->
+        <LinearLayout
+            android:id="@+id/containerMixRatioExperiments"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
+
+        <!-- 实验备注卡片 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginTop="16dp"
             app:cardCornerRadius="8dp"
             app:cardElevation="2dp">
 
@@ -27,145 +35,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="实验类型"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/black"
-                    android:layout_marginBottom="16dp"/>
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroupExperiments"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:singleSelection="false">
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipCompression"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="抗压强度"
-                        style="@style/Widget.MaterialComponents.Chip.Filter"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipFlexural"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="抗折强度"
-                        style="@style/Widget.MaterialComponents.Chip.Filter"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipSplitting"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="劈裂抗拉"
-                        style="@style/Widget.MaterialComponents.Chip.Filter"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipElastic"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="弹性模量"
-                        style="@style/Widget.MaterialComponents.Chip.Filter"/>
-
-                </com.google.android.material.chip.ChipGroup>
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="养护龄期"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/black"
-                    android:layout_marginBottom="16dp"/>
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroupAges"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:singleLine="true">
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip3d"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="3d"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip7d"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="7d"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip14d"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="14d"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip28d"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="28d"
-                        android:checked="true"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip56d"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="56d"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"/>
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip90d"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="90d"
-                        style="@style/Widget.MaterialComponents.Chip.Choice"/>
-
-                </com.google.android.material.chip.ChipGroup>
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="备注说明"
+                    android:text="实验备注"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="@color/black"
