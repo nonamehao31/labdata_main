@@ -168,17 +168,17 @@
                             android:id="@+id/task_recycler_view"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:nestedScrollingEnabled="false"/>
+                            android:layout_marginTop="8dp"/>
 
                         <TextView
                             android:id="@+id/empty_task_text"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="暂无实验任务"
-                            android:textSize="14sp"
-                            android:textColor="@color/text_secondary"
+                            android:layout_marginTop="32dp"
                             android:gravity="center"
-                            android:padding="16dp"
+                            android:text="暂无实验任务"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="16sp"
                             android:visibility="gone"/>
 
                     </FrameLayout>

@@ -98,25 +98,11 @@ public class MoldingMethod {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         
-        // 试块尺寸信息
-        switch (type) {
-            case TYPE_CUBE:
-                sb.append(String.format("立方体试块 %.0f×%.0f×%.0f mm", size, size, size));
-                break;
-            case TYPE_CYLINDER:
-                sb.append(String.format("圆柱体试块 Φ%.0f×%.0f mm", diameter, height));
-                break;
-            case TYPE_PRISM:
-                sb.append(String.format("棱柱体试块 %.0f×%.0f×%.0f mm", length, width, height));
-                break;
-        }
-        sb.append(String.format(" %d个", count));
-
-        // 添加拌合参数信息，使用标识和单位
-        sb.append("|temp=").append(String.format("%.1f", mixingTemperature));  // 拌合温度
-        sb.append("|speed=").append(String.format("%.1f", mixingSpeed));       // 拌合速度
-        sb.append("|time=").append(String.format("%.1f", mixingTime));         // 拌合时间
-        sb.append("|method=").append(compactionMethod);                        // 压实方式
+        // 只添加拌合和压实参数信息
+        sb.append("temp=").append(String.format("%.1f", mixingTemperature));  // 拌合温度
+        sb.append("|speed=").append(String.format("%.1f", mixingSpeed));      // 拌合速度
+        sb.append("|time=").append(String.format("%.1f", mixingTime));        // 拌合时间
+        sb.append("|method=").append(compactionMethod);                       // 压实方式
 
         return sb.toString();
     }
