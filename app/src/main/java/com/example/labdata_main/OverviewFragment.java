@@ -147,8 +147,8 @@ public class OverviewFragment extends Fragment implements ExperimentTaskAdapter.
 
     @Override
     public void onTaskClick(ExperimentTask task) {
-        // TODO: 处理任务点击事件，打开任务详情页面
-        Toast.makeText(requireContext(), "点击了任务: " + task.getTaskId(), Toast.LENGTH_SHORT).show();
+        TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
+        bottomSheet.show(getChildFragmentManager(), "TaskDetailBottomSheet");
     }
 
     private void updateWelcomeMessage() {

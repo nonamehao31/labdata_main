@@ -3,12 +3,12 @@ package com.example.labdata_main.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
 import com.example.labdata_main.model.ExperimentTask;
 import com.google.android.material.button.MaterialButton;
-import android.widget.TextView;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -59,6 +59,13 @@ public class ExperimentTaskAdapter extends RecyclerView.Adapter<ExperimentTaskAd
 
         // 设置按钮为空文本，只显示图标
         holder.taskButton.setText("");
+        
+        // 设置按钮点击事件
+        holder.taskButton.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onTaskClick(task);
+            }
+        });
     }
 
     @Override
@@ -81,13 +88,6 @@ public class ExperimentTaskAdapter extends RecyclerView.Adapter<ExperimentTaskAd
             taskButton = itemView.findViewById(R.id.task_button);
             taskName = itemView.findViewById(R.id.task_name);
             taskDeadline = itemView.findViewById(R.id.task_deadline);
-
-            itemView.setOnClickListener(v -> {
-                int position = getAdapterPosition();
-                if (position != RecyclerView.NO_POSITION && listener != null) {
-                    listener.onTaskClick(tasks.get(position));
-                }
-            });
         }
     }
 }
