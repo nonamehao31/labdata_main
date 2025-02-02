@@ -1,6 +1,7 @@
 package com.example.labdata_main.adapter;
 
 import android.graphics.Color;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +15,7 @@ import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.view.PieChartView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -102,13 +104,25 @@ public class MixRatioDetailAdapter extends RecyclerView.Adapter<MixRatioDetailAd
             experimentChips.removeAllViews();
 
             // 添加实验芯片
-            if (experiments != null) {
+            if (experiments != null && !experiments.isEmpty()) {
+                Log.d("MixRatioDetailAdapter", "Adding experiments for mix ratio: " + mixRatio.getName());
+                Log.d("MixRatioDetailAdapter", "Experiments: " + experiments.toString());
+                
                 for (String experiment : experiments) {
                     Chip chip = new Chip(itemView.getContext());
                     chip.setText(experiment);
                     chip.setClickable(false);
+                    chip.setChipBackgroundColorResource(R.color.gray_light);
+                    chip.setTextColor(Color.WHITE);
+                    chip.setTextSize(12);
+                    chip.setChipStrokeWidth(0);
+                    chip.setEnsureMinTouchTargetSize(false);
                     experimentChips.addView(chip);
                 }
+                experimentChips.setVisibility(View.VISIBLE);
+            } else {
+                Log.d("MixRatioDetailAdapter", "No experiments for mix ratio: " + mixRatio.getName());
+                experimentChips.setVisibility(View.GONE);
             }
         }
     }

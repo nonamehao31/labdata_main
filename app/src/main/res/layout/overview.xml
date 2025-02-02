@@ -136,8 +136,9 @@
 
             </androidx.cardview.widget.CardView>
 
-            <!-- 已接受任务卡片 -->
+            <!-- 我的任务卡片 -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/my_task_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
@@ -164,18 +165,22 @@
                         android:layout_height="wrap_content">
 
                         <androidx.recyclerview.widget.RecyclerView
-                            android:id="@+id/accepted_tasks_recycler_view"
+                            android:id="@+id/rvMyTasks"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"/>
+                            android:layout_marginTop="8dp"
+                            android:clipToPadding="false"
+                            android:nestedScrollingEnabled="false"
+                            android:overScrollMode="never"
+                            android:paddingBottom="8dp"/>
 
                         <TextView
-                            android:id="@+id/empty_accepted_task_text"
+                            android:id="@+id/empty_my_task_text"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="32dp"
                             android:gravity="center"
-                            android:text="暂无已接受的任务"
+                            android:text="暂无进行中的任务"
                             android:textColor="@color/text_secondary"
                             android:textSize="16sp"
                             android:visibility="visible"/>
@@ -186,7 +191,7 @@
 
             </androidx.cardview.widget.CardView>
 
-            <!-- 实验概览卡片 -->
+            <!-- 实验任务卡片 -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -217,7 +222,11 @@
                             android:id="@+id/task_recycler_view"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"/>
+                            android:layout_marginTop="8dp"
+                            android:clipToPadding="false"
+                            android:nestedScrollingEnabled="false"
+                            android:overScrollMode="never"
+                            android:paddingBottom="8dp"/>
 
                         <TextView
                             android:id="@+id/empty_task_text"

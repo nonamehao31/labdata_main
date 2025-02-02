@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     private static final String ARG_TASK = "task";
@@ -116,7 +117,13 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         rvMixRatios.setLayoutManager(new LinearLayoutManager(requireContext()));
         List<MixRatio> mixRatios = task.getSelectedMixRatios() != null ? task.getSelectedMixRatios() : new ArrayList<>();
         MixRatioDetailAdapter adapter = new MixRatioDetailAdapter();
-        adapter.setData(mixRatios, new HashMap<>());
+        
+        // 传递配比和对应的实验指派信息
+        Map<Long, List<String>> experimentAssignments = task.getExperimentAssignments();
+        if (experimentAssignments == null) {
+            experimentAssignments = new HashMap<>();
+        }
+        adapter.setData(mixRatios, experimentAssignments);
         rvMixRatios.setAdapter(adapter);
 
         // 设置备注信息

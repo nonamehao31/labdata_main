@@ -5,6 +5,7 @@ import android.os.Parcelable;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.TypeConverters;
+import androidx.room.ColumnInfo;
 import com.example.labdata_main.database.Converters;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -24,7 +25,15 @@ public class ExperimentTask implements Parcelable {
     private long projectId;
     private String projectName;
     private long creationTime;
+    @ColumnInfo(name = "deadline")
     private long deadline; // 截止日期
+    @ColumnInfo(name = "preparation_time")
+    private long preparationTime;
+    @ColumnInfo(name = "specimen_generation_time")
+    private long specimenGenerationTime;
+    @ColumnInfo(name = "experiment_completion_time")
+    private long experimentCompletionTime;
+    @ColumnInfo(name = "status")
     private String status; // 任务状态：未接受、已接受等
     @TypeConverters(Converters.class)
     private List<MixRatio> selectedMixRatios;
@@ -46,6 +55,9 @@ public class ExperimentTask implements Parcelable {
         projectName = in.readString();
         creationTime = in.readLong();
         deadline = in.readLong();
+        preparationTime = in.readLong();
+        specimenGenerationTime = in.readLong();
+        experimentCompletionTime = in.readLong();
         status = in.readString();
         moldingMethod = in.readString();
         notes = in.readString();
@@ -73,6 +85,9 @@ public class ExperimentTask implements Parcelable {
         dest.writeString(projectName);
         dest.writeLong(creationTime);
         dest.writeLong(deadline);
+        dest.writeLong(preparationTime);
+        dest.writeLong(specimenGenerationTime);
+        dest.writeLong(experimentCompletionTime);
         dest.writeString(status);
         dest.writeString(moldingMethod);
         dest.writeString(notes);
@@ -155,6 +170,30 @@ public class ExperimentTask implements Parcelable {
 
     public void setDeadline(long deadline) {
         this.deadline = deadline;
+    }
+
+    public long getPreparationTime() {
+        return preparationTime;
+    }
+
+    public void setPreparationTime(long preparationTime) {
+        this.preparationTime = preparationTime;
+    }
+
+    public long getSpecimenGenerationTime() {
+        return specimenGenerationTime;
+    }
+
+    public void setSpecimenGenerationTime(long specimenGenerationTime) {
+        this.specimenGenerationTime = specimenGenerationTime;
+    }
+
+    public long getExperimentCompletionTime() {
+        return experimentCompletionTime;
+    }
+
+    public void setExperimentCompletionTime(long experimentCompletionTime) {
+        this.experimentCompletionTime = experimentCompletionTime;
     }
 
     public String getStatus() {

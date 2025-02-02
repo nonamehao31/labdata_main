@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.adapter.ExperimentTaskAdapter;
+import com.example.labdata_main.adapter.ProjectCardAdapter;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.utils.SharedPrefsManager;
@@ -42,11 +43,11 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private TextView welcomeText;
     private Spinner spinner;
     private RecyclerView taskRecyclerView;
-    private RecyclerView acceptedTasksRecyclerView;
+    private RecyclerView myTasksRecyclerView;
     private TextView emptyTaskText;
-    private TextView emptyAcceptedTaskText;
+    private TextView emptyMyTaskText;
     private ExperimentTaskAdapter taskAdapter;
-    private ExperimentTaskAdapter acceptedTaskAdapter;
+    private ProjectCardAdapter myTasksAdapter;
     private AppDatabase database;
     private SharedPrefsManager sharedPrefsManager;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -78,9 +79,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         welcomeText = view.findViewById(R.id.welcome_text);
         spinner = view.findViewById(R.id.experiment_spinner);
         taskRecyclerView = view.findViewById(R.id.task_recycler_view);
-        acceptedTasksRecyclerView = view.findViewById(R.id.accepted_tasks_recycler_view);
+        myTasksRecyclerView = view.findViewById(R.id.rvMyTasks);
         emptyTaskText = view.findViewById(R.id.empty_task_text);
-        emptyAcceptedTaskText = view.findViewById(R.id.empty_accepted_task_text);
+        emptyMyTaskText = view.findViewById(R.id.empty_my_task_text);
 
         return view;
     }
@@ -146,9 +147,33 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
 
     private void setupAcceptedTasksRecyclerView() {
-        acceptedTaskAdapter = new ExperimentTaskAdapter(this);
-        acceptedTasksRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        acceptedTasksRecyclerView.setAdapter(acceptedTaskAdapter);
+        myTasksAdapter = new ProjectCardAdapter();
+        myTasksRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        myTasksRecyclerView.setAdapter(myTasksAdapter);
+
+        // 设置项目卡片的操作监听器
+        myTasksAdapter.setOnProjectCardActionListener(new ProjectCardAdapter.OnProjectCardActionListener() {
+            @Override
+            public void onViewMixRatios(ExperimentTask task) {
+                // 显示配比信息
+                TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
+                bottomSheet.show(getChildFragmentManager(), "TaskDetailBottomSheet");
+            }
+
+            @Override
+            public void onGenerateSpecimenCode(ExperimentTask task) {
+                // 生成试件码
+                // TODO: 实现试件码生成逻辑
+                Toast.makeText(requireContext(), "生成试件码功能开发中", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onRecordExperimentData(ExperimentTask task) {
+                // 记录实验数据
+                // TODO: 实现实验数据记录逻辑
+                Toast.makeText(requireContext(), "记录实验数据功能开发中", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void loadExperimentTasks() {
@@ -173,13 +198,13 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 if (isAdded() && getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         // 更新已接受任务列表
-                        if (acceptedTaskAdapter != null) {
-                            acceptedTaskAdapter.setTasks(acceptedTasks);
-                            if (emptyAcceptedTaskText != null) {
-                                emptyAcceptedTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
+                        if (myTasksAdapter != null) {
+                            myTasksAdapter.setTasks(acceptedTasks);
+                            if (emptyMyTaskText != null) {
+                                emptyMyTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
                             }
-                            if (acceptedTasksRecyclerView != null) {
-                                acceptedTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
+                            if (myTasksRecyclerView != null) {
+                                myTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
                             }
                         }
 
@@ -276,13 +301,13 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 if (isAdded() && getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         // 更新已接受任务列表
-                        if (acceptedTaskAdapter != null) {
-                            acceptedTaskAdapter.setTasks(acceptedTasks);
-                            if (emptyAcceptedTaskText != null) {
-                                emptyAcceptedTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
+                        if (myTasksAdapter != null) {
+                            myTasksAdapter.setTasks(acceptedTasks);
+                            if (emptyMyTaskText != null) {
+                                emptyMyTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
                             }
-                            if (acceptedTasksRecyclerView != null) {
-                                acceptedTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
+                            if (myTasksRecyclerView != null) {
+                                myTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
                             }
                         }
 

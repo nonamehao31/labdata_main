@@ -28,7 +28,7 @@ import com.example.labdata_main.model.Specimen;
     MixDesign.class, 
     MoldingMethod.class,
     ExperimentTask.class
-}, version = 7)
+}, version = 8)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
@@ -158,13 +158,28 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 7 to version 8");
+            
+            // 添加新的列到 experiment_tasks 表
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN deadline INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN preparation_time INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN specimen_generation_time INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN experiment_completion_time INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN status TEXT");
+        }
+    };
+
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context.getApplicationContext(),
                     AppDatabase.class, DATABASE_NAME)
                     .addMigrations(
                             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                            MIGRATION_7_8)
                     .build();
         }
         return instance;
