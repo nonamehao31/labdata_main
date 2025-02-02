@@ -15,6 +15,7 @@ import com.example.labdata_main.adapter.MixRatioDetailAdapter;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -25,6 +26,15 @@ import java.util.Locale;
 public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
     private static final String ARG_TASK = "task";
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    private TaskAcceptListener taskAcceptListener;
+
+    public interface TaskAcceptListener {
+        void onTaskAccepted(ExperimentTask task);
+    }
+
+    public void setTaskAcceptListener(TaskAcceptListener listener) {
+        this.taskAcceptListener = listener;
+    }
 
     public static TaskDetailBottomSheet newInstance(ExperimentTask task) {
         TaskDetailBottomSheet fragment = new TaskDetailBottomSheet();
@@ -51,9 +61,15 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         // 设置基本信息
         TextView taskName = view.findViewById(R.id.task_name);
         TextView projectName = view.findViewById(R.id.tvProjectName);
-
+        TextView deadline = view.findViewById(R.id.tvDeadline);
+        
         taskName.setText(task.getTaskName());
         projectName.setText("项目：" + task.getProjectName());
+        if (task.getDeadline() > 0) {
+            deadline.setText("截止日期：" + DATE_FORMAT.format(new java.util.Date(task.getDeadline())));
+        } else {
+            deadline.setText("无截止日期");
+        }
 
         // 设置制件参数信息
         TextView mixingTemperature = view.findViewById(R.id.tvMixingTemperature);
@@ -110,5 +126,14 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         } else {
             notes.setText("无备注");
         }
+
+        // 设置接受任务按钮点击事件
+        ExtendedFloatingActionButton fabAcceptTask = view.findViewById(R.id.fabAcceptTask);
+        fabAcceptTask.setOnClickListener(v -> {
+            if (taskAcceptListener != null) {
+                taskAcceptListener.onTaskAccepted(task);
+            }
+            dismiss();
+        });
     }
 }

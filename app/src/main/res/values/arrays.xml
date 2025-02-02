@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="experiment_types">
+        <item>请选择实验类型</item>
+        <item>混合料实验</item>
+        <item>沥青试验</item>
+    </string-array>
+</resources>

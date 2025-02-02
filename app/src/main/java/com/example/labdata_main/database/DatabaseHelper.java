@@ -10,18 +10,20 @@ import com.example.labdata_main.dao.MixRatioDao;
 import com.example.labdata_main.dao.MaterialDao;
 import com.example.labdata_main.dao.MaterialPropertyDao;
 import com.example.labdata_main.dao.MixDesignDao;
+import com.example.labdata_main.dao.ExperimentTaskDao;
 import com.example.labdata_main.model.Material;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.Project;
 import com.example.labdata_main.model.MaterialProperty;
 import com.example.labdata_main.model.MixDesign;
+import com.example.labdata_main.model.ExperimentTask;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-@Database(entities = {Project.class, MixRatio.class, Material.class, MaterialProperty.class, MixDesign.class}, version = 1)
+@Database(entities = {Project.class, MixRatio.class, Material.class, MaterialProperty.class, MixDesign.class, ExperimentTask.class}, version = 2)
 @TypeConverters({Converters.class})
 public abstract class DatabaseHelper extends RoomDatabase {
     private static final String DATABASE_NAME = "labdata.db";
@@ -35,6 +37,7 @@ public abstract class DatabaseHelper extends RoomDatabase {
     public abstract MaterialDao materialDao();
     public abstract MaterialPropertyDao materialPropertyDao();
     public abstract MixDesignDao mixDesignDao();
+    public abstract ExperimentTaskDao experimentTaskDao();
 
     public static synchronized DatabaseHelper getInstance(Context context) {
         if (instance == null) {

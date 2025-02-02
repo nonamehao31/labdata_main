@@ -194,6 +194,10 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         task.setCreationTime(System.currentTimeMillis());
 
         AppDatabase.getInstance(this).experimentTaskDao().insert(task);
+
+        // 发送广播通知主页刷新
+        Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+        sendBroadcast(refreshIntent);
     }
 
     private void updateStepIndicators() {

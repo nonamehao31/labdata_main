@@ -39,4 +39,8 @@ public interface ExperimentTaskDao {
 
     @Query("SELECT COUNT(*) FROM experiment_tasks WHERE taskId LIKE :prefix || '%'")
     int getTaskCountByPrefix(String prefix);
+
+    // 获取所有任务，然后在代码中过滤
+    @Query("SELECT * FROM experiment_tasks")
+    List<ExperimentTask> getTasksByType();
 }

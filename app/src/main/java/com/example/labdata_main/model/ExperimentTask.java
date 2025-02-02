@@ -25,6 +25,7 @@ public class ExperimentTask implements Parcelable {
     private String projectName;
     private long creationTime;
     private long deadline; // 截止日期
+    private String status; // 任务状态：未接受、已接受等
     @TypeConverters(Converters.class)
     private List<MixRatio> selectedMixRatios;
     @TypeConverters(Converters.class)
@@ -45,6 +46,7 @@ public class ExperimentTask implements Parcelable {
         projectName = in.readString();
         creationTime = in.readLong();
         deadline = in.readLong();
+        status = in.readString();
         moldingMethod = in.readString();
         notes = in.readString();
 
@@ -71,6 +73,7 @@ public class ExperimentTask implements Parcelable {
         dest.writeString(projectName);
         dest.writeLong(creationTime);
         dest.writeLong(deadline);
+        dest.writeString(status);
         dest.writeString(moldingMethod);
         dest.writeString(notes);
 
@@ -152,6 +155,14 @@ public class ExperimentTask implements Parcelable {
 
     public void setDeadline(long deadline) {
         this.deadline = deadline;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public List<MixRatio> getSelectedMixRatios() {

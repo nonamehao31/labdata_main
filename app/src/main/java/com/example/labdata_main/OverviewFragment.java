@@ -1,7 +1,12 @@
 package com.example.labdata_main;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +17,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.LiveData;
@@ -21,38 +28,84 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.adapter.ExperimentTaskAdapter;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class OverviewFragment extends Fragment implements ExperimentTaskAdapter.OnTaskClickListener {
+public class OverviewFragment extends Fragment implements AdapterView.OnItemSelectedListener, ExperimentTaskAdapter.OnTaskClickListener {
     private TextView welcomeText;
     private Spinner spinner;
-    private SharedPrefsManager sharedPrefsManager;
     private RecyclerView taskRecyclerView;
+    private RecyclerView acceptedTasksRecyclerView;
     private TextView emptyTaskText;
+    private TextView emptyAcceptedTaskText;
     private ExperimentTaskAdapter taskAdapter;
+    private ExperimentTaskAdapter acceptedTaskAdapter;
+    private AppDatabase database;
+    private SharedPrefsManager sharedPrefsManager;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private BroadcastReceiver taskRefreshReceiver;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        database = AppDatabase.getInstance(requireContext());
+
+        // 注册广播接收器
+        taskRefreshReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("com.example.labdata_main.REFRESH_TASKS".equals(intent.getAction())) {
+                    loadExperimentTasks();
+                }
+            }
+        };
+        requireContext().registerReceiver(taskRefreshReceiver, new IntentFilter("com.example.labdata_main.REFRESH_TASKS"));
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.overview, container, false);
 
-        // 初始化SharedPrefsManager
-        sharedPrefsManager = new SharedPrefsManager(requireContext());
-
-        // 获取控件
+        // 初始化视图
         welcomeText = view.findViewById(R.id.welcome_text);
         spinner = view.findViewById(R.id.experiment_spinner);
         taskRecyclerView = view.findViewById(R.id.task_recycler_view);
+        acceptedTasksRecyclerView = view.findViewById(R.id.accepted_tasks_recycler_view);
         emptyTaskText = view.findViewById(R.id.empty_task_text);
+        emptyAcceptedTaskText = view.findViewById(R.id.empty_accepted_task_text);
+
+        return view;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // 初始化 SharedPrefsManager
+        if (sharedPrefsManager == null) {
+            sharedPrefsManager = new SharedPrefsManager(requireActivity());
+        }
+
+        // 设置欢迎信息
+        welcomeText.setText("你好，实验员");  // 设置默认欢迎语
+        if (sharedPrefsManager != null) {
+            String userName = sharedPrefsManager.getUserName();
+            if (userName != null && !userName.isEmpty()) {
+                welcomeText.setText(String.format("你好，%s", userName));
+            }
+        }
 
         // 初始化RecyclerView
         setupRecyclerView();
+        setupAcceptedTasksRecyclerView();
 
         // 初始化添加配合比按钮
         MaterialButton addMixButton = view.findViewById(R.id.add_mix_button);
@@ -71,56 +124,19 @@ public class OverviewFragment extends Fragment implements ExperimentTaskAdapter.
             bottomSheet.show(getChildFragmentManager(), "bottom_sheet_add_experiment");
         });
 
-        // 设置欢迎语
-        updateWelcomeMessage();
-
         // 创建下拉菜单选项
         String[] items = new String[]{"请选择实验类型", "混合料实验", "沥青试验"};
-        
-        // 创建并设置适配器（使用自定义布局）
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                getContext(),
+                requireContext(),
                 R.layout.spinner_item,
                 items
         );
         adapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
         spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(this);
 
-        // 设置选项选择监听器
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position == 0) {
-                    // 显示默认文本
-                    taskRecyclerView.setVisibility(View.VISIBLE);
-                    getParentFragmentManager().popBackStack();
-                    return;
-                }
-                
-                if (position == 1) {
-                    // 显示混合料实验任务列表
-                    taskRecyclerView.setVisibility(View.VISIBLE);
-                    getParentFragmentManager().popBackStack();
-                } else if (position == 2) {
-                    // 隐藏任务列表并显示沥青试验Fragment
-                    taskRecyclerView.setVisibility(View.GONE);
-                    FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
-                    transaction.replace(R.id.experiment_container, new AsphaltFragment());
-                    transaction.addToBackStack(null);
-                    transaction.commit();
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                // Do nothing
-            }
-        });
-
-        // 加载实验任务列表
+        // 加载实验任务
         loadExperimentTasks();
-
-        return view;
     }
 
     private void setupRecyclerView() {
@@ -129,57 +145,212 @@ public class OverviewFragment extends Fragment implements ExperimentTaskAdapter.
         taskRecyclerView.setAdapter(taskAdapter);
     }
 
+    private void setupAcceptedTasksRecyclerView() {
+        acceptedTaskAdapter = new ExperimentTaskAdapter(this);
+        acceptedTasksRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        acceptedTasksRecyclerView.setAdapter(acceptedTaskAdapter);
+    }
+
     private void loadExperimentTasks() {
-        AppDatabase.getInstance(requireContext())
-                .experimentTaskDao()
-                .getAllTasks()
-                .observe(getViewLifecycleOwner(), tasks -> {
-                    if (tasks != null && !tasks.isEmpty()) {
-                        taskAdapter.setTasks(tasks);
-                        emptyTaskText.setVisibility(View.GONE);
-                        taskRecyclerView.setVisibility(View.VISIBLE);
+        executor.execute(() -> {
+            try {
+                // 获取所有任务
+                List<ExperimentTask> allTasks = database.experimentTaskDao().getAllTasksList();
+                
+                // 分离已接受和未接受的任务
+                List<ExperimentTask> acceptedTasks = new ArrayList<>();
+                List<ExperimentTask> unacceptedTasks = new ArrayList<>();
+                
+                for (ExperimentTask task : allTasks) {
+                    if (task.getStatus() != null && task.getStatus().equals("已接受")) {
+                        acceptedTasks.add(task);
                     } else {
-                        emptyTaskText.setVisibility(View.VISIBLE);
-                        taskRecyclerView.setVisibility(View.GONE);
+                        unacceptedTasks.add(task);
                     }
-                });
+                }
+
+                // 在主线程更新UI
+                if (isAdded() && getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        // 更新已接受任务列表
+                        if (acceptedTaskAdapter != null) {
+                            acceptedTaskAdapter.setTasks(acceptedTasks);
+                            if (emptyAcceptedTaskText != null) {
+                                emptyAcceptedTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
+                            }
+                            if (acceptedTasksRecyclerView != null) {
+                                acceptedTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
+                            }
+                        }
+
+                        // 更新未接受任务列表
+                        if (taskAdapter != null) {
+                            taskAdapter.setTasks(unacceptedTasks);
+                            if (emptyTaskText != null) {
+                                emptyTaskText.setVisibility(unacceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
+                            }
+                            if (taskRecyclerView != null) {
+                                taskRecyclerView.setVisibility(unacceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (isAdded() && getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "加载任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        String selectedType = parent.getItemAtPosition(position).toString();
+        String experimentType;
+        
+        switch (selectedType) {
+            case "混合料实验":
+                experimentType = "MIXTURE";
+                break;
+            case "沥青试验":
+                experimentType = "ASPHALT";
+                break;
+            default:
+                loadExperimentTasks(); // 加载所有任务
+                return;
+        }
+        
+        filterTasksByType(experimentType);
+    }
+
+    private void filterTasksByType(String type) {
+        executor.execute(() -> {
+            try {
+                // 获取所有任务
+                List<ExperimentTask> allTasks = database.experimentTaskDao().getAllTasksList();
+                List<ExperimentTask> filteredTasks = new ArrayList<>();
+
+                // 根据实验类型过滤任务
+                for (ExperimentTask task : allTasks) {
+                    Map<Long, List<String>> assignments = task.getExperimentAssignments();
+                    if (assignments != null) {
+                        boolean hasMatchingType = false;
+                        for (List<String> types : assignments.values()) {
+                            if (types != null) {
+                                for (String experimentType : types) {
+                                    if (type.equals("MIXTURE") && 
+                                        (experimentType.contains("混合料") || experimentType.contains("配合比"))) {
+                                        hasMatchingType = true;
+                                        break;
+                                    } else if (type.equals("ASPHALT") && 
+                                             experimentType.contains("沥青")) {
+                                        hasMatchingType = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (hasMatchingType) break;
+                        }
+                        if (hasMatchingType) {
+                            filteredTasks.add(task);
+                        }
+                    }
+                }
+                
+                // 分离已接受和未接受的任务
+                List<ExperimentTask> acceptedTasks = new ArrayList<>();
+                List<ExperimentTask> unacceptedTasks = new ArrayList<>();
+                
+                for (ExperimentTask task : filteredTasks) {
+                    if (task.getStatus() != null && task.getStatus().equals("已接受")) {
+                        acceptedTasks.add(task);
+                    } else {
+                        unacceptedTasks.add(task);
+                    }
+                }
+
+                // 在主线程更新UI
+                if (isAdded() && getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        // 更新已接受任务列表
+                        if (acceptedTaskAdapter != null) {
+                            acceptedTaskAdapter.setTasks(acceptedTasks);
+                            if (emptyAcceptedTaskText != null) {
+                                emptyAcceptedTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
+                            }
+                            if (acceptedTasksRecyclerView != null) {
+                                acceptedTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
+                            }
+                        }
+
+                        // 更新未接受任务列表
+                        if (taskAdapter != null) {
+                            taskAdapter.setTasks(unacceptedTasks);
+                            if (emptyTaskText != null) {
+                                emptyTaskText.setVisibility(unacceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
+                            }
+                            if (taskRecyclerView != null) {
+                                taskRecyclerView.setVisibility(unacceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (isAdded() && getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "加载任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
+        // Do nothing
     }
 
     @Override
     public void onTaskClick(ExperimentTask task) {
         TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
+        bottomSheet.setTaskAcceptListener(new TaskDetailBottomSheet.TaskAcceptListener() {
+            @Override
+            public void onTaskAccepted(ExperimentTask task) {
+                // 在后台线程中更新任务状态
+                executor.execute(() -> {
+                    // 更新任务状态为已接受
+                    task.setStatus("已接受");
+                    database.experimentTaskDao().update(task);
+
+                    // 在主线程中更新UI
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "已接受任务：" + task.getTaskName(), Toast.LENGTH_SHORT).show();
+                        // 刷新任务列表
+                        loadExperimentTasks();
+                    });
+                });
+            }
+        });
         bottomSheet.show(getChildFragmentManager(), "TaskDetailBottomSheet");
     }
 
-    private void updateWelcomeMessage() {
-        Calendar calendar = Calendar.getInstance();
-        int hour = calendar.get(Calendar.HOUR_OF_DAY);
-        String timeGreeting;
-
-        if (hour < 6) {
-            timeGreeting = "凌晨好";
-        } else if (hour < 11) {
-            timeGreeting = "早上好";
-        } else if (hour < 13) {
-            timeGreeting = "中午好";
-        } else if (hour < 18) {
-            timeGreeting = "下午好";
-        } else {
-            timeGreeting = "晚上好";
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (taskRefreshReceiver != null) {
+            requireContext().unregisterReceiver(taskRefreshReceiver);
         }
-
-        String username = sharedPrefsManager.getUserName();
-        if (username != null && !username.isEmpty()) {
-            welcomeText.setText(String.format("%s，%s", timeGreeting, username));
-        } else {
-            welcomeText.setText(timeGreeting);
-        }
+        executor.shutdown();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // 更新实验任务列表
+        // 每次页面恢复时刷新任务列表
         loadExperimentTasks();
     }
 }
