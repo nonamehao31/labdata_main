@@ -19,7 +19,7 @@
             android:id="@+id/tvProjectTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
+            android:textColor="@android:color/black"
             android:textSize="20sp"
             android:textStyle="bold"
             android:layout_marginBottom="16dp"/>
@@ -62,14 +62,14 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="备料"
-                        android:textColor="@android:color/white"
+                        android:textColor="@android:color/black"
                         android:textSize="16sp"/>
 
                     <TextView
                         android:id="@+id/tvStep1Status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@android:color/black"
                         android:textSize="12sp"
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
@@ -82,7 +82,7 @@
                     android:text="查看配比信息"
                     android:textSize="12sp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:textColor="@android:color/white"
+                    android:textColor="@android:color/black"
                     app:strokeColor="@android:color/white"/>
             </LinearLayout>
 
@@ -115,14 +115,14 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="制件"
-                        android:textColor="@android:color/white"
+                        android:textColor="@android:color/black"
                         android:textSize="16sp"/>
 
                     <TextView
                         android:id="@+id/tvStep2Status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@android:color/black"
                         android:textSize="12sp"
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
@@ -134,7 +134,7 @@
                     android:text="生成试件码"
                     android:textSize="12sp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:textColor="@android:color/white"
+                    android:textColor="@android:color/black"
                     app:strokeColor="@android:color/white"/>
             </LinearLayout>
 
@@ -166,14 +166,14 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="实验"
-                        android:textColor="@android:color/white"
+                        android:textColor="@android:color/black"
                         android:textSize="16sp"/>
 
                     <TextView
                         android:id="@+id/tvStep3Status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@android:color/white"
+                        android:textColor="@android:color/black"
                         android:textSize="12sp"
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
@@ -185,7 +185,7 @@
                     android:text="记录实验数据"
                     android:textSize="12sp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:textColor="@android:color/white"
+                    android:textColor="@android:color/black"
                     app:strokeColor="@android:color/white"/>
             </LinearLayout>
 

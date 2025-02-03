@@ -11,12 +11,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.R;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.ProjectStep;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.ProjectCardViewHolder> {
     private List<ExperimentTask> tasks = new ArrayList<>();
@@ -80,31 +82,91 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
         public void bind(ExperimentTask task) {
             tvProjectTitle.setText(task.getTaskName());
 
-            // 设置步骤1状态
-            if (task.getPreparationTime() > 0) {
-                tvStep1Status.setText("完成时间：" + timeFormat.format(task.getPreparationTime()));
-                btnStep1Action.setText("查看配比信息");
+            // 设置步骤1状态：显示配比信息
+            StringBuilder mixRatioInfo = new StringBuilder();
+            List<MixRatio> mixRatios = task.getSelectedMixRatios();
+            if (mixRatios != null && !mixRatios.isEmpty()) {
+                for (int i = 0; i < mixRatios.size(); i++) {
+                    if (i > 0) mixRatioInfo.append("\n");
+                    mixRatioInfo.append("配比").append(i + 1).append(": ")
+                            .append(mixRatios.get(i).getName());
+                }
+                tvStep1Status.setText(mixRatioInfo.toString());
             } else {
-                tvStep1Status.setText("等待开始");
-                btnStep1Action.setText("开始备料");
+                tvStep1Status.setText("未设置配比");
             }
 
-            // 设置步骤2状态
+            // 设置步骤2状态：显示拌合和压实参数
+            String methodStr = task.getMoldingMethod();
+            if (methodStr != null && !methodStr.isEmpty()) {
+                String[] parts = methodStr.split("\\|");
+                float temp = 0, speed = 0, time = 0;
+                String method = "";
+                
+                for (String part : parts) {
+                    String[] keyValue = part.split("=");
+                    if (keyValue.length == 2) {
+                        String key = keyValue[0].trim();
+                        String value = keyValue[1].trim();
+                        switch (key) {
+                            case "temp":
+                                temp = Float.parseFloat(value);
+                                break;
+                            case "speed":
+                                speed = Float.parseFloat(value);
+                                break;
+                            case "time":
+                                time = Float.parseFloat(value);
+                                break;
+                            case "method":
+                                method = value;
+                                break;
+                        }
+                    }
+                }
+                
+                String moldingInfo = String.format("拌合温度：%.1f℃\n拌合速度：%.1f rpm\n拌合时间：%.1f min\n压实方式：%s",
+                        temp, speed, time, method);
+                tvStep2Status.setText(moldingInfo);
+            } else {
+                tvStep2Status.setText("未设置制件参数");
+            }
+
+            // 设置步骤3状态：显示实验指派信息
+            StringBuilder experimentInfo = new StringBuilder();
+            Map<Long, List<String>> experimentAssignments = task.getExperimentAssignments();
+            if (experimentAssignments != null && !experimentAssignments.isEmpty()) {
+                List<MixRatio> selectedMixRatios = task.getSelectedMixRatios();
+                if (selectedMixRatios != null) {
+                    for (MixRatio mixRatio : selectedMixRatios) {
+                        List<String> experiments = experimentAssignments.get(mixRatio.getId());
+                        if (experiments != null && !experiments.isEmpty()) {
+                            if (experimentInfo.length() > 0) experimentInfo.append("\n");
+                            experimentInfo.append(mixRatio.getName()).append(":\n");
+                            for (String experiment : experiments) {
+                                experimentInfo.append("- ").append(experiment).append("\n");
+                            }
+                        }
+                    }
+                }
+                tvStep3Status.setText(experimentInfo.toString().trim());
+            } else {
+                tvStep3Status.setText("未指派实验");
+            }
+
+            // 设置按钮状态
+            btnStep1Action.setText("查看配比信息");
+
             if (task.getSpecimenGenerationTime() > 0) {
-                tvStep2Status.setText("完成时间：" + timeFormat.format(task.getSpecimenGenerationTime()));
                 btnStep2Action.setText("查看试件码");
             } else {
-                tvStep2Status.setText(task.getPreparationTime() > 0 ? "等待开始" : "请先完成备料");
                 btnStep2Action.setText("生成试件码");
                 btnStep2Action.setEnabled(task.getPreparationTime() > 0);
             }
 
-            // 设置步骤3状态
             if (task.getExperimentCompletionTime() > 0) {
-                tvStep3Status.setText("完成时间：" + timeFormat.format(task.getExperimentCompletionTime()));
                 btnStep3Action.setText("查看实验数据");
             } else {
-                tvStep3Status.setText(task.getSpecimenGenerationTime() > 0 ? "等待开始" : "请先生成试件码");
                 btnStep3Action.setText("记录实验数据");
                 btnStep3Action.setEnabled(task.getSpecimenGenerationTime() > 0);
             }
