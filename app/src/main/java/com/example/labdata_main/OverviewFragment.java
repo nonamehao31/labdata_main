@@ -148,32 +148,38 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
     private void setupAcceptedTasksRecyclerView() {
         myTasksAdapter = new ProjectCardAdapter();
-        myTasksRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        myTasksRecyclerView.setAdapter(myTasksAdapter);
-
-        // 设置项目卡片的操作监听器
         myTasksAdapter.setOnProjectCardActionListener(new ProjectCardAdapter.OnProjectCardActionListener() {
             @Override
             public void onViewMixRatios(ExperimentTask task) {
-                // 显示配比信息
-                TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
-                bottomSheet.show(getChildFragmentManager(), "TaskDetailBottomSheet");
+                // 这个方法不再需要实现
             }
 
             @Override
             public void onGenerateSpecimenCode(ExperimentTask task) {
-                // 生成试件码
-                // TODO: 实现试件码生成逻辑
+                // 处理生成试件码
                 Toast.makeText(requireContext(), "生成试件码功能开发中", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onRecordExperimentData(ExperimentTask task) {
-                // 记录实验数据
-                // TODO: 实现实验数据记录逻辑
+                // 处理记录实验数据
                 Toast.makeText(requireContext(), "记录实验数据功能开发中", Toast.LENGTH_SHORT).show();
             }
+
+            @Override
+            public void onTaskUpdated(ExperimentTask task) {
+                // 更新数据库中的任务状态
+                executor.execute(() -> {
+                    AppDatabase.getInstance(requireContext()).experimentTaskDao().update(task);
+                    requireActivity().runOnUiThread(() -> {
+                        // 刷新任务列表
+                        loadExperimentTasks();
+                    });
+                });
+            }
         });
+        myTasksRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        myTasksRecyclerView.setAdapter(myTasksAdapter);
     }
 
     private void loadExperimentTasks() {

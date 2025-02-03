@@ -5,15 +5,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.example.labdata_main.R;
+import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.ProjectStep;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +28,7 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
         void onViewMixRatios(ExperimentTask task);
         void onGenerateSpecimenCode(ExperimentTask task);
         void onRecordExperimentData(ExperimentTask task);
+        void onTaskUpdated(ExperimentTask task);
     }
 
     public void setOnProjectCardActionListener(OnProjectCardActionListener listener) {
@@ -67,6 +67,9 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
         private final Button btnStep1Action;
         private final Button btnStep2Action;
         private final Button btnStep3Action;
+        private final View step1Circle;
+        private final View step2Circle;
+        private final View step3Circle;
 
         public ProjectCardViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -77,10 +80,32 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
             btnStep1Action = itemView.findViewById(R.id.btnStep1Action);
             btnStep2Action = itemView.findViewById(R.id.btnStep2Action);
             btnStep3Action = itemView.findViewById(R.id.btnStep3Action);
+            step1Circle = itemView.findViewById(R.id.step1Circle);
+            step2Circle = itemView.findViewById(R.id.step2Circle);
+            step3Circle = itemView.findViewById(R.id.step3Circle);
         }
 
         public void bind(ExperimentTask task) {
             tvProjectTitle.setText(task.getTaskName());
+
+            // 设置步骤状态颜色
+            if (task.getExperimentCompletionTime() > 0) {
+                step1Circle.setBackgroundResource(R.color.step_completed);
+                step2Circle.setBackgroundResource(R.color.step_completed);
+                step3Circle.setBackgroundResource(R.color.step_completed);
+            } else if (task.getSpecimenGenerationTime() > 0) {
+                step1Circle.setBackgroundResource(R.color.step_completed);
+                step2Circle.setBackgroundResource(R.color.step_completed);
+                step3Circle.setBackgroundResource(R.color.step_active);
+            } else if (task.getPreparationTime() > 0) {
+                step1Circle.setBackgroundResource(R.color.step_completed);
+                step2Circle.setBackgroundResource(R.color.step_active);
+                step3Circle.setBackgroundResource(R.color.step_inactive);
+            } else {
+                step1Circle.setBackgroundResource(R.color.step_active);
+                step2Circle.setBackgroundResource(R.color.step_inactive);
+                step3Circle.setBackgroundResource(R.color.step_inactive);
+            }
 
             // 设置步骤1状态：显示配比信息
             StringBuilder mixRatioInfo = new StringBuilder();
@@ -174,7 +199,14 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
             // 设置按钮点击事件
             btnStep1Action.setOnClickListener(v -> {
                 if (listener != null) {
-                    listener.onViewMixRatios(task);
+                    BottomSheetMixRatioDetailFragment bottomSheet = BottomSheetMixRatioDetailFragment.newInstance(task);
+                    bottomSheet.setOnMaterialCompletedListener(completedTask -> {
+                        if (listener != null) {
+                            listener.onTaskUpdated(completedTask);
+                            // 不需要调用 notifyDataSetChanged，因为会在 loadExperimentTasks 中刷新
+                        }
+                    });
+                    bottomSheet.show(((FragmentActivity) v.getContext()).getSupportFragmentManager(), bottomSheet.getTag());
                 }
             });
 
