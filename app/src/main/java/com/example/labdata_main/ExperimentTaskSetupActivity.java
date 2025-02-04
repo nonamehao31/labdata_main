@@ -3,25 +3,35 @@ package com.example.labdata_main;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.viewpager2.widget.ViewPager2;
-import com.google.android.material.button.MaterialButton;
+
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.Project;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.example.labdata_main.utils.TaskIdGenerator;
+import com.google.android.material.button.MaterialButton;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,6 +41,7 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
     private String taskName;
     private Project selectedProject;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private SharedPrefsManager sharedPrefsManager;
 
     // 步骤导航视图
     private TextView[] stepCircles;
@@ -55,6 +66,10 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
             taskName = "实验任务设置";
         }
         
+        // 初始化数据库和SharedPrefsManager
+        AppDatabase database = AppDatabase.getInstance(this);
+        sharedPrefsManager = new SharedPrefsManager(this);
+
         initViews();
         setupViewPager();
         setupClickListeners();
@@ -166,9 +181,16 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
 
         String taskId = TaskIdGenerator.generateTaskId(this);
 
+        // 获取当前用户的公司ID
+        String companyId = sharedPrefsManager.getUserCompany();
+        if (companyId == null) {
+            throw new IllegalStateException("无法获取公司信息");
+        }
+
         ExperimentTask task = new ExperimentTask();
         task.setTaskId(taskId);
         task.setTaskName(taskName);  // 设置任务名称
+        task.setCompanyId(companyId); // 设置公司ID
         task.setProjectId(selectedProject.getId());
         task.setProjectName(selectedProject.getName());  // 设置项目名称
         

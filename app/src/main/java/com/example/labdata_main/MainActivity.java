@@ -1,23 +1,43 @@
 package com.example.labdata_main;
 
+import android.content.Intent;
 import android.os.Bundle;
-import android.view.ViewGroup;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.example.labdata_main.db.DatabaseHelper;
+import com.example.labdata_main.model.Equipment;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private long backPressedTime;
     private Toast backToast;
+    private DatabaseHelper databaseHelper;
+    private SharedPrefsManager sharedPrefsManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 初始化工具类
+        databaseHelper = new DatabaseHelper(this);
+        sharedPrefsManager = new SharedPrefsManager(this);
+
+        // 检查是否需要设备初始化
+        if (checkEquipmentInitialization()) {
+            // 如果需要初始化，方法内部会处理跳转，这里直接返回
+            return;
+        }
+
+        // 如果不需要初始化，继续正常的 UI 初始化
         setContentView(R.layout.activity_main);
 
         // 初始化 TabLayout 和 ViewPager2
@@ -43,6 +63,23 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
         }).attach();
+    }
+
+    private boolean checkEquipmentInitialization() {
+        String companyId = sharedPrefsManager.getUserCompany();
+        if (companyId != null) {
+            List<Equipment> equipmentList = databaseHelper.getEquipmentsByCompanyId(companyId);
+            if (equipmentList.isEmpty()) {
+                // 如果没有设备记录，先跳转到设备初始化引导界面
+                Log.d("MainActivity", "No equipment found for company: " + companyId + ", starting guide");
+                Intent intent = new Intent(this, EquipmentGuideActivity.class);
+                intent.putExtra("company_id", companyId);
+                startActivity(intent);
+                finish();
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

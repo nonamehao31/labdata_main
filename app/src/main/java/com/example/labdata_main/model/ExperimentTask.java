@@ -24,6 +24,7 @@ public class ExperimentTask implements Parcelable {
     private String taskName; // 任务名称
     private long projectId;
     private String projectName;
+    private String companyId; // 公司ID
     private long creationTime;
     @ColumnInfo(name = "deadline")
     private long deadline; // 截止日期
@@ -53,6 +54,7 @@ public class ExperimentTask implements Parcelable {
         taskName = in.readString();
         projectId = in.readLong();
         projectName = in.readString();
+        companyId = in.readString();
         creationTime = in.readLong();
         deadline = in.readLong();
         preparationTime = in.readLong();
@@ -83,6 +85,7 @@ public class ExperimentTask implements Parcelable {
         dest.writeString(taskName);
         dest.writeLong(projectId);
         dest.writeString(projectName);
+        dest.writeString(companyId);
         dest.writeLong(creationTime);
         dest.writeLong(deadline);
         dest.writeLong(preparationTime);
@@ -154,6 +157,14 @@ public class ExperimentTask implements Parcelable {
 
     public void setProjectName(String projectName) {
         this.projectName = projectName;
+    }
+
+    public String getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(String companyId) {
+        this.companyId = companyId;
     }
 
     public long getCreationTime() {

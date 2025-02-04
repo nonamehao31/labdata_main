@@ -28,7 +28,7 @@ import com.example.labdata_main.model.Specimen;
     MixDesign.class, 
     MoldingMethod.class,
     ExperimentTask.class
-}, version = 8)
+}, version = 9)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
@@ -172,6 +172,19 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_8_9 = new Migration(8, 9) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 8 to version 9");
+            
+            // 添加公司ID列到 experiment_tasks 表
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN companyId TEXT");
+            
+            // 创建索引以加快按公司查询的速度
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_experiment_tasks_companyId ON experiment_tasks(companyId)");
+        }
+    };
+
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context.getApplicationContext(),
@@ -179,7 +192,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     .addMigrations(
                             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
                             MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                            MIGRATION_7_8)
+                            MIGRATION_7_8, MIGRATION_8_9)
                     .build();
         }
         return instance;

@@ -185,8 +185,15 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void loadExperimentTasks() {
         executor.execute(() -> {
             try {
-                // 获取所有任务
-                List<ExperimentTask> allTasks = database.experimentTaskDao().getAllTasksList();
+                // 获取当前用户的公司ID
+                String companyId = sharedPrefsManager.getUserCompany();
+                if (companyId == null) {
+                    Log.e("OverviewFragment", "Company ID is null");
+                    return;
+                }
+
+                // 获取该公司的所有任务
+                List<ExperimentTask> allTasks = database.experimentTaskDao().getTasksByCompany(companyId);
                 
                 // 分离已接受和未接受的任务
                 List<ExperimentTask> acceptedTasks = new ArrayList<>();
@@ -201,38 +208,29 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 }
 
                 // 在主线程更新UI
-                if (isAdded() && getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        // 更新已接受任务列表
-                        if (myTasksAdapter != null) {
-                            myTasksAdapter.setTasks(acceptedTasks);
-                            if (emptyMyTaskText != null) {
-                                emptyMyTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
-                            }
-                            if (myTasksRecyclerView != null) {
-                                myTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
-                            }
-                        }
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    // 更新未接受任务列表
+                    if (unacceptedTasks.isEmpty()) {
+                        emptyTaskText.setVisibility(View.VISIBLE);
+                        taskRecyclerView.setVisibility(View.GONE);
+                    } else {
+                        emptyTaskText.setVisibility(View.GONE);
+                        taskRecyclerView.setVisibility(View.VISIBLE);
+                        taskAdapter.setTasks(unacceptedTasks);
+                    }
 
-                        // 更新未接受任务列表
-                        if (taskAdapter != null) {
-                            taskAdapter.setTasks(unacceptedTasks);
-                            if (emptyTaskText != null) {
-                                emptyTaskText.setVisibility(unacceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
-                            }
-                            if (taskRecyclerView != null) {
-                                taskRecyclerView.setVisibility(unacceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
-                            }
-                        }
-                    });
-                }
+                    // 更新已接受任务列表
+                    if (acceptedTasks.isEmpty()) {
+                        emptyMyTaskText.setVisibility(View.VISIBLE);
+                        myTasksRecyclerView.setVisibility(View.GONE);
+                    } else {
+                        emptyMyTaskText.setVisibility(View.GONE);
+                        myTasksRecyclerView.setVisibility(View.VISIBLE);
+                        myTasksAdapter.setTasks(acceptedTasks);
+                    }
+                });
             } catch (Exception e) {
-                e.printStackTrace();
-                if (isAdded() && getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), "加载任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-                }
+                Log.e("OverviewFragment", "Error loading tasks", e);
             }
         });
     }
@@ -260,8 +258,15 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void filterTasksByType(String type) {
         executor.execute(() -> {
             try {
-                // 获取所有任务
-                List<ExperimentTask> allTasks = database.experimentTaskDao().getAllTasksList();
+                // 获取当前用户的公司ID
+                String companyId = sharedPrefsManager.getUserCompany();
+                if (companyId == null) {
+                    Log.e("OverviewFragment", "Company ID is null");
+                    return;
+                }
+
+                // 获取该公司的所有任务
+                List<ExperimentTask> allTasks = database.experimentTaskDao().getTasksByCompany(companyId);
                 List<ExperimentTask> filteredTasks = new ArrayList<>();
 
                 // 根据实验类型过滤任务
@@ -304,38 +309,29 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 }
 
                 // 在主线程更新UI
-                if (isAdded() && getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        // 更新已接受任务列表
-                        if (myTasksAdapter != null) {
-                            myTasksAdapter.setTasks(acceptedTasks);
-                            if (emptyMyTaskText != null) {
-                                emptyMyTaskText.setVisibility(acceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
-                            }
-                            if (myTasksRecyclerView != null) {
-                                myTasksRecyclerView.setVisibility(acceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
-                            }
-                        }
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    // 更新未接受任务列表
+                    if (unacceptedTasks.isEmpty()) {
+                        emptyTaskText.setVisibility(View.VISIBLE);
+                        taskRecyclerView.setVisibility(View.GONE);
+                    } else {
+                        emptyTaskText.setVisibility(View.GONE);
+                        taskRecyclerView.setVisibility(View.VISIBLE);
+                        taskAdapter.setTasks(unacceptedTasks);
+                    }
 
-                        // 更新未接受任务列表
-                        if (taskAdapter != null) {
-                            taskAdapter.setTasks(unacceptedTasks);
-                            if (emptyTaskText != null) {
-                                emptyTaskText.setVisibility(unacceptedTasks.isEmpty() ? View.VISIBLE : View.GONE);
-                            }
-                            if (taskRecyclerView != null) {
-                                taskRecyclerView.setVisibility(unacceptedTasks.isEmpty() ? View.GONE : View.VISIBLE);
-                            }
-                        }
-                    });
-                }
+                    // 更新已接受任务列表
+                    if (acceptedTasks.isEmpty()) {
+                        emptyMyTaskText.setVisibility(View.VISIBLE);
+                        myTasksRecyclerView.setVisibility(View.GONE);
+                    } else {
+                        emptyMyTaskText.setVisibility(View.GONE);
+                        myTasksRecyclerView.setVisibility(View.VISIBLE);
+                        myTasksAdapter.setTasks(acceptedTasks);
+                    }
+                });
             } catch (Exception e) {
-                e.printStackTrace();
-                if (isAdded() && getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), "加载任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-                }
+                Log.e("OverviewFragment", "Error loading tasks", e);
             }
         });
     }
