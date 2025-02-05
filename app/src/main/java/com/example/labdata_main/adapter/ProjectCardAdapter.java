@@ -26,6 +26,7 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
 
     public interface OnProjectCardActionListener {
         void onViewMixRatios(ExperimentTask task);
+        void onViewSpecimenCode(ExperimentTask task);
         void onGenerateSpecimenCode(ExperimentTask task);
         void onRecordExperimentData(ExperimentTask task);
         void onTaskUpdated(ExperimentTask task);
@@ -199,25 +200,24 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
             // 设置按钮点击事件
             btnStep1Action.setOnClickListener(v -> {
                 if (listener != null) {
-                    BottomSheetMixRatioDetailFragment bottomSheet = BottomSheetMixRatioDetailFragment.newInstance(task);
-                    bottomSheet.setOnMaterialCompletedListener(completedTask -> {
-                        if (listener != null) {
-                            listener.onTaskUpdated(completedTask);
-                            // 不需要调用 notifyDataSetChanged，因为会在 loadExperimentTasks 中刷新
-                        }
-                    });
-                    bottomSheet.show(((FragmentActivity) v.getContext()).getSupportFragmentManager(), bottomSheet.getTag());
+                    listener.onViewMixRatios(task);
                 }
             });
 
             btnStep2Action.setOnClickListener(v -> {
-                if (listener != null && btnStep2Action.isEnabled()) {
-                    listener.onGenerateSpecimenCode(task);
+                if (listener != null) {
+                    if (task.getSpecimenGenerationTime() > 0) {
+                        // 如果已经生成过试件码，显示查看界面
+                        listener.onViewSpecimenCode(task);
+                    } else {
+                        // 如果还没有生成试件码，显示生成界面
+                        listener.onGenerateSpecimenCode(task);
+                    }
                 }
             });
 
             btnStep3Action.setOnClickListener(v -> {
-                if (listener != null && btnStep3Action.isEnabled()) {
+                if (listener != null) {
                     listener.onRecordExperimentData(task);
                 }
             });

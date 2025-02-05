@@ -131,13 +131,13 @@
 
                 <Button
                     android:id="@+id/btnStep2Action"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:text="生成试件码"
-                    android:textSize="12sp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:text="开始制件"
                     android:textColor="@android:color/black"
-                    app:strokeColor="@android:color/white"/>
+                    android:textSize="12sp"
+                    app:strokeColor="@android:color/white" />
             </LinearLayout>
 
             <!-- 步骤3：实验 -->

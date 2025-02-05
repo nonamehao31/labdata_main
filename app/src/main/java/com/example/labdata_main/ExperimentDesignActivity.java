@@ -16,7 +16,7 @@ public class ExperimentDesignActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_experiment_design);
+        setContentView(R.layout.activity_experiment_task_setup);
 
         projectName = getIntent().getStringExtra("project_name");
         initViews();

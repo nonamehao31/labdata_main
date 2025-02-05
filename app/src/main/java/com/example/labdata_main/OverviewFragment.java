@@ -28,6 +28,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.adapter.ExperimentTaskAdapter;
 import com.example.labdata_main.adapter.ProjectCardAdapter;
 import com.example.labdata_main.database.AppDatabase;
+import com.example.labdata_main.fragment.BottomSheetMakeSpecimenFragment;
+import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.button.MaterialButton;
@@ -151,18 +153,34 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         myTasksAdapter.setOnProjectCardActionListener(new ProjectCardAdapter.OnProjectCardActionListener() {
             @Override
             public void onViewMixRatios(ExperimentTask task) {
-                // 这个方法不再需要实现
+                BottomSheetMixRatioDetailFragment bottomSheet = BottomSheetMixRatioDetailFragment.newInstance(task);
+                bottomSheet.setOnMaterialCompletedListener(completedTask -> {
+                    // 更新数据库中的任务状态
+                    executor.execute(() -> {
+                        AppDatabase.getInstance(requireContext()).experimentTaskDao().update(completedTask);
+                        requireActivity().runOnUiThread(() -> {
+                            // 刷新任务列表
+                            loadExperimentTasks();
+                        });
+                    });
+                });
+                bottomSheet.show(getChildFragmentManager(), bottomSheet.getTag());
+            }
+
+            @Override
+            public void onViewSpecimenCode(ExperimentTask task) {
+                // TODO: 实现查看试件码功能
+                Toast.makeText(requireContext(), "查看试件码功能开发中", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onGenerateSpecimenCode(ExperimentTask task) {
-                // 处理生成试件码
-                Toast.makeText(requireContext(), "生成试件码功能开发中", Toast.LENGTH_SHORT).show();
+                BottomSheetMakeSpecimenFragment bottomSheet = BottomSheetMakeSpecimenFragment.newInstance(task);
+                bottomSheet.show(getChildFragmentManager(), "make_specimen");
             }
 
             @Override
             public void onRecordExperimentData(ExperimentTask task) {
-                // 处理记录实验数据
                 Toast.makeText(requireContext(), "记录实验数据功能开发中", Toast.LENGTH_SHORT).show();
             }
 
