@@ -15,13 +15,8 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.MultiFormatWriter;
-import com.google.zxing.WriterException;
-import com.google.zxing.common.BitMatrix;
-import com.journeyapps.barcodescanner.BarcodeEncoder;
+import com.example.labdata_main.adapter.QRCodeAdapter;
 import com.example.labdata_main.model.Equipment;
-import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -39,6 +34,10 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
             Log.d(TAG, "Starting QRCodeDisplayActivity");
             setContentView(R.layout.activity_qr_code_display);
 
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().hide();
+            }
+
             // 获取传递过来的设备列表
             equipmentList = getIntent().getParcelableArrayListExtra("equipment_list");
             Log.d(TAG, "Received equipment list: " + (equipmentList != null ? equipmentList.size() : "null"));
@@ -53,7 +52,7 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
             if (viewPager == null) {
                 throw new IllegalStateException("ViewPager2 not found in layout");
             }
-            adapter = new QRCodeAdapter(this, equipmentList);
+            adapter = new QRCodeAdapter(equipmentList);
             viewPager.setAdapter(adapter);
             Log.d(TAG, "ViewPager2 initialized");
 
@@ -80,9 +79,14 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
                 throw new IllegalStateException("Finish button not found in layout");
             }
             btnFinish.setOnClickListener(v -> {
+                // 创建返回主页的意图
                 Intent intent = new Intent(this, MainActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                // 添加设备初始化完成标记
+                intent.putExtra("equipment_initialized", true);
+                // 清除任务栈中所有活动
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(intent);
+                // 确保当前活动被销毁
                 finish();
             });
             Log.d(TAG, "Buttons initialized");
@@ -95,45 +99,42 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
 
     private void saveCurrentQRCode() {
         try {
-            int currentPosition = viewPager.getCurrentItem();
-            if (currentPosition >= 0 && currentPosition < equipmentList.size()) {
-                Equipment equipment = equipmentList.get(currentPosition);
-                
-                // 生成二维码
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("type", equipment.getType());
-                jsonObject.put("manufacturer", equipment.getManufacturer());
-                jsonObject.put("model", equipment.getModel());
-                jsonObject.put("purchaseYear", equipment.getPurchaseYear());
-
-                MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
-                BitMatrix bitMatrix = multiFormatWriter.encode(jsonObject.toString(),
-                        BarcodeFormat.QR_CODE, 500, 500);
-                BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
-                Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
-
-                // 保存到相册
-                String fileName = "QRCode_" + equipment.getType() + "_" + 
-                        equipment.getModel() + ".png";
-                
-                ContentValues values = new ContentValues();
-                values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
-                values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
-                values.put(MediaStore.Images.Media.RELATIVE_PATH, 
-                        Environment.DIRECTORY_PICTURES + "/LabData");
-
-                Uri imageUri = getContentResolver().insert(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-                if (imageUri != null) {
-                    try (OutputStream out = getContentResolver().openOutputStream(imageUri)) {
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-                        Toast.makeText(this, "二维码已保存到相册", Toast.LENGTH_SHORT).show();
-                    }
-                }
+            View currentView = viewPager.getChildAt(viewPager.getCurrentItem());
+            if (currentView == null) {
+                Toast.makeText(this, "无法获取当前二维码", Toast.LENGTH_SHORT).show();
+                return;
             }
-        } catch (Exception e) {
+
+            // 获取二维码图片
+            View qrCodeContainer = currentView.findViewById(R.id.ivQRCode);
+            qrCodeContainer.setDrawingCacheEnabled(true);
+            Bitmap bitmap = Bitmap.createBitmap(qrCodeContainer.getDrawingCache());
+            qrCodeContainer.setDrawingCacheEnabled(false);
+
+            // 保存图片
+            String fileName = "设备二维码_" + System.currentTimeMillis() + ".png";
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
+            values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES);
+
+            Uri imageUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            if (imageUri == null) {
+                Toast.makeText(this, "保存失败：无法创建文件", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            try (OutputStream out = getContentResolver().openOutputStream(imageUri)) {
+                if (out == null) {
+                    Toast.makeText(this, "保存失败：无法写入文件", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+                Toast.makeText(this, "二维码已保存到相册", Toast.LENGTH_SHORT).show();
+            }
+        } catch (IOException e) {
             Log.e(TAG, "Error saving QR code: " + e.getMessage(), e);
-            Toast.makeText(this, "保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "保存失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 }

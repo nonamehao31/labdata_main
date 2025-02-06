@@ -186,6 +186,19 @@ public abstract class AppDatabase extends RoomDatabase {
             
             // 创建索引以加快按公司查询的速度
             database.execSQL("CREATE INDEX IF NOT EXISTS index_experiment_tasks_companyId ON experiment_tasks(companyId)");
+
+            // 创建设备表
+            database.execSQL("CREATE TABLE IF NOT EXISTS devices (" +
+                    "id TEXT PRIMARY KEY NOT NULL, " +
+                    "type TEXT NOT NULL, " +  // MIXING, FORMING, TESTING
+                    "manufacturer TEXT NOT NULL, " +
+                    "model TEXT NOT NULL, " +
+                    "purchase_year TEXT NOT NULL, " +
+                    "company_id TEXT NOT NULL)");
+            
+            // 创建索引以加快按公司查询设备的速度
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_devices_company_id ON devices(company_id)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_devices_type ON devices(type)");
         }
     };
 

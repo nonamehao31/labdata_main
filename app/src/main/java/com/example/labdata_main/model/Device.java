@@ -1,7 +1,9 @@
 package com.example.labdata_main.model;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 @Entity(tableName = "devices")
@@ -20,16 +22,28 @@ public class Device {
     private String model;  // 型号
     
     @NonNull
+    @ColumnInfo(name = "purchase_year")
     private String purchaseYear;  // 购买年份
 
+    @NonNull
+    @ColumnInfo(name = "company_id")
+    private String companyId;  // 公司ID
+
+    // Room 将使用这个构造器
+    public Device() {
+    }
+
+    // 应用代码将使用这个构造器
+    @Ignore
     public Device(@NonNull String id, @NonNull String type, 
                  @NonNull String manufacturer, @NonNull String model, 
-                 @NonNull String purchaseYear) {
+                 @NonNull String purchaseYear, @NonNull String companyId) {
         this.id = id;
         this.type = type;
         this.manufacturer = manufacturer;
         this.model = model;
         this.purchaseYear = purchaseYear;
+        this.companyId = companyId;
     }
 
     @NonNull
@@ -75,5 +89,14 @@ public class Device {
 
     public void setPurchaseYear(@NonNull String purchaseYear) {
         this.purchaseYear = purchaseYear;
+    }
+
+    @NonNull
+    public String getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(@NonNull String companyId) {
+        this.companyId = companyId;
     }
 }

@@ -19,7 +19,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.labdata_main.constants.EquipmentConstants;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.Device;
-import com.example.labdata_main.model.DeviceInfo;
+import com.example.labdata_main.model.Equipment;
 import com.example.labdata_main.viewmodel.EquipmentInitViewModel;
 
 import java.util.ArrayList;
@@ -160,11 +160,22 @@ public class EquipmentInitActivity extends AppCompatActivity {
         viewModel.saveDevices(devices).observe(this, success -> {
             if (success) {
                 Toast.makeText(this, "设备信息保存成功", Toast.LENGTH_SHORT).show();
-                // 清除任务栈并跳转到主界面
-                Intent intent = new Intent(this, MainActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | 
-                              Intent.FLAG_ACTIVITY_NEW_TASK | 
-                              Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                // 跳转到二维码显示界面
+                Intent intent = new Intent(this, QRCodeDisplayActivity.class);
+                intent.putExtra("company_id", companyId);
+                // 将设备列表转换为Equipment对象列表并传递
+                ArrayList<Equipment> equipmentList = new ArrayList<>();
+                for (Device device : devices) {
+                    Equipment equipment = new Equipment(
+                        companyId,
+                        device.getType(),
+                        device.getModel(),
+                        device.getManufacturer(),
+                        device.getPurchaseYear()
+                    );
+                    equipmentList.add(equipment);
+                }
+                intent.putParcelableArrayListExtra("equipment_list", equipmentList);
                 startActivity(intent);
                 finish();
             } else {
@@ -201,7 +212,8 @@ public class EquipmentInitActivity extends AppCompatActivity {
                 type,
                 manufacturer,
                 model,
-                purchaseYear
+                purchaseYear,
+                companyId  // 添加公司ID
             );
             devices.add(device);
         }

@@ -68,6 +68,12 @@ public class MainActivity extends AppCompatActivity {
     private boolean checkEquipmentInitialization() {
         String companyId = sharedPrefsManager.getUserCompany();
         if (companyId != null) {
+            // 检查是否正在进行设备初始化
+            if (getIntent().getBooleanExtra("equipment_initialized", false)) {
+                Log.d("MainActivity", "Equipment initialization completed");
+                return false;
+            }
+
             List<Equipment> equipmentList = databaseHelper.getEquipmentsByCompanyId(companyId);
             if (equipmentList.isEmpty()) {
                 // 如果没有设备记录，先跳转到设备初始化引导界面
