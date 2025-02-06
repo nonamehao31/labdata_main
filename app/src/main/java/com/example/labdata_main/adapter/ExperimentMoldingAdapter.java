@@ -3,6 +3,7 @@ package com.example.labdata_main.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RadioButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -18,10 +19,25 @@ import java.util.List;
 public class ExperimentMoldingAdapter extends RecyclerView.Adapter<ExperimentMoldingAdapter.ViewHolder> {
     private final List<MixRatio> mixRatios = new ArrayList<>();
     private final String moldingMethod;
+    private int selectedPosition = -1;
+    private OnMixRatioSelectedListener listener;
+
+    public interface OnMixRatioSelectedListener {
+        void onMixRatioSelected(MixRatio mixRatio);
+    }
 
     public ExperimentMoldingAdapter(ExperimentTask task) {
         this.mixRatios.addAll(task.getSelectedMixRatios());
         this.moldingMethod = task.getMoldingMethod();
+    }
+
+    public void setOnMixRatioSelectedListener(OnMixRatioSelectedListener listener) {
+        this.listener = listener;
+    }
+
+    public MixRatio getSelectedMixRatio() {
+        return selectedPosition >= 0 && selectedPosition < mixRatios.size() ? 
+            mixRatios.get(selectedPosition) : null;
     }
 
     @NonNull
@@ -35,7 +51,23 @@ public class ExperimentMoldingAdapter extends RecyclerView.Adapter<ExperimentMol
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         MixRatio mixRatio = mixRatios.get(position);
-        holder.bind(mixRatio, moldingMethod, position + 1);
+        holder.bind(mixRatio, moldingMethod, position + 1, position == selectedPosition);
+        
+        holder.radioButton.setOnClickListener(v -> {
+            int previousSelected = selectedPosition;
+            selectedPosition = holder.getAdapterPosition();
+            
+            if (previousSelected != -1) {
+                notifyItemChanged(previousSelected);
+            }
+            notifyItemChanged(selectedPosition);
+            
+            if (listener != null) {
+                listener.onMixRatioSelected(mixRatio);
+            }
+        });
+
+        holder.itemView.setOnClickListener(v -> holder.radioButton.performClick());
     }
 
     @Override
@@ -44,6 +76,7 @@ public class ExperimentMoldingAdapter extends RecyclerView.Adapter<ExperimentMol
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+        private final RadioButton radioButton;
         private final TextView tvMixRatioName;
         private final TextView tvMixingTemp;
         private final TextView tvMixingSpeed;
@@ -52,6 +85,7 @@ public class ExperimentMoldingAdapter extends RecyclerView.Adapter<ExperimentMol
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            radioButton = itemView.findViewById(R.id.radioButton);
             tvMixRatioName = itemView.findViewById(R.id.tvMixRatioName);
             tvMixingTemp = itemView.findViewById(R.id.tvMixingTemp);
             tvMixingSpeed = itemView.findViewById(R.id.tvMixingSpeed);
@@ -59,7 +93,8 @@ public class ExperimentMoldingAdapter extends RecyclerView.Adapter<ExperimentMol
             tvCompactionMethod = itemView.findViewById(R.id.tvCompactionMethod);
         }
 
-        public void bind(MixRatio mixRatio, String moldingMethod, int position) {
+        public void bind(MixRatio mixRatio, String moldingMethod, int position, boolean isSelected) {
+            radioButton.setChecked(isSelected);
             tvMixRatioName.setText("配比" + position);
 
             // 解析制件方法字符串

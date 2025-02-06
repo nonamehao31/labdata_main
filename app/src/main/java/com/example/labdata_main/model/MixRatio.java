@@ -1,5 +1,7 @@
 package com.example.labdata_main.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -9,7 +11,7 @@ import java.util.List;
 
 @Entity(tableName = "mix_ratios")
 @TypeConverters({Converters.class})
-public class MixRatio {
+public class MixRatio implements Parcelable {
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "id")
     private long id;
@@ -35,6 +37,44 @@ public class MixRatio {
 
     // 默认构造函数，Room 将使用这个
     public MixRatio() {
+    }
+
+    protected MixRatio(Parcel in) {
+        id = in.readLong();
+        name = in.readString();
+        description = in.readString();
+        creationTime = in.readLong();
+        projectId = in.readLong();
+        materials = in.createTypedArrayList(MaterialItem.CREATOR);
+        totalAmount = in.readString();
+    }
+
+    public static final Creator<MixRatio> CREATOR = new Creator<MixRatio>() {
+        @Override
+        public MixRatio createFromParcel(Parcel in) {
+            return new MixRatio(in);
+        }
+
+        @Override
+        public MixRatio[] newArray(int size) {
+            return new MixRatio[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeLong(id);
+        dest.writeString(name);
+        dest.writeString(description);
+        dest.writeLong(creationTime);
+        dest.writeLong(projectId);
+        dest.writeTypedList(materials);
+        dest.writeString(totalAmount);
     }
 
     public long getId() {

@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 9,
-    "identityHash": "02be253615bcda90870167c4363479cd",
+    "version": 10,
+    "identityHash": "517122548908f5ba688027ed44ee44a2",
     "entities": [
       {
-        "tableName": "mix_ratios",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` INTEGER NOT NULL, `materials` TEXT, `total_amount` TEXT)",
+        "tableName": "projects",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `deadline` TEXT, `create_time` INTEGER NOT NULL, `is_accessible` INTEGER NOT NULL, `has_access` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -21,34 +21,28 @@
             "notNull": false
           },
           {
-            "fieldPath": "description",
-            "columnName": "description",
+            "fieldPath": "deadline",
+            "columnName": "deadline",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "creationTime",
-            "columnName": "creation_time",
+            "fieldPath": "createTime",
+            "columnName": "create_time",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "projectId",
-            "columnName": "project_id",
+            "fieldPath": "isAccessible",
+            "columnName": "is_accessible",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "materials",
-            "columnName": "materials",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "totalAmount",
-            "columnName": "total_amount",
-            "affinity": "TEXT",
-            "notNull": false
+            "fieldPath": "hasAccess",
+            "columnName": "has_access",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -59,120 +53,6 @@
         },
         "indices": [],
         "foreignKeys": []
-      },
-      {
-        "tableName": "specimens",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, FOREIGN KEY(`mix_ratio_id`) REFERENCES `mix_ratios`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "mixRatioId",
-            "columnName": "mix_ratio_id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "mixingTemperature",
-            "columnName": "mixing_temperature",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "mixingSpeed",
-            "columnName": "mixing_speed",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "compactionMethod",
-            "columnName": "compaction_method",
-            "affinity": "TEXT",
-            "notNull": false,
-            "defaultValue": "''"
-          },
-          {
-            "fieldPath": "creationTime",
-            "columnName": "creation_time",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "cutShape",
-            "columnName": "cut_shape",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "cutCount",
-            "columnName": "cut_count",
-            "affinity": "INTEGER",
-            "notNull": true,
-            "defaultValue": "1"
-          },
-          {
-            "fieldPath": "length",
-            "columnName": "length",
-            "affinity": "REAL",
-            "notNull": true,
-            "defaultValue": "0"
-          },
-          {
-            "fieldPath": "width",
-            "columnName": "width",
-            "affinity": "REAL",
-            "notNull": true,
-            "defaultValue": "0"
-          },
-          {
-            "fieldPath": "height",
-            "columnName": "height",
-            "affinity": "REAL",
-            "notNull": true,
-            "defaultValue": "0"
-          },
-          {
-            "fieldPath": "radius",
-            "columnName": "radius",
-            "affinity": "REAL",
-            "notNull": true,
-            "defaultValue": "0"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_specimens_mix_ratio_id",
-            "unique": false,
-            "columnNames": [
-              "mix_ratio_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_specimens_mix_ratio_id` ON `${TABLE_NAME}` (`mix_ratio_id`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "mix_ratios",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "mix_ratio_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
       },
       {
         "tableName": "materials",
@@ -367,6 +247,176 @@
         "foreignKeys": []
       },
       {
+        "tableName": "mix_ratios",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` INTEGER NOT NULL, `materials` TEXT, `total_amount` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "creationTime",
+            "columnName": "creation_time",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "projectId",
+            "columnName": "project_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "materials",
+            "columnName": "materials",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "totalAmount",
+            "columnName": "total_amount",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "specimens",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, FOREIGN KEY(`mix_ratio_id`) REFERENCES `mix_ratios`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mixRatioId",
+            "columnName": "mix_ratio_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mixingTemperature",
+            "columnName": "mixing_temperature",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mixingSpeed",
+            "columnName": "mixing_speed",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "compactionMethod",
+            "columnName": "compaction_method",
+            "affinity": "TEXT",
+            "notNull": false,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "creationTime",
+            "columnName": "creation_time",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cutShape",
+            "columnName": "cut_shape",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cutCount",
+            "columnName": "cut_count",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "length",
+            "columnName": "length",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "width",
+            "columnName": "width",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "radius",
+            "columnName": "radius",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_specimens_mix_ratio_id",
+            "unique": false,
+            "columnNames": [
+              "mix_ratio_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_specimens_mix_ratio_id` ON `${TABLE_NAME}` (`mix_ratio_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "mix_ratios",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "mix_ratio_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
         "tableName": "experiment_tasks",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `notes` TEXT)",
         "fields": [
@@ -478,41 +528,47 @@
       },
       {
         "tableName": "devices",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `type` TEXT NOT NULL, `manufacturer` TEXT NOT NULL, `model` TEXT NOT NULL, `purchaseYear` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT, `manufacturer` TEXT, `model` TEXT, `purchase_year` TEXT, `user_id` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "TEXT",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
             "fieldPath": "type",
             "columnName": "type",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
             "fieldPath": "manufacturer",
             "columnName": "manufacturer",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
             "fieldPath": "model",
             "columnName": "model",
             "affinity": "TEXT",
-            "notNull": true
+            "notNull": false
           },
           {
             "fieldPath": "purchaseYear",
-            "columnName": "purchaseYear",
+            "columnName": "purchase_year",
             "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
         "primaryKey": {
-          "autoGenerate": false,
+          "autoGenerate": true,
           "columnNames": [
             "id"
           ]
@@ -524,7 +580,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '02be253615bcda90870167c4363479cd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '517122548908f5ba688027ed44ee44a2')"
     ]
   }
 }

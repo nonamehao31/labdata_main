@@ -14,22 +14,26 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.labdata_main.constants.EquipmentConstants;
-import com.example.labdata_main.db.DatabaseHelper;
-import com.example.labdata_main.model.Equipment;
+import com.example.labdata_main.database.AppDatabase;
+import com.example.labdata_main.model.Device;
+import com.example.labdata_main.model.DeviceInfo;
+import com.example.labdata_main.viewmodel.EquipmentInitViewModel;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.UUID;
 
 public class EquipmentInitActivity extends AppCompatActivity {
     private LinearLayout mixingContainer;
     private LinearLayout formingContainer;
     private LinearLayout testingContainer;
     private Button btnFinish;
-    private DatabaseHelper databaseHelper;
     private String companyId;
+    private EquipmentInitViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +42,9 @@ public class EquipmentInitActivity extends AppCompatActivity {
             getSupportActionBar().hide();
         }
         setContentView(R.layout.activity_equipment_init);
+
+        // 初始化 ViewModel
+        viewModel = new ViewModelProvider(this).get(EquipmentInitViewModel.class);
 
         // 初始化视图
         initViews();
@@ -52,9 +59,7 @@ public class EquipmentInitActivity extends AppCompatActivity {
             return;
         }
 
-        databaseHelper = new DatabaseHelper(this);
         Log.d("EquipmentInit", "Received companyId: " + companyId);
-        databaseHelper.logAllUsers(); // 记录所有用户信息以便调试
     }
 
     private void initViews() {
@@ -65,9 +70,12 @@ public class EquipmentInitActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        findViewById(R.id.btnAddMixing).setOnClickListener(v -> addEquipmentView(mixingContainer, "MIXING"));
-        findViewById(R.id.btnAddForming).setOnClickListener(v -> addEquipmentView(formingContainer, "FORMING"));
-        findViewById(R.id.btnAddTesting).setOnClickListener(v -> addEquipmentView(testingContainer, "TESTING"));
+        findViewById(R.id.btnAddMixing).setOnClickListener(v -> 
+            addEquipmentView(mixingContainer, EquipmentConstants.TYPE_MIXING));
+        findViewById(R.id.btnAddForming).setOnClickListener(v -> 
+            addEquipmentView(formingContainer, EquipmentConstants.TYPE_FORMING));
+        findViewById(R.id.btnAddTesting).setOnClickListener(v -> 
+            addEquipmentView(testingContainer, EquipmentConstants.TYPE_TESTING));
         
         btnFinish.setOnClickListener(v -> validateAndSaveEquipment());
     }
@@ -82,6 +90,11 @@ public class EquipmentInitActivity extends AppCompatActivity {
 
         // 设置厂家下拉菜单
         List<String> manufacturers = EquipmentConstants.getManufacturers(type);
+        if (manufacturers.isEmpty()) {
+            Toast.makeText(this, "暂无可用的厂家信息", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         ArrayAdapter<String> manufacturerAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, manufacturers);
         manufacturerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -93,6 +106,12 @@ public class EquipmentInitActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String selectedManufacturer = manufacturers.get(position);
                 List<String> models = EquipmentConstants.getModels(type, selectedManufacturer);
+                if (models.isEmpty()) {
+                    Toast.makeText(EquipmentInitActivity.this, 
+                        "该厂家暂无可用的型号信息", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(EquipmentInitActivity.this,
                         android.R.layout.simple_spinner_item, models);
                 modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -104,126 +123,87 @@ public class EquipmentInitActivity extends AppCompatActivity {
             }
         });
 
+        // 设置删除按钮
         btnDelete.setOnClickListener(v -> container.removeView(equipmentView));
+
+        // 设置年份输入限制
+        etPurchaseYear.setText(String.valueOf(Calendar.getInstance().get(Calendar.YEAR)));
+
+        // 为视图设置标记，用于识别设备类型
+        equipmentView.setTag(type);
+        
         container.addView(equipmentView);
     }
 
     private void validateAndSaveEquipment() {
-        // 验证每种类型是否至少有一个设备
-        if (mixingContainer.getChildCount() == 0 || 
-            formingContainer.getChildCount() == 0 || 
-            testingContainer.getChildCount() == 0) {
-            Toast.makeText(this, "每种类型至少需要添加一个设备", Toast.LENGTH_SHORT).show();
+        List<Device> devices = new ArrayList<>();
+        boolean isValid = true;
+
+        // 验证拌合设备
+        isValid &= validateContainer(mixingContainer, devices);
+        // 验证制件设备
+        isValid &= validateContainer(formingContainer, devices);
+        // 验证试验设备
+        isValid &= validateContainer(testingContainer, devices);
+
+        if (!isValid) {
+            Toast.makeText(this, "请完善设备信息", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 收集并保存所有设备信息
-        List<Equipment> equipmentList = new ArrayList<>();
-        
-        // 收集拌合设备
-        equipmentList.addAll(collectEquipment(mixingContainer, "MIXING"));
-        // 收集制件设备
-        equipmentList.addAll(collectEquipment(formingContainer, "FORMING"));
-        // 收集实验设备
-        equipmentList.addAll(collectEquipment(testingContainer, "TESTING"));
+        if (devices.isEmpty()) {
+            Toast.makeText(this, "请至少添加一台设备", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        if (validateEquipmentList(equipmentList)) {
-            boolean success = true;
-            String errorMessage = "保存失败：";
-            
-            for (Equipment equipment : equipmentList) {
-                equipment.setCompanyId(companyId);
-                Log.d("EquipmentInit", "Saving equipment: " + 
-                    "CompanyId=" + equipment.getCompanyId() + 
-                    ", Type=" + equipment.getType() + 
-                    ", Model=" + equipment.getModel() + 
-                    ", Manufacturer=" + equipment.getManufacturer() + 
-                    ", Year=" + equipment.getPurchaseYear());
-                
-                long result = databaseHelper.addEquipment(equipment);
-                if (result == -1) {
-                    success = false;
-                    errorMessage += "\n" + equipment.getType() + " 类型设备保存失败";
-                    Log.e("EquipmentInit", "Failed to save " + equipment.getType());
-                }
-            }
-
+        // 保存设备信息
+        viewModel.saveDevices(devices).observe(this, success -> {
             if (success) {
-                finishInit();
+                Toast.makeText(this, "设备信息保存成功", Toast.LENGTH_SHORT).show();
+                // 清除任务栈并跳转到主界面
+                Intent intent = new Intent(this, MainActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | 
+                              Intent.FLAG_ACTIVITY_NEW_TASK | 
+                              Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
+                finish();
             } else {
-                Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "设备信息保存失败", Toast.LENGTH_SHORT).show();
             }
-        }
+        });
     }
 
-    private void finishInit() {
-        try {
-            Log.d("EquipmentInit", "Starting finishInit()");
-            // 从数据库获取所有设备信息
-            ArrayList<Equipment> equipmentList = new ArrayList<>(databaseHelper.getEquipmentsByCompanyId(companyId));
-            Log.d("EquipmentInit", "Got equipment list, size: " + equipmentList.size());
-            
-            // 跳转到二维码显示界面
-            Intent intent = new Intent(this, QRCodeDisplayActivity.class);
-            intent.putParcelableArrayListExtra("equipment_list", equipmentList);
-            Log.d("EquipmentInit", "Starting QRCodeDisplayActivity");
-            startActivity(intent);
-            finish();
-        } catch (Exception e) {
-            Log.e("EquipmentInit", "Error in finishInit: " + e.getMessage(), e);
-            Toast.makeText(this, "初始化失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private List<Equipment> collectEquipment(LinearLayout container, String type) {
-        List<Equipment> equipmentList = new ArrayList<>();
+    private boolean validateContainer(LinearLayout container, List<Device> devices) {
         for (int i = 0; i < container.getChildCount(); i++) {
-            View view = container.getChildAt(i);
-            Spinner spinnerManufacturer = view.findViewById(R.id.spinnerManufacturer);
-            Spinner spinnerModel = view.findViewById(R.id.spinnerModel);
-            EditText etPurchaseYear = view.findViewById(R.id.etPurchaseYear);
+            View equipmentView = container.getChildAt(i);
+            String type = (String) equipmentView.getTag();
+            
+            Spinner spinnerManufacturer = equipmentView.findViewById(R.id.spinnerManufacturer);
+            Spinner spinnerModel = equipmentView.findViewById(R.id.spinnerModel);
+            EditText etPurchaseYear = equipmentView.findViewById(R.id.etPurchaseYear);
+
+            // 检查是否有选中的项
+            if (spinnerManufacturer.getSelectedItem() == null || 
+                spinnerModel.getSelectedItem() == null) {
+                return false;
+            }
 
             String manufacturer = spinnerManufacturer.getSelectedItem().toString();
             String model = spinnerModel.getSelectedItem().toString();
-            String purchaseYear = etPurchaseYear.getText().toString().trim();
+            String purchaseYear = etPurchaseYear.getText().toString();
 
-            Equipment equipment = new Equipment();
-            equipment.setType(type);
-            equipment.setManufacturer(manufacturer);
-            equipment.setModel(model);
-            equipment.setPurchaseYear(purchaseYear);
-
-            equipmentList.add(equipment);
-        }
-        return equipmentList;
-    }
-
-    private boolean validateEquipmentList(List<Equipment> equipmentList) {
-        if (equipmentList.isEmpty()) {
-            Toast.makeText(this, "请至少添加一个设备", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-
-        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
-        
-        for (Equipment equipment : equipmentList) {
-            if (equipment.getManufacturer().isEmpty() || 
-                equipment.getModel().isEmpty() || 
-                equipment.getPurchaseYear().isEmpty()) {
-                Toast.makeText(this, "请填写完整的设备信息", Toast.LENGTH_SHORT).show();
+            if (manufacturer.isEmpty() || model.isEmpty() || purchaseYear.isEmpty()) {
                 return false;
             }
 
-            try {
-                int year = Integer.parseInt(equipment.getPurchaseYear());
-                if (year <= 0 || year > currentYear) {
-                    Toast.makeText(this, "请输入有效的购买年限", Toast.LENGTH_SHORT).show();
-                    return false;
-                }
-            } catch (NumberFormatException e) {
-                Toast.makeText(this, "请输入有效的购买年限", Toast.LENGTH_SHORT).show();
-                return false;
-            }
+            Device device = new Device(
+                UUID.randomUUID().toString(),  // 生成唯一ID
+                type,
+                manufacturer,
+                model,
+                purchaseYear
+            );
+            devices.add(device);
         }
         return true;
     }

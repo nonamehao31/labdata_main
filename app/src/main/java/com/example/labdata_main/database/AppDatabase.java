@@ -9,11 +9,13 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+import com.example.labdata_main.dao.DeviceDao;
 import com.example.labdata_main.dao.ExperimentTaskDao;
 import com.example.labdata_main.dao.MaterialDao;
 import com.example.labdata_main.dao.MixRatioDao;
 import com.example.labdata_main.dao.MoldingMethodDao;
 import com.example.labdata_main.dao.SpecimenDao;
+import com.example.labdata_main.model.Device;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.Material;
 import com.example.labdata_main.model.MixDesign;
@@ -27,7 +29,8 @@ import com.example.labdata_main.model.Specimen;
     Material.class, 
     MixDesign.class, 
     MoldingMethod.class,
-    ExperimentTask.class
+    ExperimentTask.class,
+    Device.class  // 添加 Device 实体
 }, version = 9)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
@@ -40,6 +43,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract MaterialDao materialDao();
     public abstract MoldingMethodDao moldingMethodDao();
     public abstract ExperimentTaskDao experimentTaskDao();
+    public abstract DeviceDao deviceDao();  // 添加 DeviceDao
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
