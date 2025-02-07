@@ -49,6 +49,9 @@
                 android:text="配比1"
                 android:textColor="#666666"
                 android:textSize="14sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"/>
         </LinearLayout>
 
@@ -69,15 +72,36 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="拌合参数"
-                    android:textSize="14sp"
-                    android:textColor="#666666"/>
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#333333"/>
+
+                <!-- 拌合设备信息 -->
+                <LinearLayout
+                    android:id="@+id/layoutMixingDevice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginStart="16dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tvMixingDeviceInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_device_info"
+                        android:padding="8dp"
+                        android:textColor="#666666"
+                        android:textSize="14sp"/>
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:layout_marginTop="8dp"
-                    android:layout_marginStart="8dp">
+                    android:layout_marginStart="16dp">
 
                     <TextView
                         android:id="@+id/tvMixingTemp"
@@ -125,14 +149,35 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="压实方法"
-                    android:textSize="14sp"
-                    android:textColor="#666666"/>
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#333333"/>
+
+                <!-- 压实设备信息 -->
+                <LinearLayout
+                    android:id="@+id/layoutCompactionDevice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginStart="16dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tvCompactionDeviceInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_device_info"
+                        android:padding="8dp"
+                        android:textColor="#666666"
+                        android:textSize="14sp"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tvCompactionMethod"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginStart="16dp"
                     android:layout_marginTop="8dp"
                     android:text="旋转压实"
                     android:textColor="#333333"

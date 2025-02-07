@@ -53,6 +53,44 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- 配比选择部分 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="应用配比"
+                    android:textSize="14sp"
+                    android:textColor="#666666"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilMixRatioSelector"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:visibility="visible">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/actvMixRatioSelector"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:hint="选择配比"
+                        android:textSize="16sp"
+                        android:gravity="center_vertical"
+                        android:visibility="visible"
+                        android:background="@null"/>
+
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
             <!-- 制件方法部分 -->
             <LinearLayout
                 android:layout_width="match_parent"

@@ -31,7 +31,7 @@ import com.example.labdata_main.model.Specimen;
     MoldingMethod.class,
     ExperimentTask.class,
     Device.class  // 添加 Device 实体
-}, version = 9)
+}, version = 10)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
@@ -202,6 +202,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_9_10 = new Migration(9, 10) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 9 to version 10");
+            database.execSQL("ALTER TABLE molding_methods ADD COLUMN mix_ratio_id INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context.getApplicationContext(),
@@ -209,7 +217,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     .addMigrations(
                             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
                             MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                            MIGRATION_7_8, MIGRATION_8_9)
+                            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .build();
         }
         return instance;

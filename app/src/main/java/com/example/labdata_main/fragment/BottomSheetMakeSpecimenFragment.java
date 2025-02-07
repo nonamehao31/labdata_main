@@ -1,6 +1,7 @@
 package com.example.labdata_main.fragment;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -44,6 +45,21 @@ public class BottomSheetMakeSpecimenFragment extends BottomSheetDialogFragment {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             task = getArguments().getParcelable("task");
+            
+            // 添加调试日志
+            if (task != null) {
+                Log.d("BottomSheetMakeSpecimenFragment", "Task Details:");
+                Log.d("BottomSheetMakeSpecimenFragment", "Molding Method: " + task.getMoldingMethod());
+                Log.d("BottomSheetMakeSpecimenFragment", "Selected Mix Ratios Count: " + task.getSelectedMixRatios().size());
+                
+                for (MixRatio ratio : task.getSelectedMixRatios()) {
+                    Log.d("BottomSheetMakeSpecimenFragment", "Mix Ratio: " + ratio.getName());
+                }
+            } else {
+                Log.e("BottomSheetMakeSpecimenFragment", "Task is null");
+            }
+        } else {
+            Log.e("BottomSheetMakeSpecimenFragment", "Arguments are null");
         }
     }
 
@@ -78,7 +94,7 @@ public class BottomSheetMakeSpecimenFragment extends BottomSheetDialogFragment {
             @Override
             public Fragment createFragment(int position) {
                 return position == 0 ? ScanDeviceFragment.newInstance(task) 
-                                   : GenerateSpecimenFragment.newInstance();
+                                   : GenerateSpecimenFragment.newInstance(task);
             }
 
             @Override
@@ -140,8 +156,6 @@ public class BottomSheetMakeSpecimenFragment extends BottomSheetDialogFragment {
                         Toast.makeText(requireContext(), 
                             "设备扫描成功:\n" + deviceInfo.getDescription(), 
                             Toast.LENGTH_LONG).show();
-                        // 切换到下一步
-                        viewPager.setCurrentItem(1);
                     } else {
                         Toast.makeText(requireContext(), 
                             "无效的设备信息，请确保扫描已注册的设备", 
@@ -162,6 +176,10 @@ public class BottomSheetMakeSpecimenFragment extends BottomSheetDialogFragment {
 
     public MixRatio getSelectedMixRatio() {
         return selectedMixRatio;
+    }
+
+    public ExperimentTask getTask() {
+        return task;
     }
 
     @Override

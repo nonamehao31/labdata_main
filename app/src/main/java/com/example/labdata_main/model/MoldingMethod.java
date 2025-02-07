@@ -48,6 +48,9 @@ public class MoldingMethod {
     @ColumnInfo(name = "compaction_method")
     private String compactionMethod;
 
+    @ColumnInfo(name = "mix_ratio_id")
+    private long mixRatioId;
+
     public MoldingMethod() {}
 
     @Ignore
@@ -93,6 +96,9 @@ public class MoldingMethod {
 
     public String getCompactionMethod() { return compactionMethod; }
     public void setCompactionMethod(String compactionMethod) { this.compactionMethod = compactionMethod; }
+
+    public long getMixRatioId() { return mixRatioId; }
+    public void setMixRatioId(long mixRatioId) { this.mixRatioId = mixRatioId; }
 
     @Override
     public String toString() {

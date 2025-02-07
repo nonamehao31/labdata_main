@@ -9,8 +9,10 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
@@ -81,8 +83,6 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
             btnFinish.setOnClickListener(v -> {
                 // 创建返回主页的意图
                 Intent intent = new Intent(this, MainActivity.class);
-                // 添加设备初始化完成标记
-                intent.putExtra("equipment_initialized", true);
                 // 清除任务栈中所有活动
                 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(intent);
@@ -99,20 +99,38 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
 
     private void saveCurrentQRCode() {
         try {
-            View currentView = viewPager.getChildAt(viewPager.getCurrentItem());
+            // 获取 ViewPager2 内部的 RecyclerView
+            RecyclerView recyclerView = (RecyclerView) viewPager.getChildAt(0);
+            if (recyclerView == null) {
+                Toast.makeText(this, "无法获取视图列表", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 获取当前显示的视图
+            View currentView = recyclerView.findViewHolderForAdapterPosition(viewPager.getCurrentItem()).itemView;
             if (currentView == null) {
-                Toast.makeText(this, "无法获取当前二维码", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "无法获取当前视图", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 获取二维码图片视图
+            ImageView qrCodeImageView = currentView.findViewById(R.id.ivQRCode);
+            if (qrCodeImageView == null) {
+                Toast.makeText(this, "无法获取二维码图片", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             // 获取二维码图片
-            View qrCodeContainer = currentView.findViewById(R.id.ivQRCode);
-            qrCodeContainer.setDrawingCacheEnabled(true);
-            Bitmap bitmap = Bitmap.createBitmap(qrCodeContainer.getDrawingCache());
-            qrCodeContainer.setDrawingCacheEnabled(false);
+            qrCodeImageView.setDrawingCacheEnabled(true);
+            Bitmap bitmap = Bitmap.createBitmap(qrCodeImageView.getDrawingCache());
+            qrCodeImageView.setDrawingCacheEnabled(false);
+
+            // 获取当前设备信息用于文件名
+            Equipment currentDevice = equipmentList.get(viewPager.getCurrentItem());
+            String deviceType = getDeviceTypeName(currentDevice.getType());
 
             // 保存图片
-            String fileName = "设备二维码_" + System.currentTimeMillis() + ".png";
+            String fileName = deviceType + "_二维码_" + System.currentTimeMillis() + ".png";
             ContentValues values = new ContentValues();
             values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
             values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
@@ -130,11 +148,24 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
                     return;
                 }
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-                Toast.makeText(this, "二维码已保存到相册", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, deviceType + "二维码已保存到相册", Toast.LENGTH_SHORT).show();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Error saving QR code: " + e.getMessage(), e);
             Toast.makeText(this, "保存失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String getDeviceTypeName(String type) {
+        switch (type) {
+            case "MIXING":
+                return "拌合设备";
+            case "FORMING":
+                return "制件设备";
+            case "TESTING":
+                return "实验设备";
+            default:
+                return "未知设备";
         }
     }
 }

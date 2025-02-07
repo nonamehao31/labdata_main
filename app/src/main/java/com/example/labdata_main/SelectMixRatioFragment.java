@@ -2,6 +2,7 @@ package com.example.labdata_main;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,13 +13,13 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 import com.example.labdata_main.adapter.MixRatioAdapter;
 import com.example.labdata_main.adapter.MixRatioAdapter.OnMixRatioDeleteListener;
 import com.example.labdata_main.database.DatabaseHelper;
 import com.example.labdata_main.model.MixRatio;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.snackbar.Snackbar;
-import android.util.Log;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -95,6 +96,11 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
         }
     }
 
+    public List<MixRatio> getSelectedMixRatios() {
+        Log.d("SelectMixRatioFragment", "Getting selected mix ratios: " + selectedMixRatios.size());
+        return selectedMixRatios;
+    }
+
     @Override
     public void onMixRatioSelected(MixRatio mixRatio) {
         if (selectedMixRatios.contains(mixRatio)) {
@@ -102,6 +108,18 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
         } else {
             selectedMixRatios.add(mixRatio);
         }
+        
+        // 更新 ViewPager 中的配比列表
+        if (getActivity() instanceof ExperimentTaskSetupActivity) {
+            ExperimentTaskSetupActivity activity = (ExperimentTaskSetupActivity) getActivity();
+            ViewPager2 viewPager = activity.findViewById(R.id.viewPager);
+            if (viewPager != null && viewPager.getAdapter() instanceof ExperimentTaskPagerAdapter) {
+                ExperimentTaskPagerAdapter adapter = (ExperimentTaskPagerAdapter) viewPager.getAdapter();
+                adapter.setSelectedMixRatios(new ArrayList<>(selectedMixRatios));
+            }
+        }
+        
+        Log.d("SelectMixRatioFragment", "Selected mix ratios: " + selectedMixRatios.size());
         checkInputValidity();
     }
 
@@ -149,9 +167,5 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
     public void onDestroy() {
         super.onDestroy();
         executorService.shutdown();
-    }
-
-    public List<MixRatio> getSelectedMixRatios() {
-        return new ArrayList<>(selectedMixRatios);
     }
 }

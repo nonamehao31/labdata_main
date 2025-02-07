@@ -1,6 +1,8 @@
 package com.example.labdata_main;
 
 import android.os.Bundle;
+import android.os.Parcelable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +20,7 @@ import com.example.labdata_main.adapter.MoldingMethodAdapter;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.fragment.CompactionMethodFragment;
 import com.example.labdata_main.fragment.MixingMethodFragment;
+import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.card.MaterialCardView;
@@ -31,6 +34,16 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 public class SelectMoldingMethodFragment extends Fragment implements MixingMethodFragment.OnNextStepListener {
 
+    private static final String ARG_MIX_RATIOS = "selectedMixRatios";
+
+    public static SelectMoldingMethodFragment newInstance(ArrayList<? extends Parcelable> mixRatios) {
+        SelectMoldingMethodFragment fragment = new SelectMoldingMethodFragment();
+        Bundle args = new Bundle();
+        args.putParcelableArrayList(ARG_MIX_RATIOS, mixRatios);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
     private RecyclerView rvMoldingMethods;
     private TextView emptyView;
     private MaterialCardView cardAddMoldingMethod;
@@ -39,11 +52,28 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private ViewPager2 viewPager;
     private List<MoldingMethod> selectedMethods = new ArrayList<>();
     private AppDatabase database;
+    private List<MixRatio> selectedMixRatios = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         database = AppDatabase.getInstance(requireContext());
+        
+        // 从 Bundle 中获取选中的配比列表
+        if (getArguments() != null && getArguments().containsKey(ARG_MIX_RATIOS)) {
+            ArrayList<Parcelable> mixRatios = getArguments().getParcelableArrayList(ARG_MIX_RATIOS);
+            Log.d("SelectMoldingMethodFragment", "Received mix ratios from bundle: " + (mixRatios != null ? mixRatios.size() : 0));
+            if (mixRatios != null) {
+                for (Parcelable p : mixRatios) {
+                    if (p instanceof MixRatio) {
+                        selectedMixRatios.add((MixRatio) p);
+                    }
+                }
+                Log.d("SelectMoldingMethodFragment", "Added mix ratios to list: " + selectedMixRatios.size());
+            }
+        } else {
+            Log.d("SelectMoldingMethodFragment", "No mix ratios in bundle");
+        }
     }
 
     @Nullable
@@ -75,6 +105,12 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
             this::onDeleteMoldingMethod,
             this::onMoldingMethodSelected
         );
+        
+        // 设置可用的配比列表
+        if (selectedMixRatios != null && !selectedMixRatios.isEmpty()) {
+            moldingMethodAdapter.setAvailableMixRatios(selectedMixRatios);
+        }
+        
         rvMoldingMethods.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvMoldingMethods.setAdapter(moldingMethodAdapter);
         updateEmptyView();
@@ -204,6 +240,14 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
                 });
             }
         }).start();
+    }
+
+    public void updateMixRatios(ArrayList<MixRatio> mixRatios) {
+        selectedMixRatios.clear();
+        selectedMixRatios.addAll(mixRatios);
+        if (moldingMethodAdapter != null) {
+            moldingMethodAdapter.setAvailableMixRatios(selectedMixRatios);
+        }
     }
 
     private void updateEmptyView() {
