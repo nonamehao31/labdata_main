@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "20bb0a335f8529b47f84a2a85ae3aace",
+    "identityHash": "ae9aae6b1f48d9dd034c14f8c0b50f0c",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -282,7 +282,7 @@
       },
       {
         "tableName": "molding_methods",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` INTEGER NOT NULL, `size` REAL NOT NULL, `diameter` REAL NOT NULL, `length` REAL NOT NULL, `width` REAL NOT NULL, `height` REAL NOT NULL, `count` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `mixing_time` REAL NOT NULL, `compaction_method` TEXT, `mix_ratio_id` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` INTEGER NOT NULL, `size` REAL NOT NULL, `diameter` REAL NOT NULL, `length` REAL NOT NULL, `width` REAL NOT NULL, `height` REAL NOT NULL, `count` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `mixing_time` REAL NOT NULL, `compaction_method` TEXT, `mix_ratio_id` INTEGER NOT NULL, `method_index` INTEGER NOT NULL, `method_group` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -361,6 +361,18 @@
             "columnName": "mix_ratio_id",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "methodIndex",
+            "columnName": "method_index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "methodGroup",
+            "columnName": "method_group",
+            "affinity": "TEXT",
+            "notNull": false
           }
         ],
         "primaryKey": {
@@ -536,7 +548,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '20bb0a335f8529b47f84a2a85ae3aace')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ae9aae6b1f48d9dd034c14f8c0b50f0c')"
     ]
   }
 }

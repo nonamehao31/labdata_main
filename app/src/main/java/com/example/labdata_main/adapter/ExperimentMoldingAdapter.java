@@ -169,22 +169,28 @@ public class ExperimentMoldingAdapter extends RecyclerView.Adapter<ExperimentMol
                     }
                 }
 
-                // 设置拌合参数
-                tvMixingTemp.setText(String.format("拌合温度：%.1f℃", temp));
-                tvMixingSpeed.setText(String.format("拌合速度：%.1f rpm", speed));
-                tvMixingTime.setText(String.format("拌合时间：%.1f min", time));
+                // 设置拌合参数，使用新的格式
+                tvMixingTemp.setText(String.format("温度：%.0f℃", temp));
+                tvMixingSpeed.setText(String.format("速度：%.0f rpm", speed));
+                tvMixingTime.setText(String.format("时间：%.0f min", time));
+                
+                // 设置压实方法
                 tvCompactionMethod.setText(method);
+                
+                // 默认显示参数区域
+                layoutMixingDevice.setVisibility(View.VISIBLE);
+                layoutCompactionDevice.setVisibility(View.VISIBLE);
             } else {
-                // 如果没有制件方法，清空显示
-                tvMixingTemp.setText("拌合温度：--");
-                tvMixingSpeed.setText("拌合速度：--");
-                tvMixingTime.setText("拌合时间：--");
+                // 如果没有制件方法，使用占位符
+                tvMixingTemp.setText("温度：--");
+                tvMixingSpeed.setText("速度：--");
+                tvMixingTime.setText("时间：--");
                 tvCompactionMethod.setText("--");
+                
+                // 隐藏设备信息区域
+                layoutMixingDevice.setVisibility(View.GONE);
+                layoutCompactionDevice.setVisibility(View.GONE);
             }
-
-            // 清除设备信息显示
-            layoutMixingDevice.setVisibility(View.GONE);
-            layoutCompactionDevice.setVisibility(View.GONE);
         }
 
         public void updateDeviceInfo(DeviceInfo mixingDevice, DeviceInfo formingDevice) {
@@ -192,18 +198,18 @@ public class ExperimentMoldingAdapter extends RecyclerView.Adapter<ExperimentMol
             if (mixingDevice != null) {
                 layoutMixingDevice.setVisibility(View.VISIBLE);
                 tvMixingDeviceInfo.setText(String.format(
-                    "设备型号：%s\n制造商：%s\n购买年份：%s",
+                    "型号：%s\n制造商：%s\n购买年份：%s",
                     mixingDevice.getModel(),
                     mixingDevice.getManufacturer(),
                     mixingDevice.getPurchaseYear()
                 ));
             }
 
-            // 显示制件设备信息
+            // 显示压实设备信息
             if (formingDevice != null) {
                 layoutCompactionDevice.setVisibility(View.VISIBLE);
                 tvCompactionDeviceInfo.setText(String.format(
-                    "设备型号：%s\n制造商：%s\n购买年份：%s",
+                    "型号：%s\n制造商：%s\n购买年份：%s",
                     formingDevice.getModel(),
                     formingDevice.getManufacturer(),
                     formingDevice.getPurchaseYear()

@@ -51,6 +51,12 @@ public class MoldingMethod {
     @ColumnInfo(name = "mix_ratio_id")
     private long mixRatioId;
 
+    @ColumnInfo(name = "method_index")
+    private int methodIndex;  // 同一配比下的方法索引
+
+    @ColumnInfo(name = "method_group")
+    private String methodGroup;  // 用于标识同一组的制件方法
+
     public MoldingMethod() {}
 
     @Ignore
@@ -59,6 +65,26 @@ public class MoldingMethod {
         this.mixingSpeed = mixingSpeed;
         this.mixingTime = mixingTime;
         this.compactionMethod = compactionMethod;
+    }
+
+    @Ignore
+    public MoldingMethod(int type, float size, float diameter, float length, float width, float height,
+                        int count, float mixingTemperature, float mixingSpeed, float mixingTime,
+                        String compactionMethod, long mixRatioId, int methodIndex, String methodGroup) {
+        this.type = type;
+        this.size = size;
+        this.diameter = diameter;
+        this.length = length;
+        this.width = width;
+        this.height = height;
+        this.count = count;
+        this.mixingTemperature = mixingTemperature;
+        this.mixingSpeed = mixingSpeed;
+        this.mixingTime = mixingTime;
+        this.compactionMethod = compactionMethod;
+        this.mixRatioId = mixRatioId;
+        this.methodIndex = methodIndex;
+        this.methodGroup = methodGroup;
     }
 
     public long getId() { return id; }
@@ -99,6 +125,12 @@ public class MoldingMethod {
 
     public long getMixRatioId() { return mixRatioId; }
     public void setMixRatioId(long mixRatioId) { this.mixRatioId = mixRatioId; }
+
+    public int getMethodIndex() { return methodIndex; }
+    public void setMethodIndex(int methodIndex) { this.methodIndex = methodIndex; }
+
+    public String getMethodGroup() { return methodGroup; }
+    public void setMethodGroup(String methodGroup) { this.methodGroup = methodGroup; }
 
     @Override
     public String toString() {

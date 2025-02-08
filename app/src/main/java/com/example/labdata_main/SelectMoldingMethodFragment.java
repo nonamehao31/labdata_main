@@ -26,6 +26,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -283,7 +284,9 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         if (selectedMethods.isEmpty()) {
             return "";
         }
-        // 只返回第一个选中的制件方法的描述
-        return selectedMethods.get(0).toString();
+        
+        // 使用 Gson 将所有选中的制件方法转换为 JSON 数组
+        Gson gson = new Gson();
+        return gson.toJson(selectedMethods);
     }
 }

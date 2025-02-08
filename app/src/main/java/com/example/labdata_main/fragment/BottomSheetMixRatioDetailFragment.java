@@ -13,11 +13,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.R;
 import com.example.labdata_main.adapter.MixRatioDetailAdapter;
+import com.example.labdata_main.adapter.TaskDetailMoldingAdapter;
 import com.example.labdata_main.model.ExperimentTask;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Locale;
 
 public class BottomSheetMixRatioDetailFragment extends BottomSheetDialogFragment {
@@ -87,43 +89,16 @@ public class BottomSheetMixRatioDetailFragment extends BottomSheetDialogFragment
         deadline.setText(String.format("截止时间：%s", dateFormat.format(task.getDeadline())));
 
         // 设置制件参数
-        String methodStr = task.getMoldingMethod();
-        if (methodStr != null && !methodStr.isEmpty()) {
-            String[] parts = methodStr.split("\\|");
-            float temp = 0, speed = 0, time = 0;
-            String method = "";
-            
-            for (String part : parts) {
-                String[] keyValue = part.split("=");
-                if (keyValue.length == 2) {
-                    String key = keyValue[0].trim();
-                    String value = keyValue[1].trim();
-                    switch (key) {
-                        case "temp":
-                            temp = Float.parseFloat(value);
-                            break;
-                        case "speed":
-                            speed = Float.parseFloat(value);
-                            break;
-                        case "time":
-                            time = Float.parseFloat(value);
-                            break;
-                        case "method":
-                            method = value;
-                            break;
-                    }
-                }
-            }
-            
-            TextView tvMixingTemperature = view.findViewById(R.id.tvMixingTemperature);
-            TextView tvMixingSpeed = view.findViewById(R.id.tvMixingSpeed);
-            TextView tvMixingTime = view.findViewById(R.id.tvMixingTime);
-            TextView tvCompactionMethod = view.findViewById(R.id.tvCompactionMethod);
-
-            tvMixingTemperature.setText(String.format("拌合温度：%.1f℃", temp));
-            tvMixingSpeed.setText(String.format("拌合速度：%.1f rpm", speed));
-            tvMixingTime.setText(String.format("拌合时间：%.1f min", time));
-            tvCompactionMethod.setText(String.format("压实方式：%s", method));
+        RecyclerView rvMoldingMethods = view.findViewById(R.id.rvMoldingMethods);
+        rvMoldingMethods.setLayoutManager(new LinearLayoutManager(requireContext()));
+        
+        String moldingMethod = task.getMoldingMethod();
+        if (moldingMethod != null && !moldingMethod.isEmpty()) {
+            TaskDetailMoldingAdapter adapter = new TaskDetailMoldingAdapter(
+                moldingMethod,
+                task.getSelectedMixRatios() != null ? task.getSelectedMixRatios() : new ArrayList<>()
+            );
+            rvMoldingMethods.setAdapter(adapter);
         }
 
         // 设置配比列表

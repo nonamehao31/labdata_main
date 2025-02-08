@@ -1,7 +1,6 @@
 package com.example.labdata_main.fragment;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,21 +44,6 @@ public class BottomSheetMakeSpecimenFragment extends BottomSheetDialogFragment {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             task = getArguments().getParcelable("task");
-            
-            // 添加调试日志
-            if (task != null) {
-                Log.d("BottomSheetMakeSpecimenFragment", "Task Details:");
-                Log.d("BottomSheetMakeSpecimenFragment", "Molding Method: " + task.getMoldingMethod());
-                Log.d("BottomSheetMakeSpecimenFragment", "Selected Mix Ratios Count: " + task.getSelectedMixRatios().size());
-                
-                for (MixRatio ratio : task.getSelectedMixRatios()) {
-                    Log.d("BottomSheetMakeSpecimenFragment", "Mix Ratio: " + ratio.getName());
-                }
-            } else {
-                Log.e("BottomSheetMakeSpecimenFragment", "Task is null");
-            }
-        } else {
-            Log.e("BottomSheetMakeSpecimenFragment", "Arguments are null");
         }
     }
 

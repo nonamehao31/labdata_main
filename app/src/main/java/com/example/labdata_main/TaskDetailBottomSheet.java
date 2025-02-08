@@ -12,10 +12,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.adapter.MixRatioDetailAdapter;
+import com.example.labdata_main.adapter.TaskDetailMoldingAdapter;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
+import com.example.labdata_main.model.MoldingMethod;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -73,43 +77,67 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         }
 
         // 设置制件参数信息
-        TextView mixingTemperature = view.findViewById(R.id.tvMixingTemperature);
-        TextView mixingSpeed = view.findViewById(R.id.tvMixingSpeed);
-        TextView mixingTime = view.findViewById(R.id.tvMixingTime);
-        TextView compactionMethod = view.findViewById(R.id.tvCompactionMethodValue);
-
-        String methodStr = task.getMoldingMethod();
-        if (methodStr != null && !methodStr.isEmpty()) {
-            String[] parts = methodStr.split("\\|");
-            float temp = 0, speed = 0, time = 0;
-            String method = "";
-            
-            for (String part : parts) {
-                String[] keyValue = part.split("=");
-                if (keyValue.length == 2) {
-                    String key = keyValue[0].trim();
-                    String value = keyValue[1].trim();
-                    switch (key) {
-                        case "temp":
-                            temp = Float.parseFloat(value);
-                            break;
-                        case "speed":
-                            speed = Float.parseFloat(value);
-                            break;
-                        case "time":
-                            time = Float.parseFloat(value);
-                            break;
-                        case "method":
-                            method = value;
-                            break;
+        RecyclerView rvMoldingMethods = view.findViewById(R.id.rvMoldingMethods);
+        rvMoldingMethods.setLayoutManager(new LinearLayoutManager(requireContext()));
+        
+        String moldingMethodStr = task.getMoldingMethod();
+        if (moldingMethodStr != null && !moldingMethodStr.isEmpty()) {
+            try {
+                Gson gson = new Gson();
+                List<MoldingMethod> methods = new ArrayList<>();
+                
+                if (moldingMethodStr.trim().startsWith("[")) {
+                    // 如果是JSON数组格式，直接解析
+                    methods = gson.fromJson(moldingMethodStr, new TypeToken<List<MoldingMethod>>(){}.getType());
+                } else if (moldingMethodStr.trim().startsWith("{")) {
+                    // 如果是单个JSON对象，转换为数组
+                    MoldingMethod singleMethod = gson.fromJson(moldingMethodStr, MoldingMethod.class);
+                    if (singleMethod != null) {
+                        methods.add(singleMethod);
                     }
+                } else {
+                    // 如果是老格式（temp=160|speed=60|time=90|method=振动压实）
+                    MoldingMethod method = new MoldingMethod();
+                    String[] parts = moldingMethodStr.split("\\|");
+                    for (String part : parts) {
+                        String[] keyValue = part.split("=");
+                        if (keyValue.length == 2) {
+                            String key = keyValue[0].trim();
+                            String value = keyValue[1].trim();
+                            try {
+                                switch (key) {
+                                    case "temp":
+                                        method.setMixingTemperature(Float.parseFloat(value));
+                                        break;
+                                    case "speed":
+                                        method.setMixingSpeed(Float.parseFloat(value));
+                                        break;
+                                    case "time":
+                                        method.setMixingTime(Float.parseFloat(value));
+                                        break;
+                                    case "method":
+                                        method.setCompactionMethod(value);
+                                        break;
+                                }
+                            } catch (NumberFormatException e) {
+                                android.util.Log.e("TaskDetailBottomSheet", "Error parsing number: " + value);
+                            }
+                        }
+                    }
+                    methods.add(method);
                 }
+                
+                // 将解析后的方法列表转换为JSON数组字符串
+                String jsonArray = gson.toJson(methods);
+                
+                TaskDetailMoldingAdapter adapter = new TaskDetailMoldingAdapter(
+                    jsonArray,
+                    task.getSelectedMixRatios() != null ? task.getSelectedMixRatios() : new ArrayList<>()
+                );
+                rvMoldingMethods.setAdapter(adapter);
+            } catch (Exception e) {
+                android.util.Log.e("TaskDetailBottomSheet", "Error parsing molding method: " + e.getMessage());
             }
-            
-            mixingTemperature.setText(String.format("拌合温度：%.1f℃", temp));
-            mixingSpeed.setText(String.format("拌合速度：%.1f rpm", speed));
-            mixingTime.setText(String.format("拌合时间：%.1f min", time));
-            compactionMethod.setText("压实方式：" + method);
         }
 
         // 设置配比信息
