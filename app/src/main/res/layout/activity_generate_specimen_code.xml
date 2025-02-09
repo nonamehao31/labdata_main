@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@android:color/white">
+
+
+
+    <!-- 标题 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="27dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:text="制件"
+        android:textColor="#000000"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <!-- 补充标题 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="24dp"
+        android:text="您需要完成如下制件任务："
+        android:textColor="#666666"
+        android:textSize="14sp"
+        android:textStyle="normal" />
+
+    <!-- 步进导航 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        android:paddingVertical="16dp"
+        android:layout_marginTop="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="24dp"
+            android:gravity="center">
+
+            <!-- 步骤1：扫描加工设备码 -->
+            <LinearLayout
+                android:id="@+id/step1Layout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/step1Indicator"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/step_circle_active"
+                    android:gravity="center"
+                    android:text="1"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"/>
+
+                <TextView
+                    android:id="@+id/step1Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="扫描加工设备码"
+                    android:textColor="#1976D2"
+                    android:textSize="12sp"
+                    android:layout_marginTop="4dp"/>
+
+            </LinearLayout>
+
+            <View
+                android:id="@+id/step1Line"
+                android:layout_width="24dp"
+                android:layout_height="1dp"
+                android:background="#CCCCCC"
+                android:layout_gravity="center_vertical"/>
+
+            <!-- 步骤2：生成试件码 -->
+            <LinearLayout
+                android:id="@+id/step2Layout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/step2Indicator"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="@drawable/step_circle_inactive"
+                    android:gravity="center"
+                    android:text="2"
+                    android:textColor="#666666"
+                    android:textSize="12sp"/>
+
+                <TextView
+                    android:id="@+id/step2Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="生成试件码"
+                    android:textColor="#666666"
+                    android:textSize="12sp"
+                    android:layout_marginTop="4dp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 制件方法列表 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvMoldingMethods"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="24dp"
+        android:paddingHorizontal="16dp"
+        android:clipToPadding="false"
+        android:background="#F5F5F5"
+        android:overScrollMode="never"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        android:orientation="vertical"/>
+
+</LinearLayout>

@@ -1,5 +1,6 @@
 package com.example.labdata_main.adapter;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
+import com.example.labdata_main.GenerateSpecimenCodeActivity;
 import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
@@ -210,8 +212,10 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
                         // 如果已经生成过试件码，显示查看界面
                         listener.onViewSpecimenCode(task);
                     } else {
-                        // 如果还没有生成试件码，显示生成界面
-                        listener.onGenerateSpecimenCode(task);
+                        // 启动新的Activity来生成试件码
+                        Intent intent = new Intent(v.getContext(), GenerateSpecimenCodeActivity.class);
+                        intent.putExtra("taskId", task.getTaskId());  // 使用taskId而不是id
+                        v.getContext().startActivity(intent);
                     }
                 }
             });

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@android:color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 配比名称 -->
+        <TextView
+            android:id="@+id/tvMixRatioName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="配比1"
+            android:textColor="#1684FC"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_mix_ratio_tag"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- 拌合参数 -->
+        <TextView
+            android:id="@+id/tvMixingParams"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="拌合参数：温度 25℃，速度 60 rpm，时间 2 min"
+            android:textColor="#666666"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- 压实方法 -->
+        <TextView
+            android:id="@+id/tvCompactionMethod"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="压实方法：旋转压实"
+            android:textColor="#666666"
+            android:textSize="14sp"/>
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0"
+            android:layout_marginTop="8dp"/>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>
