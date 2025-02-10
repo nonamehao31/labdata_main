@@ -40,6 +40,7 @@ public class ExperimentTask implements Parcelable {
     private List<MixRatio> selectedMixRatios;
     @TypeConverters(Converters.class)
     private Map<Long, List<String>> experimentAssignments; // Map<配比ID, 实验类型列表>
+    @TypeConverters(Converters.class)
     private String moldingMethod;
     private String notes;
 

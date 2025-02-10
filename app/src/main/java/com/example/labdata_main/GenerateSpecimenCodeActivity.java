@@ -1,21 +1,26 @@
 package com.example.labdata_main;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.room.Room;
-
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.example.labdata_main.adapter.SpecimenMethodAdapter;
 import com.example.labdata_main.database.AppDatabase;
+import com.example.labdata_main.model.DeviceInfo;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,9 +36,12 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
     private TextView step2Text;
     private View step1Line;
     private RecyclerView rvMoldingMethods;
+    private ExtendedFloatingActionButton btnScanDevice;
     private SpecimenMethodAdapter specimenMethodAdapter;
     private String taskId;
     private AppDatabase db;
+    private MoldingMethod selectedMethod;
+    private MixRatio selectedMixRatio;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,6 +79,16 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
         step2Text = findViewById(R.id.step2Text);
         step1Line = findViewById(R.id.step1Line);
 
+        // 初始化扫描设备码按钮
+        btnScanDevice = findViewById(R.id.btnScanDevice);
+        btnScanDevice.setEnabled(false);
+        btnScanDevice.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startQRCodeScan();
+            }
+        });
+
         // 初始化RecyclerView
         rvMoldingMethods = findViewById(R.id.rvMoldingMethods);
         Log.d(TAG, "RecyclerView found: " + (rvMoldingMethods != null));
@@ -80,6 +98,17 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
             
             // 先用空数据初始化适配器
             specimenMethodAdapter = new SpecimenMethodAdapter("[]", new ArrayList<>());
+            specimenMethodAdapter.setOnMethodSelectedListener((method, mixRatio, position) -> {
+                // 保存选中的制件方法和配比
+                selectedMethod = method;
+                selectedMixRatio = mixRatio;
+                // 启用扫描设备码按钮
+                btnScanDevice.setEnabled(true);
+                Log.d(TAG, String.format("Selected method at position %d: %s, mixRatio: %s",
+                    position,
+                    method.getCompactionMethod(),
+                    mixRatio != null ? mixRatio.getName() : "null"));
+            });
             rvMoldingMethods.setAdapter(specimenMethodAdapter);
             Log.d(TAG, "RecyclerView initialized with empty adapter");
         } else {
@@ -170,13 +199,19 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
                                     if (rvMoldingMethods != null) {
                                         // 创建新的适配器并设置给RecyclerView
                                         List<MixRatio> finalMixRatios = mixRatios != null ? mixRatios : new ArrayList<>();
-                                        Log.d(TAG, "Creating new adapter with " + methods.size() + " methods and " + 
-                                            finalMixRatios.size() + " mix ratios");
-                                            
                                         specimenMethodAdapter = new SpecimenMethodAdapter(jsonArray, finalMixRatios);
+                                        specimenMethodAdapter.setOnMethodSelectedListener((method, mixRatio, position) -> {
+                                            // 保存选中的制件方法和配比
+                                            selectedMethod = method;
+                                            selectedMixRatio = mixRatio;
+                                            // 启用扫描设备码按钮
+                                            btnScanDevice.setEnabled(true);
+                                            Log.d(TAG, String.format("Selected method at position %d: %s, mixRatio: %s",
+                                                position,
+                                                method.getCompactionMethod(),
+                                                mixRatio != null ? mixRatio.getName() : "null"));
+                                        });
                                         rvMoldingMethods.setAdapter(specimenMethodAdapter);
-                                        // 通知适配器数据已更新
-                                        specimenMethodAdapter.notifyDataSetChanged();
                                         Log.d(TAG, "Updated RecyclerView with new adapter");
                                     } else {
                                         Log.e(TAG, "RecyclerView is null when trying to update adapter");
@@ -220,6 +255,50 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
             android.R.color.holo_blue_dark : android.R.color.darker_gray));
         
         Log.d(TAG, "Updated step status to: " + currentStep);
+    }
+
+    private void startQRCodeScan() {
+        IntentIntegrator integrator = new IntentIntegrator(this);
+        integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
+        integrator.setPrompt("请将二维码对准扫描框");
+        integrator.setCameraId(0);
+        integrator.setBeepEnabled(true);
+        integrator.setBarcodeImageEnabled(false);
+        integrator.initiateScan();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (result != null && result.getContents() != null) {
+            handleScanResult(result.getContents());
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    private void handleScanResult(String deviceCode) {
+        try {
+            Gson gson = new Gson();
+            DeviceInfo deviceInfo = gson.fromJson(deviceCode, DeviceInfo.class);
+            if (deviceInfo == null) {
+                Toast.makeText(this, "无效的设备信息", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 更新适配器中的设备信息
+            specimenMethodAdapter.updateDeviceInfo(deviceInfo);
+
+            // 根据设备类型显示不同的提示信息
+            String deviceType = deviceInfo.getType().equals(DeviceInfo.TYPE_MIXING) ? "拌合" : "压实";
+            Toast.makeText(this, String.format("已扫描%s设备：%s %s", 
+                deviceType, deviceInfo.getManufacturer(), deviceInfo.getModel()), 
+                Toast.LENGTH_SHORT).show();
+
+        } catch (Exception e) {
+            Toast.makeText(this, "二维码格式错误，请重试", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Error parsing QR code", e);
+        }
     }
 
     @Override

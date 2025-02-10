@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "ae9aae6b1f48d9dd034c14f8c0b50f0c",
+    "identityHash": "f50a85f4c8a1a4be46814bb2793671be",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -282,7 +282,7 @@
       },
       {
         "tableName": "molding_methods",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` INTEGER NOT NULL, `size` REAL NOT NULL, `diameter` REAL NOT NULL, `length` REAL NOT NULL, `width` REAL NOT NULL, `height` REAL NOT NULL, `count` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `mixing_time` REAL NOT NULL, `compaction_method` TEXT, `mix_ratio_id` INTEGER NOT NULL, `method_index` INTEGER NOT NULL, `method_group` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` INTEGER NOT NULL, `size` REAL NOT NULL, `diameter` REAL NOT NULL, `length` REAL NOT NULL, `width` REAL NOT NULL, `height` REAL NOT NULL, `count` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `mixing_time` REAL NOT NULL, `compaction_method` TEXT, `mix_ratio_id` INTEGER NOT NULL, `method_index` INTEGER NOT NULL, `method_group` TEXT, `mixingDevice` TEXT, `formingDevice` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -371,6 +371,18 @@
           {
             "fieldPath": "methodGroup",
             "columnName": "method_group",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "mixingDevice",
+            "columnName": "mixingDevice",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "formingDevice",
+            "columnName": "formingDevice",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -548,7 +560,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ae9aae6b1f48d9dd034c14f8c0b50f0c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f50a85f4c8a1a4be46814bb2793671be')"
     ]
   }
 }

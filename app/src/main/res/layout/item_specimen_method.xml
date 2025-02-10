@@ -8,6 +8,9 @@
     android:layout_marginVertical="4dp"
     app:cardCornerRadius="8dp"
     app:cardElevation="2dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground"
     app:cardBackgroundColor="@android:color/white">
 
     <LinearLayout
@@ -30,31 +33,104 @@
             android:paddingVertical="2dp"
             android:layout_marginBottom="12dp"/>
 
-        <!-- 拌合参数 -->
-        <TextView
-            android:id="@+id/tvMixingParams"
+        <!-- 拌合参数部分 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="拌合参数：温度 25℃，速度 60 rpm，时间 2 min"
-            android:textColor="#666666"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp"/>
+            android:orientation="vertical"
+            android:background="#F5F5F5"
+            android:padding="12dp"
+            android:layout_marginBottom="8dp">
 
-        <!-- 压实方法 -->
-        <TextView
-            android:id="@+id/tvCompactionMethod"
+            <!-- 拌合参数标题 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="拌合参数"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- 温度 -->
+            <TextView
+                android:id="@+id/tvMixingTemp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="温度：25℃"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- 速度 -->
+            <TextView
+                android:id="@+id/tvMixingSpeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="速度：60 rpm"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- 时间 -->
+            <TextView
+                android:id="@+id/tvMixingTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="时间：2 min"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- 拌合设备信息 -->
+            <TextView
+                android:id="@+id/tvMixingDevice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="拌合设备：未扫描"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:visibility="visible"/>
+        </LinearLayout>
+
+        <!-- 压实方法部分 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="压实方法：旋转压实"
-            android:textColor="#666666"
-            android:textSize="14sp"/>
+            android:orientation="vertical"
+            android:background="#F5F5F5"
+            android:padding="12dp">
 
-        <!-- 分割线 -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#E0E0E0"
-            android:layout_marginTop="8dp"/>
+            <!-- 压实方法标题 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="压实方法"
+                android:textColor="#333333"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- 压实方法内容 -->
+            <TextView
+                android:id="@+id/tvCompactionMethod"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="旋转压实"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- 压实设备信息 -->
+            <TextView
+                android:id="@+id/tvFormingDevice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="压实设备：未扫描"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:visibility="visible"/>
+        </LinearLayout>
 
     </LinearLayout>
 

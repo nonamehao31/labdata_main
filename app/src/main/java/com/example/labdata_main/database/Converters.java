@@ -3,6 +3,7 @@ package com.example.labdata_main.database;
 import androidx.room.TypeConverter;
 import com.example.labdata_main.model.MaterialItem;
 import com.example.labdata_main.model.MixRatio;
+import com.example.labdata_main.model.MoldingMethod;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -62,5 +63,22 @@ public class Converters {
         }
         Type mapType = new TypeToken<Map<Long, List<String>>>() {}.getType();
         return gson.fromJson(mapJson, mapType);
+    }
+
+    @TypeConverter
+    public static String fromMoldingMethodList(List<MoldingMethod> methods) {
+        if (methods == null) {
+            return null;
+        }
+        return gson.toJson(methods);
+    }
+
+    @TypeConverter
+    public static List<MoldingMethod> toMoldingMethodList(String methodsJson) {
+        if (methodsJson == null) {
+            return null;
+        }
+        Type listType = new TypeToken<List<MoldingMethod>>() {}.getType();
+        return gson.fromJson(methodsJson, listType);
     }
 }
