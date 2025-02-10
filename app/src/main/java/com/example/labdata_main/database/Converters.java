@@ -81,4 +81,21 @@ public class Converters {
         Type listType = new TypeToken<List<MoldingMethod>>() {}.getType();
         return gson.fromJson(methodsJson, listType);
     }
+
+    @TypeConverter
+    public static String fromStringList(List<String> list) {
+        if (list == null) {
+            return null;
+        }
+        return gson.toJson(list);
+    }
+
+    @TypeConverter
+    public static List<String> toStringList(String json) {
+        if (json == null) {
+            return null;
+        }
+        Type listType = new TypeToken<List<String>>() {}.getType();
+        return gson.fromJson(json, listType);
+    }
 }

@@ -235,4 +235,23 @@ public class SpecimenMethodAdapter extends RecyclerView.Adapter<SpecimenMethodAd
     public DeviceInfo getFormingDevice(int position) {
         return formingDevices.get(position);
     }
+
+    public int getSelectedPosition() {
+        return selectedPosition;
+    }
+
+    public MoldingMethod getMoldingMethod(int position) {
+        if (position < 0 || position >= moldingMethods.size()) {
+            return null;
+        }
+        return moldingMethods.get(position);
+    }
+
+    public MixRatio getMixRatio(int position) {
+        if (position < 0 || position >= moldingMethods.size() || mixRatios.isEmpty()) {
+            return null;
+        }
+        int mixRatioIndex = position % mixRatios.size();
+        return mixRatios.get(mixRatioIndex);
+    }
 }

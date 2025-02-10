@@ -91,23 +91,51 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
         public void bind(ExperimentTask task) {
             tvProjectTitle.setText(task.getTaskName());
 
-            // 设置步骤状态颜色
+            // 设置步骤状态颜色和文本
             if (task.getExperimentCompletionTime() > 0) {
-                step1Circle.setBackgroundResource(R.color.step_completed);
-                step2Circle.setBackgroundResource(R.color.step_completed);
-                step3Circle.setBackgroundResource(R.color.step_completed);
+                // 所有步骤完成
+                step1Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                step2Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                step3Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                tvStep1Status.setText("已完成");
+                tvStep2Status.setText("已完成");
+                tvStep3Status.setText("已完成");
+                tvStep1Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_green_dark));
+                tvStep2Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_green_dark));
+                tvStep3Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_green_dark));
             } else if (task.getSpecimenGenerationTime() > 0) {
-                step1Circle.setBackgroundResource(R.color.step_completed);
-                step2Circle.setBackgroundResource(R.color.step_completed);
-                step3Circle.setBackgroundResource(R.color.step_active);
+                // 制件完成，实验进行中
+                step1Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                step2Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                step3Circle.setBackgroundResource(R.drawable.circle_background_in_progress);
+                tvStep1Status.setText("已完成");
+                tvStep2Status.setText("已完成");
+                tvStep3Status.setText("进行中");
+                tvStep1Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_green_dark));
+                tvStep2Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_green_dark));
+                tvStep3Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_blue_dark));
             } else if (task.getPreparationTime() > 0) {
-                step1Circle.setBackgroundResource(R.color.step_completed);
-                step2Circle.setBackgroundResource(R.color.step_active);
-                step3Circle.setBackgroundResource(R.color.step_inactive);
+                // 备料完成，制件进行中
+                step1Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                step2Circle.setBackgroundResource(R.drawable.circle_background_in_progress);
+                step3Circle.setBackgroundResource(R.drawable.step_circle_background);
+                tvStep1Status.setText("已完成");
+                tvStep2Status.setText("进行中");
+                tvStep3Status.setText("");
+                tvStep1Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_green_dark));
+                tvStep2Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_blue_dark));
+                tvStep3Status.setTextColor(itemView.getContext().getColor(android.R.color.black));
             } else {
-                step1Circle.setBackgroundResource(R.color.step_active);
-                step2Circle.setBackgroundResource(R.color.step_inactive);
-                step3Circle.setBackgroundResource(R.color.step_inactive);
+                // 备料进行中
+                step1Circle.setBackgroundResource(R.drawable.circle_background_in_progress);
+                step2Circle.setBackgroundResource(R.drawable.step_circle_background);
+                step3Circle.setBackgroundResource(R.drawable.step_circle_background);
+                tvStep1Status.setText("进行中");
+                tvStep2Status.setText("");
+                tvStep3Status.setText("");
+                tvStep1Status.setTextColor(itemView.getContext().getColor(android.R.color.holo_blue_dark));
+                tvStep2Status.setTextColor(itemView.getContext().getColor(android.R.color.black));
+                tvStep3Status.setTextColor(itemView.getContext().getColor(android.R.color.black));
             }
 
             // 设置步骤1状态：显示配比信息
@@ -183,20 +211,27 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
             }
 
             // 设置按钮状态
-            btnStep1Action.setText("查看配比信息");
-
-            if (task.getSpecimenGenerationTime() > 0) {
-                btnStep2Action.setText("查看试件码");
-            } else {
-                btnStep2Action.setText("生成试件码");
-                btnStep2Action.setEnabled(task.getPreparationTime() > 0);
-            }
-
             if (task.getExperimentCompletionTime() > 0) {
+                btnStep1Action.setText("查看配比信息");
+                btnStep2Action.setText("查看试件码");
                 btnStep3Action.setText("查看实验数据");
-            } else {
+            } else if (task.getSpecimenGenerationTime() > 0) {
+                btnStep1Action.setText("查看配比信息");
+                btnStep2Action.setText("查看试件码");
+                btnStep3Action.setEnabled(true);
                 btnStep3Action.setText("记录实验数据");
-                btnStep3Action.setEnabled(task.getSpecimenGenerationTime() > 0);
+            } else if (task.getPreparationTime() > 0) {
+                btnStep1Action.setText("查看配比信息");
+                btnStep2Action.setEnabled(true);
+                btnStep2Action.setText("生成试件码");
+                btnStep3Action.setEnabled(false);
+                btnStep3Action.setText("记录实验数据");
+            } else {
+                btnStep1Action.setText("查看配比信息");
+                btnStep2Action.setEnabled(false);
+                btnStep2Action.setText("生成试件码");
+                btnStep3Action.setEnabled(false);
+                btnStep3Action.setText("记录实验数据");
             }
 
             // 设置按钮点击事件

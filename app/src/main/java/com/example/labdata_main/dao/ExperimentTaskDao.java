@@ -46,4 +46,7 @@ public interface ExperimentTaskDao {
     // 获取所有任务，然后在代码中过滤
     @Query("SELECT * FROM experiment_tasks")
     List<ExperimentTask> getTasksByType();
+
+    @Query("SELECT * FROM experiment_tasks WHERE id = :taskId")
+    ExperimentTask getExperimentTaskById(long taskId);
 }

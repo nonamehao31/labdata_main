@@ -31,9 +31,16 @@ public class DeviceInfo implements Parcelable {
     @SerializedName("purchaseYear")
     private String purchaseYear;
 
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private transient ExecutorService executorService;
 
     public DeviceInfo() {
+        initExecutorService();
+    }
+
+    private void initExecutorService() {
+        if (executorService == null || executorService.isShutdown()) {
+            executorService = Executors.newSingleThreadExecutor();
+        }
     }
 
     protected DeviceInfo(Parcel in) {
@@ -41,6 +48,7 @@ public class DeviceInfo implements Parcelable {
         manufacturer = in.readString();
         model = in.readString();
         purchaseYear = in.readString();
+        initExecutorService();
     }
 
     public static final Creator<DeviceInfo> CREATOR = new Creator<DeviceInfo>() {

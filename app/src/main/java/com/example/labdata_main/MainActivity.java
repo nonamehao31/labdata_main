@@ -3,13 +3,18 @@ package com.example.labdata_main;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
+import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.Device;
+import com.example.labdata_main.model.ProjectStatus;
 import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
@@ -25,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
     private AppDatabase database;
     private SharedPrefsManager sharedPrefsManager;
     private ExecutorService executorService;
+
+    private static final int SPECIMEN_CODE_REQUEST = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,6 +96,12 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
         }).attach();
+
+        // 制件按钮点击事件
+        Button btnStep2Action = findViewById(R.id.btnStep2Action);
+        if (btnStep2Action != null) {
+            btnStep2Action.setOnClickListener(v -> startGenerateSpecimenCode());
+        }
     }
 
     @Override
@@ -102,6 +115,74 @@ public class MainActivity extends AppCompatActivity {
             backToast.show();
         }
         backPressedTime = System.currentTimeMillis();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == SPECIMEN_CODE_REQUEST && resultCode == RESULT_OK && data != null) {
+            // 更新制件和实验环节的状态
+            String specimenStatus = data.getStringExtra("specimenStatus");
+            String experimentStatus = data.getStringExtra("experimentStatus");
+            String preparationStatus = data.getStringExtra("preparationStatus");
+            
+            // 更新状态文本
+            TextView tvStep1Status = findViewById(R.id.tvStep1Status);
+            TextView tvStep2Status = findViewById(R.id.tvStep2Status);
+            TextView tvStep3Status = findViewById(R.id.tvStep3Status);
+            TextView step1Circle = findViewById(R.id.step1Circle);
+            TextView step2Circle = findViewById(R.id.step2Circle);
+            TextView step3Circle = findViewById(R.id.step3Circle);
+            
+            // 更新第一步状态
+            if (tvStep1Status != null && step1Circle != null && preparationStatus != null) {
+                tvStep1Status.setText(preparationStatus);
+                if (ProjectStatus.STATUS_COMPLETED.equals(preparationStatus)) {
+                    tvStep1Status.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
+                    step1Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                }
+            }
+            
+            // 更新第二步状态
+            if (tvStep2Status != null && step2Circle != null) {
+                tvStep2Status.setText(specimenStatus);
+                if (ProjectStatus.STATUS_COMPLETED.equals(specimenStatus)) {
+                    tvStep2Status.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
+                    step2Circle.setBackgroundResource(R.drawable.circle_background_completed);
+                }
+            }
+            
+            // 更新第三步状态
+            if (tvStep3Status != null && step3Circle != null) {
+                tvStep3Status.setText(experimentStatus);
+                if (ProjectStatus.STATUS_IN_PROGRESS.equals(experimentStatus)) {
+                    tvStep3Status.setTextColor(getResources().getColor(android.R.color.holo_blue_dark));
+                    step3Circle.setBackgroundResource(R.drawable.circle_background_in_progress);
+                }
+            }
+
+            // 更新按钮状态
+            Button btnStep2Action = findViewById(R.id.btnStep2Action);
+            Button btnStep3Action = findViewById(R.id.btnStep3Action);
+            
+            if (btnStep2Action != null) {
+                btnStep2Action.setEnabled(false);
+                btnStep2Action.setText("已完成");
+            }
+            
+            if (btnStep3Action != null) {
+                btnStep3Action.setEnabled(true);
+            }
+
+            // 显示成功提示
+            Toast.makeText(this, "制件环节已完成，实验环节开始", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // 启动制件码生成活动时使用
+    private void startGenerateSpecimenCode() {
+        Intent intent = new Intent(this, GenerateSpecimenCodeActivity.class);
+        startActivityForResult(intent, SPECIMEN_CODE_REQUEST);
     }
 
     @Override

@@ -42,13 +42,13 @@
                 <!-- 步骤编号 -->
                 <TextView
                     android:id="@+id/step1Circle"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/circle_background"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/step_circle_background"
                     android:gravity="center"
                     android:text="1"
                     android:textColor="@android:color/white"
-                    android:textSize="14sp"/>
+                    android:textSize="16sp"/>
 
                 <!-- 步骤信息 -->
                 <LinearLayout
@@ -97,13 +97,13 @@
 
                 <TextView
                     android:id="@+id/step2Circle"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/circle_background"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/step_circle_background"
                     android:gravity="center"
                     android:text="2"
                     android:textColor="@android:color/white"
-                    android:textSize="14sp"/>
+                    android:textSize="16sp"/>
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -149,13 +149,13 @@
 
                 <TextView
                     android:id="@+id/step3Circle"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/circle_background"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/step_circle_background"
                     android:gravity="center"
                     android:text="3"
                     android:textColor="@android:color/white"
-                    android:textSize="14sp"/>
+                    android:textSize="16sp"/>
 
                 <LinearLayout
                     android:layout_width="0dp"

@@ -42,11 +42,17 @@ public class ExperimentTask implements Parcelable {
     private Map<Long, List<String>> experimentAssignments; // Map<配比ID, 实验类型列表>
     @TypeConverters(Converters.class)
     private String moldingMethod;
+    @TypeConverters(Converters.class)
+    private List<String> selectedMixingDevices;  // 选择的搅拌设备
+    @TypeConverters(Converters.class)
+    private List<String> selectedFormingDevices;  // 选择的成型设备
     private String notes;
 
     public ExperimentTask() {
         selectedMixRatios = new ArrayList<>();
         experimentAssignments = new HashMap<>();
+        selectedMixingDevices = new ArrayList<>();
+        selectedFormingDevices = new ArrayList<>();
     }
 
     protected ExperimentTask(Parcel in) {
@@ -77,6 +83,15 @@ public class ExperimentTask implements Parcelable {
         String assignmentsJson = in.readString();
         Type assignmentsType = new TypeToken<Map<Long, List<String>>>(){}.getType();
         experimentAssignments = gson.fromJson(assignmentsJson, assignmentsType);
+
+        // 反序列化设备信息
+        String mixingDevicesJson = in.readString();
+        Type mixingDevicesType = new TypeToken<List<String>>(){}.getType();
+        selectedMixingDevices = gson.fromJson(mixingDevicesJson, mixingDevicesType);
+
+        String formingDevicesJson = in.readString();
+        Type formingDevicesType = new TypeToken<List<String>>(){}.getType();
+        selectedFormingDevices = gson.fromJson(formingDevicesJson, formingDevicesType);
     }
 
     @Override
@@ -100,6 +115,8 @@ public class ExperimentTask implements Parcelable {
         Gson gson = new Gson();
         dest.writeString(gson.toJson(selectedMixRatios));
         dest.writeString(gson.toJson(experimentAssignments));
+        dest.writeString(gson.toJson(selectedMixingDevices));
+        dest.writeString(gson.toJson(selectedFormingDevices));
     }
 
     @Override
@@ -238,6 +255,22 @@ public class ExperimentTask implements Parcelable {
 
     public void setMoldingMethod(String moldingMethod) {
         this.moldingMethod = moldingMethod;
+    }
+
+    public List<String> getSelectedMixingDevices() {
+        return selectedMixingDevices != null ? selectedMixingDevices : new ArrayList<>();
+    }
+
+    public void setSelectedMixingDevices(List<String> selectedMixingDevices) {
+        this.selectedMixingDevices = selectedMixingDevices;
+    }
+
+    public List<String> getSelectedFormingDevices() {
+        return selectedFormingDevices != null ? selectedFormingDevices : new ArrayList<>();
+    }
+
+    public void setSelectedFormingDevices(List<String> selectedFormingDevices) {
+        this.selectedFormingDevices = selectedFormingDevices;
     }
 
     public String getNotes() {

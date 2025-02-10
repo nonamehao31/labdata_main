@@ -6,11 +6,13 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.room.Room;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.button.MaterialButton;
 import com.example.labdata_main.adapter.SpecimenMethodAdapter;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.DeviceInfo;
@@ -23,10 +25,12 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class GenerateSpecimenCodeActivity extends AppCompatActivity {
     private static final String TAG = "GenerateSpecimenCode";
+    private static final int SPECIMEN_CODE_STEP2_REQUEST = 1002;
     
     private View step1Layout;
     private View step2Layout;
@@ -37,6 +41,7 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
     private View step1Line;
     private RecyclerView rvMoldingMethods;
     private ExtendedFloatingActionButton btnScanDevice;
+    private MaterialButton btnNext;
     private SpecimenMethodAdapter specimenMethodAdapter;
     private String taskId;
     private AppDatabase db;
@@ -86,6 +91,49 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startQRCodeScan();
+            }
+        });
+
+        // 初始化下一步按钮
+        btnNext = findViewById(R.id.btnNext);
+        btnNext.setEnabled(false);
+        btnNext.setOnClickListener(v -> {
+            // 获取当前选中的制件方法和设备信息
+            int selectedPosition = specimenMethodAdapter.getSelectedPosition();
+            if (selectedPosition != RecyclerView.NO_POSITION) {
+                MoldingMethod moldingMethod = specimenMethodAdapter.getMoldingMethod(selectedPosition);
+                DeviceInfo mixingDevice = specimenMethodAdapter.getMixingDevice(selectedPosition);
+                DeviceInfo formingDevice = specimenMethodAdapter.getFormingDevice(selectedPosition);
+                MixRatio mixRatio = specimenMethodAdapter.getSelectedMixRatio();
+
+                // 检查所有必要数据是否完整
+                if (moldingMethod == null || mixRatio == null || 
+                    mixingDevice == null || formingDevice == null) {
+                    Toast.makeText(this, "数据不完整，请确保已选择制件方法并扫描所有设备", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                // 更新步骤状态为第2步
+                updateStepStatus(2);
+
+                // 创建Intent并传递数据
+                Intent intent = new Intent(this, GenerateSpecimenCodeStep2Activity.class);
+                Gson gson = new Gson();
+                
+                // 创建包含单个对象的列表
+                List<MoldingMethod> moldingMethods = Collections.singletonList(moldingMethod);
+                List<MixRatio> mixRatios = Collections.singletonList(mixRatio);
+                List<DeviceInfo> mixingDevices = Collections.singletonList(mixingDevice);
+                List<DeviceInfo> formingDevices = Collections.singletonList(formingDevice);
+
+                // 将列表转换为JSON并传递
+                intent.putExtra("moldingMethod", gson.toJson(moldingMethods));
+                intent.putExtra("mixRatio", gson.toJson(mixRatios));
+                intent.putExtra("mixingDevice", gson.toJson(mixingDevices));
+                intent.putExtra("formingDevice", gson.toJson(formingDevices));
+
+                // 启动第二步Activity
+                startActivityForResult(intent, SPECIMEN_CODE_STEP2_REQUEST);
             }
         });
 
@@ -268,12 +316,17 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (result != null && result.getContents() != null) {
-            handleScanResult(result.getContents());
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == SPECIMEN_CODE_STEP2_REQUEST && resultCode == RESULT_OK && data != null) {
+            // 将结果传递回 MainActivity
+            setResult(RESULT_OK, data);
+            finish();
         } else {
-            super.onActivityResult(requestCode, resultCode, data);
+            IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+            if (result != null && result.getContents() != null) {
+                handleScanResult(result.getContents());
+            }
         }
     }
 
@@ -295,10 +348,28 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
                 deviceType, deviceInfo.getManufacturer(), deviceInfo.getModel()), 
                 Toast.LENGTH_SHORT).show();
 
+            // 检查是否所有设备都已扫描
+            checkAllDevicesScanned();
+
         } catch (Exception e) {
             Toast.makeText(this, "二维码格式错误，请重试", Toast.LENGTH_SHORT).show();
             Log.e(TAG, "Error parsing QR code", e);
         }
+    }
+
+    private void checkAllDevicesScanned() {
+        // 获取当前选中的位置
+        int selectedPosition = specimenMethodAdapter.getSelectedPosition();
+        if (selectedPosition == RecyclerView.NO_POSITION) {
+            return;
+        }
+
+        // 检查是否已扫描了拌合设备和压实设备
+        DeviceInfo mixingDevice = specimenMethodAdapter.getMixingDevice(selectedPosition);
+        DeviceInfo formingDevice = specimenMethodAdapter.getFormingDevice(selectedPosition);
+
+        // 只有当两种设备都扫描了，才启用下一步按钮
+        btnNext.setEnabled(mixingDevice != null && formingDevice != null);
     }
 
     @Override
