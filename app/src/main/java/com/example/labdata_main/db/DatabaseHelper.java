@@ -76,16 +76,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_MATERIAL_TYPE = "material_type";
 
     // 修改数据库版本号，触发升级
-    private static final int DATABASE_VERSION = 4; // 从3升级到4
+    private static final int DATABASE_VERSION = 5; // 从4升级到5
     
     // 创建用户表的 SQL
     private static final String CREATE_USERS_TABLE = "CREATE TABLE " + TABLE_USERS + "("
             + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-            + COLUMN_COMPANY + " TEXT UNIQUE,"
+            + COLUMN_COMPANY + " TEXT,"  // 移除 UNIQUE 约束
             + COLUMN_NAME + " TEXT,"
             + COLUMN_PHONE + " TEXT,"
             + COLUMN_EMAIL + " TEXT UNIQUE,"
-            + COLUMN_PASSWORD + " TEXT,"  // 添加逗号
+            + COLUMN_PASSWORD + " TEXT,"
             + COLUMN_USER_TYPE + " INTEGER DEFAULT 0"
             + ")";
 
@@ -212,6 +212,35 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 e.printStackTrace();
             }
         }
+        
+        if (oldVersion < 5) {
+            try {
+                // 创建临时表
+                db.execSQL("CREATE TABLE users_temp ("
+                        + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        + COLUMN_COMPANY + " TEXT,"
+                        + COLUMN_NAME + " TEXT,"
+                        + COLUMN_PHONE + " TEXT,"
+                        + COLUMN_EMAIL + " TEXT UNIQUE,"
+                        + COLUMN_PASSWORD + " TEXT,"
+                        + COLUMN_USER_TYPE + " INTEGER DEFAULT 0"
+                        + ")");
+
+                // 复制数据到临时表
+                db.execSQL("INSERT INTO users_temp SELECT * FROM " + TABLE_USERS);
+
+                // 删除旧表
+                db.execSQL("DROP TABLE " + TABLE_USERS);
+
+                // 将临时表重命名为正式表
+                db.execSQL("ALTER TABLE users_temp RENAME TO " + TABLE_USERS);
+
+                Log.d(TAG, "Successfully upgraded users table to version 5");
+            } catch (Exception e) {
+                Log.e(TAG, "Error during database upgrade: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -227,17 +256,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      */
     public long addUser(User user) {
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        // 准备要插入的数据
-        values.put(COLUMN_COMPANY, user.getCompany());
-        values.put(COLUMN_NAME, user.getName());
-        values.put(COLUMN_PHONE, user.getPhone());
-        values.put(COLUMN_EMAIL, user.getEmail());
-        values.put(COLUMN_PASSWORD, user.getPassword());
-        values.put(COLUMN_USER_TYPE, user.getUserType()); // 添加用户类型
-        // 插入数据并获取返回值
-        long id = db.insert(TABLE_USERS, null, values);
-        db.close();
+        long id = -1;
+        
+        try {
+            ContentValues values = new ContentValues();
+            // 准备要插入的数据
+            values.put(COLUMN_COMPANY, user.getCompany());
+            values.put(COLUMN_NAME, user.getName());
+            values.put(COLUMN_PHONE, user.getPhone());
+            values.put(COLUMN_EMAIL, user.getEmail());
+            values.put(COLUMN_PASSWORD, user.getPassword());
+            values.put(COLUMN_USER_TYPE, user.getUserType());
+
+            // 插入数据并获取返回值
+            id = db.insert(TABLE_USERS, null, values);
+            
+            if (id == -1) {
+                Log.e(TAG, "Failed to insert user. Email: " + user.getEmail() + ", Company: " + user.getCompany());
+            } else {
+                Log.d(TAG, "Successfully inserted user with ID: " + id);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error inserting user: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            db.close();
+        }
         return id;
     }
 

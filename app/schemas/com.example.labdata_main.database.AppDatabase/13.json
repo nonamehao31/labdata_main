@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 10,
-    "identityHash": "5e9ee83f9b8c515d0fbf21b315e0137e",
+    "version": 13,
+    "identityHash": "d2840e5642de94a0c18e30f5b7e8eece",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -386,7 +386,7 @@
       },
       {
         "tableName": "experiment_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -425,6 +425,12 @@
             "notNull": false
           },
           {
+            "fieldPath": "experimenter",
+            "columnName": "experimenter",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
             "fieldPath": "creationTime",
             "columnName": "creationTime",
             "affinity": "INTEGER",
@@ -456,7 +462,7 @@
           },
           {
             "fieldPath": "status",
-            "columnName": "status",
+            "columnName": "task_status",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -703,7 +709,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5e9ee83f9b8c515d0fbf21b315e0137e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd2840e5642de94a0c18e30f5b7e8eece')"
     ]
   }
 }

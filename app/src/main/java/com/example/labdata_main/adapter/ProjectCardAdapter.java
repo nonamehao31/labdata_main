@@ -11,6 +11,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
 import com.example.labdata_main.GenerateSpecimenCodeActivity;
+import com.example.labdata_main.RecordExperimentDataActivity;
 import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
@@ -25,6 +26,7 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
     private List<ExperimentTask> tasks = new ArrayList<>();
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("MM.dd HH:mm", Locale.getDefault());
     private OnProjectCardActionListener listener;
+    public static final int RECORD_EXPERIMENT_DATA_REQUEST = 1001;
 
     public interface OnProjectCardActionListener {
         void onViewMixRatios(ExperimentTask task);
@@ -39,7 +41,15 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
     }
 
     public void setTasks(List<ExperimentTask> tasks) {
-        this.tasks = tasks;
+        this.tasks.clear();
+        if (tasks != null) {
+            for (ExperimentTask task : tasks) {
+                // 只添加未完成的任务
+                if (!"已完成".equals(task.getStatus())) {
+                    this.tasks.add(task);
+                }
+            }
+        }
         notifyDataSetChanged();
     }
 
@@ -211,28 +221,29 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
             }
 
             // 设置按钮状态
+            btnStep1Action.setText("查看配比信息");
+            btnStep1Action.setEnabled(true);
+
             if (task.getExperimentCompletionTime() > 0) {
-                btnStep1Action.setText("查看配比信息");
                 btnStep2Action.setText("查看试件码");
+                btnStep2Action.setEnabled(true);
                 btnStep3Action.setText("查看实验数据");
             } else if (task.getSpecimenGenerationTime() > 0) {
-                btnStep1Action.setText("查看配比信息");
                 btnStep2Action.setText("查看试件码");
-                btnStep3Action.setEnabled(true);
+                btnStep2Action.setEnabled(true);
                 btnStep3Action.setText("记录实验数据");
             } else if (task.getPreparationTime() > 0) {
-                btnStep1Action.setText("查看配比信息");
-                btnStep2Action.setEnabled(true);
                 btnStep2Action.setText("生成试件码");
-                btnStep3Action.setEnabled(false);
+                btnStep2Action.setEnabled(true);
                 btnStep3Action.setText("记录实验数据");
             } else {
-                btnStep1Action.setText("查看配比信息");
-                btnStep2Action.setEnabled(false);
                 btnStep2Action.setText("生成试件码");
-                btnStep3Action.setEnabled(false);
+                btnStep2Action.setEnabled(false);
                 btnStep3Action.setText("记录实验数据");
             }
+
+            // 第三步按钮始终启用
+            btnStep3Action.setEnabled(true);
 
             // 设置按钮点击事件
             btnStep1Action.setOnClickListener(v -> {
@@ -256,9 +267,9 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
             });
 
             btnStep3Action.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onRecordExperimentData(task);
-                }
+                Intent intent = new Intent(itemView.getContext(), RecordExperimentDataActivity.class);
+                intent.putExtra("taskId", task.getId());
+                ((FragmentActivity)itemView.getContext()).startActivityForResult(intent, RECORD_EXPERIMENT_DATA_REQUEST);
             });
         }
     }

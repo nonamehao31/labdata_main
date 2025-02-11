@@ -31,9 +31,19 @@ public class DeviceInfo implements Parcelable {
     @SerializedName("purchaseYear")
     private String purchaseYear;
 
+    private String name;
+    private String deviceId;
+
     private transient ExecutorService executorService;
 
     public DeviceInfo() {
+        initExecutorService();
+    }
+
+    public DeviceInfo(String name, String deviceId, String type) {
+        this.name = name;
+        this.deviceId = deviceId;
+        this.type = type;
         initExecutorService();
     }
 
@@ -48,6 +58,8 @@ public class DeviceInfo implements Parcelable {
         manufacturer = in.readString();
         model = in.readString();
         purchaseYear = in.readString();
+        name = in.readString();
+        deviceId = in.readString();
         initExecutorService();
     }
 
@@ -95,6 +107,22 @@ public class DeviceInfo implements Parcelable {
         this.purchaseYear = purchaseYear;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -106,6 +134,8 @@ public class DeviceInfo implements Parcelable {
         dest.writeString(manufacturer);
         dest.writeString(model);
         dest.writeString(purchaseYear);
+        dest.writeString(name);
+        dest.writeString(deviceId);
     }
 
     /**

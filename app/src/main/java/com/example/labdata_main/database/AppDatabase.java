@@ -10,12 +10,14 @@ import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import com.example.labdata_main.dao.DeviceDao;
+import com.example.labdata_main.dao.ExperimentDataDao;
 import com.example.labdata_main.dao.ExperimentTaskDao;
 import com.example.labdata_main.dao.MaterialDao;
 import com.example.labdata_main.dao.MixRatioDao;
 import com.example.labdata_main.dao.MoldingMethodDao;
 import com.example.labdata_main.dao.SpecimenDao;
 import com.example.labdata_main.model.Device;
+import com.example.labdata_main.model.ExperimentData;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.Material;
 import com.example.labdata_main.model.MixDesign;
@@ -30,19 +32,21 @@ import com.example.labdata_main.model.Specimen;
     MixDesign.class, 
     MoldingMethod.class,
     ExperimentTask.class,
+    ExperimentData.class,  // 添加 ExperimentData 实体
     Device.class  // 添加 Device 实体
-}, version = 10)
+}, version = 15)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
     private static final String DATABASE_NAME = "labdata_db";
-    private static AppDatabase instance;
+    private static volatile AppDatabase instance;
 
     public abstract MixRatioDao mixRatioDao();
     public abstract SpecimenDao specimenDao();
     public abstract MaterialDao materialDao();
     public abstract MoldingMethodDao moldingMethodDao();
     public abstract ExperimentTaskDao experimentTaskDao();
+    public abstract ExperimentDataDao experimentDataDao();  // 添加 ExperimentDataDao
     public abstract DeviceDao deviceDao();  // 添加 DeviceDao
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
@@ -69,8 +73,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     "length REAL DEFAULT 0, " +
                     "width REAL DEFAULT 0, " +
                     "height REAL DEFAULT 0, " +
-                    "radius REAL DEFAULT 0, " +
-                    "FOREIGN KEY(mix_ratio_id) REFERENCES mix_ratios(id) ON DELETE CASCADE)");
+                    "radius REAL DEFAULT 0)");
         }
     };
 
@@ -91,8 +94,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     "length REAL NOT NULL DEFAULT 0, " +
                     "width REAL NOT NULL DEFAULT 0, " +
                     "height REAL NOT NULL DEFAULT 0, " +
-                    "radius REAL NOT NULL DEFAULT 0, " +
-                    "FOREIGN KEY(mix_ratio_id) REFERENCES mix_ratios(id) ON DELETE CASCADE)");
+                    "radius REAL NOT NULL DEFAULT 0)");
             database.execSQL("CREATE INDEX index_specimens_mix_ratio_id ON specimens(mix_ratio_id)");
         }
     };
@@ -210,15 +212,81 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_10_11 = new Migration(10, 11) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 创建experiment_data表
+            database.execSQL("CREATE TABLE IF NOT EXISTS `experiment_data` " +
+                    "(`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`taskId` INTEGER NOT NULL, " +
+                    "`experimentName` TEXT, " +
+                    "`input1Label` TEXT, " +
+                    "`input2Label` TEXT, " +
+                    "`input1Value` REAL NOT NULL, " +
+                    "`input2Value` REAL NOT NULL, " +
+                    "`deviceManufacturer` TEXT, " +
+                    "`deviceModel` TEXT, " +
+                    "`devicePurchaseYear` TEXT, " +
+                    "`createTime` INTEGER NOT NULL)");
+
+            // 创建索引
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_experiment_data_experimentName` ON `experiment_data` (`experimentName`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_experiment_data_input1` ON `experiment_data` (`experimentName`, `input1Label`, `input1Value`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_experiment_data_input2` ON `experiment_data` (`experimentName`, `input2Label`, `input2Value`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_experiment_data_device` ON `experiment_data` (`deviceManufacturer`, `deviceModel`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_experiment_data_taskId` ON `experiment_data` (`taskId`)");
+        }
+    };
+
+    static final Migration MIGRATION_11_12 = new Migration(11, 12) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 添加 experimenter 列
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN experimenter TEXT");
+        }
+    };
+
+    static final Migration MIGRATION_12_13 = new Migration(12, 13) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 添加实验人员字段
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN experimenter TEXT");
+            // 添加实验完成时间字段
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN experiment_completion_time INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
+    static final Migration MIGRATION_13_14 = new Migration(13, 14) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 13 to version 14");
+            database.execSQL("ALTER TABLE experiment_data ADD COLUMN mixRatio TEXT");
+            database.execSQL("ALTER TABLE experiment_data ADD COLUMN result TEXT");
+        }
+    };
+
+    static final Migration MIGRATION_14_15 = new Migration(14, 15) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 添加新的索引
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_experiment_data_mixRatio` ON `experiment_data` (`mixRatio`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_experiment_data_result` ON `experiment_data` (`result`)");
+        }
+    };
+
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
-            instance = Room.databaseBuilder(context.getApplicationContext(),
-                    AppDatabase.class, DATABASE_NAME)
-                    .addMigrations(
-                            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
-                    .build();
+            synchronized (AppDatabase.class) {
+                if (instance == null) {
+                    instance = Room.databaseBuilder(context.getApplicationContext(),
+                            AppDatabase.class, DATABASE_NAME)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
+                                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                            .build();
+                }
+            }
         }
         return instance;
     }

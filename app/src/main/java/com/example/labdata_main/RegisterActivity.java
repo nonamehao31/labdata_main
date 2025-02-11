@@ -266,7 +266,13 @@ public class RegisterActivity extends AppCompatActivity {
             Toast.makeText(this, "注册成功", Toast.LENGTH_SHORT).show();
             finish();
         } else {
-            Toast.makeText(this, "注册失败，请重试", Toast.LENGTH_SHORT).show();
+            // 检查是否是邮箱重复导致的失败
+            if (databaseHelper.checkEmail(email)) {
+                etEmail.setError("该邮箱已被注册");
+                etEmail.requestFocus();
+            } else {
+                Toast.makeText(this, "注册失败，请稍后重试", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 }

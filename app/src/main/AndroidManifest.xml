@@ -173,6 +173,10 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".RecordExperimentDataActivity"
+            android:exported="false" />
+
+        <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
             android:screenOrientation="portrait"
             tools:replace="android:screenOrientation"
@@ -184,6 +188,17 @@
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
+        <activity android:name=".ScanActivity"
+            android:theme="@style/Theme.MaterialComponents.Light.NoActionBar"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ExperimentAnalysisActivity"
+            android:exported="false"
+            android:label="实验数据分析"/>
+        <activity android:name=".RealExperimentAnalysisActivity"
+            android:exported="false"/>
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -3,25 +3,31 @@ package com.example.labdata_main;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.example.labdata_main.database.AppDatabase;
-import com.example.labdata_main.model.Device;
+import com.example.labdata_main.adapter.ProjectCardAdapter;
+import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.ProjectStatus;
+import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.utils.SharedPrefsManager;
+import com.example.labdata_main.model.Device;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import android.database.Cursor;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,6 +47,35 @@ public class MainActivity extends AppCompatActivity {
         database = AppDatabase.getInstance(this);
         sharedPrefsManager = new SharedPrefsManager(this);
         executorService = Executors.newSingleThreadExecutor();
+
+        // 添加数据库调试代码
+        executorService.execute(() -> {
+            try {
+                // 获取数据库实例
+                AppDatabase db = AppDatabase.getInstance(this);
+                // 获取可写数据库
+                SupportSQLiteDatabase sqliteDb = ((androidx.room.RoomDatabase) db).getOpenHelper().getWritableDatabase();
+                
+                // 查询experiment_tasks表的结构
+                Cursor cursor = sqliteDb.query("SELECT * FROM sqlite_master WHERE type='table' AND name='experiment_tasks'");
+                if (cursor.moveToFirst()) {
+                    String sql = cursor.getString(cursor.getColumnIndex("sql"));
+                    Log.d("DatabaseDebug", "experiment_tasks table structure: " + sql);
+                }
+                cursor.close();
+                
+                // 查询所有任务的状态
+                cursor = sqliteDb.query("SELECT id, task_status FROM experiment_tasks");
+                while (cursor.moveToNext()) {
+                    long id = cursor.getLong(cursor.getColumnIndex("id"));
+                    String status = cursor.getString(cursor.getColumnIndex("task_status"));
+                    Log.d("DatabaseDebug", "Task " + id + " status: " + status);
+                }
+                cursor.close();
+            } catch (Exception e) {
+                Log.e("DatabaseDebug", "Error querying database", e);
+            }
+        });
 
         // 检查是否需要设备初始化
         checkEquipmentInitialization();
@@ -176,7 +211,36 @@ public class MainActivity extends AppCompatActivity {
 
             // 显示成功提示
             Toast.makeText(this, "制件环节已完成，实验环节开始", Toast.LENGTH_SHORT).show();
+
+            // 刷新任务列表
+            executorService.execute(() -> {
+                List<ExperimentTask> tasks = database.experimentTaskDao().getTasksByType();
+                runOnUiThread(() -> {
+                    RecyclerView recyclerView = findViewById(R.id.rvProjects);
+                    if (recyclerView != null && recyclerView.getAdapter() instanceof ProjectCardAdapter) {
+                        ProjectCardAdapter adapter = (ProjectCardAdapter) recyclerView.getAdapter();
+                        adapter.setTasks(tasks);
+                        adapter.notifyDataSetChanged();
+                    }
+                });
+            });
+        } else if (requestCode == ProjectCardAdapter.RECORD_EXPERIMENT_DATA_REQUEST && resultCode == RESULT_OK) {
+            // 刷新任务列表
+            loadTasks();
         }
+    }
+
+    private void loadTasks() {
+        executorService.execute(() -> {
+            List<ExperimentTask> tasks = database.experimentTaskDao().getAllExperimentTasks();
+            runOnUiThread(() -> {
+                RecyclerView recyclerView = findViewById(R.id.task_recycler_view);
+                if (recyclerView != null && recyclerView.getAdapter() instanceof ProjectCardAdapter) {
+                    ProjectCardAdapter adapter = (ProjectCardAdapter) recyclerView.getAdapter();
+                    adapter.setTasks(tasks);
+                }
+            });
+        });
     }
 
     // 启动制件码生成活动时使用

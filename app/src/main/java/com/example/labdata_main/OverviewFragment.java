@@ -203,14 +203,13 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void loadExperimentTasks() {
         executor.execute(() -> {
             try {
-                // 获取当前用户的公司ID
                 String companyId = sharedPrefsManager.getUserCompany();
                 if (companyId == null) {
                     Log.e("OverviewFragment", "Company ID is null");
                     return;
                 }
 
-                // 获取该公司的所有任务
+                // 获取未完成的任务
                 List<ExperimentTask> allTasks = database.experimentTaskDao().getTasksByCompany(companyId);
                 
                 // 分离已接受和未接受的任务
@@ -220,7 +219,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 for (ExperimentTask task : allTasks) {
                     if (task.getStatus() != null && task.getStatus().equals("已接受")) {
                         acceptedTasks.add(task);
-                    } else {
+                    } else if (task.getStatus() == null || !task.getStatus().equals("已完成")) {
                         unacceptedTasks.add(task);
                     }
                 }

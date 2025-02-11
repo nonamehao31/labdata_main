@@ -1,6 +1,5 @@
 package com.example.labdata_main.dao;
 
-import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
@@ -23,30 +22,34 @@ public interface ExperimentTaskDao {
     void delete(ExperimentTask task);
 
     @Query("SELECT * FROM experiment_tasks WHERE id = :id")
-    ExperimentTask getTaskById(long id);
+    ExperimentTask getTaskById(int id);
+
+    @Query("SELECT * FROM experiment_tasks WHERE id = :taskId")
+    ExperimentTask getExperimentTaskById(long taskId);
 
     @Query("SELECT * FROM experiment_tasks WHERE taskId = :taskId")
     ExperimentTask getTaskByTaskId(String taskId);
 
-    @Query("SELECT * FROM experiment_tasks WHERE projectId = :projectId")
-    List<ExperimentTask> getTasksByProject(long projectId);
-
-    @Query("SELECT * FROM experiment_tasks ORDER BY creationTime DESC")
-    LiveData<List<ExperimentTask>> getAllTasks();
-
-    @Query("SELECT * FROM experiment_tasks")
-    List<ExperimentTask> getAllTasksList();
+    @Query("SELECT * FROM experiment_tasks WHERE taskId LIKE :prefix || '%'")
+    List<ExperimentTask> getTasksByPrefix(String prefix);
 
     @Query("SELECT COUNT(*) FROM experiment_tasks WHERE taskId LIKE :prefix || '%'")
     int getTaskCountByPrefix(String prefix);
 
-    @Query("SELECT * FROM experiment_tasks WHERE companyId = :companyId ORDER BY creationTime DESC")
+    @Query("SELECT * FROM experiment_tasks WHERE companyId = :companyId AND task_status = '已完成' ORDER BY creationTime DESC")
+    List<ExperimentTask> getCompletedTasksByCompany(String companyId);
+
+    @Query("SELECT * FROM experiment_tasks WHERE companyId = :companyId AND (task_status IS NULL OR task_status != '已完成') ORDER BY creationTime DESC")
     List<ExperimentTask> getTasksByCompany(String companyId);
 
-    // 获取所有任务，然后在代码中过滤
+    @Query("SELECT * FROM experiment_tasks WHERE task_status != '已完成' ORDER BY creationTime DESC")
+    List<ExperimentTask> getAllExperimentTasks();
+
     @Query("SELECT * FROM experiment_tasks")
     List<ExperimentTask> getTasksByType();
 
-    @Query("SELECT * FROM experiment_tasks WHERE id = :taskId")
-    ExperimentTask getExperimentTaskById(long taskId);
+    @Query("SELECT * FROM experiment_tasks WHERE companyId = :companyId AND task_status = '已完成' " +
+           "AND experiment_completion_time BETWEEN :startTime AND :endTime " +
+           "ORDER BY experiment_completion_time DESC")
+    List<ExperimentTask> getCompletedTasksByTimeRange(String companyId, long startTime, long endTime);
 }
