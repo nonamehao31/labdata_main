@@ -26,7 +26,7 @@ public class AssignTaskActivity extends AppCompatActivity implements ProjectAdap
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_assign_task);
+        setContentView(R.layout.activity_experiment_task_setup);
 
         databaseHelper = new DatabaseHelper(this);
         initViews();

@@ -61,12 +61,12 @@ public class ExperimentFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.experiment, container, false);
 
-        experimentRecyclerView = view.findViewById(R.id.experimentRecyclerView);
+        experimentRecyclerView = view.findViewById(R.id.rvCompletedExperiments);
         emptyExperimentText = view.findViewById(R.id.empty_experiment_text);
         
         // 数据筛选按钮
-        MaterialButton btnAnalyzeData = view.findViewById(R.id.btnAnalyzeData);
-        btnAnalyzeData.setOnClickListener(v -> {
+        MaterialButton btnDataFilter = view.findViewById(R.id.btnDataFilter);
+        btnDataFilter.setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), ExperimentAnalysisActivity.class);
             startActivity(intent);
         });

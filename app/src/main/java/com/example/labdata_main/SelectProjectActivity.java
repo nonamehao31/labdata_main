@@ -28,7 +28,7 @@ public class SelectProjectActivity extends AppCompatActivity implements ProjectS
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_select_project);
+        setContentView(R.layout.fragment_select_project);
 
         databaseHelper = new DatabaseHelper(this);
         initViews();

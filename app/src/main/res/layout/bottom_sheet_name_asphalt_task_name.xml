@@ -4,13 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@drawable/bottom_sheet_background">
+    android:padding="16dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="添加沥青混合料实验任务"
+        android:text="添加沥青实验任务"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="@color/black"
@@ -25,28 +24,27 @@
         android:layout_marginBottom="8dp"/>
 
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/experimentNameLayout"
+        android:id="@+id/textInputLayoutAsphaltTaskName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="16dp"
+        android:hint="请输入实验任务名称"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/experimentNameInput"
+            android:id="@+id/editTextAsphaltTaskName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="请输入实验任务名称"
             android:inputType="text"
-            android:maxLines="1" />
+            android:maxLines="1"/>
 
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/nextStepButton"
+        android:id="@+id/btnConfirmAsphaltTaskName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="下一步"
         android:padding="12dp"
         app:cornerRadius="8dp"/>
-
 </LinearLayout>

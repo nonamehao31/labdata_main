@@ -23,18 +23,29 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class RealExperimentAnalysisActivity extends AppCompatActivity {
     private LineChart lineChart;
     private Spinner spinnerMixRatio;
+    private Spinner spinnerExperimentType;
     private RecyclerView rvExperimentData;
     private AppDatabase database;
     private ExperimentDataDao experimentDataDao;
     private ExperimentResultAdapter adapter;
+    private String currentMixRatio;
+    private String currentExperimentType;
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +63,7 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
         // 初始化视图
         lineChart = findViewById(R.id.lineChart);
         spinnerMixRatio = findViewById(R.id.spinnerMixRatio);
+        spinnerExperimentType = findViewById(R.id.spinnerExperimentType);
         rvExperimentData = findViewById(R.id.rvExperimentData);
 
         // 初始化数据库
@@ -73,8 +85,20 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
         spinnerMixRatio.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedMixRatio = parent.getItemAtPosition(position).toString();
-                loadExperimentData(selectedMixRatio);
+                currentMixRatio = parent.getItemAtPosition(position).toString();
+                loadExperimentTypes(currentMixRatio);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
+        spinnerExperimentType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                currentExperimentType = parent.getItemAtPosition(position).toString();
+                loadExperimentData(currentMixRatio, currentExperimentType);
             }
 
             @Override
@@ -84,24 +108,23 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
     }
 
     private void setupLineChart() {
-        // 配置X轴
-        XAxis xAxis = lineChart.getXAxis();
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setDrawGridLines(false);
-
-        // 配置Y轴
-        YAxis leftAxis = lineChart.getAxisLeft();
-        leftAxis.setDrawGridLines(true);
-        lineChart.getAxisRight().setEnabled(false);
-
-        // 其他配置
-        lineChart.setDescription(null);
-        lineChart.setDrawBorders(true);
+        lineChart.getDescription().setEnabled(false);
         lineChart.setTouchEnabled(true);
         lineChart.setDragEnabled(true);
         lineChart.setScaleEnabled(true);
         lineChart.setPinchZoom(true);
-        lineChart.setBackgroundColor(Color.WHITE);
+        lineChart.setDrawGridBackground(false);
+
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setGranularity(1f);
+        xAxis.setLabelRotationAngle(-45);
+
+        YAxis leftAxis = lineChart.getAxisLeft();
+        leftAxis.setDrawGridLines(true);
+
+        lineChart.getAxisRight().setEnabled(false);
+        lineChart.getLegend().setEnabled(true);
     }
 
     private void loadMixRatios() {
@@ -111,7 +134,6 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
             for (ExperimentData experiment : experiments) {
                 String mixRatiosStr = experiment.getMixRatio();
                 if (mixRatiosStr != null && !mixRatiosStr.trim().isEmpty()) {
-                    // 拆分配比字符串
                     String[] ratios = mixRatiosStr.split(",");
                     for (String ratio : ratios) {
                         String trimmedRatio = ratio.trim();
@@ -126,7 +148,6 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
             java.util.Collections.sort(sortedMixRatios);
             
             if (sortedMixRatios.isEmpty()) {
-                // 如果没有配比数据，显示提示信息
                 TextView emptyView = new TextView(this);
                 emptyView.setText("暂无配比数据");
                 emptyView.setGravity(android.view.Gravity.CENTER);
@@ -134,6 +155,7 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
                 emptyView.setTextColor(Color.GRAY);
                 ((ViewGroup) spinnerMixRatio.getParent()).addView(emptyView);
                 spinnerMixRatio.setVisibility(View.GONE);
+                spinnerExperimentType.setVisibility(View.GONE);
                 return;
             }
 
@@ -145,25 +167,76 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerMixRatio.setAdapter(adapter);
             
-            // 如果只有一个配比，自动选择它
             if (sortedMixRatios.size() == 1) {
-                loadExperimentData(sortedMixRatios.get(0));
+                currentMixRatio = sortedMixRatios.get(0);
+                loadExperimentTypes(currentMixRatio);
             }
         });
     }
 
-    private void loadExperimentData(String selectedMixRatio) {
+    private void loadExperimentTypes(String selectedMixRatio) {
         LiveData<List<ExperimentData>> experimentsLiveData = experimentDataDao.getAllExperiments();
         experimentsLiveData.observe(this, experiments -> {
-            List<ExperimentData> filteredExperiments = new ArrayList<>();
+            Set<String> experimentTypes = new HashSet<>();
             for (ExperimentData experiment : experiments) {
                 String mixRatiosStr = experiment.getMixRatio();
                 if (mixRatiosStr != null) {
-                    // 拆分配比字符串并检查是否包含选中的配比
+                    String[] ratios = mixRatiosStr.split(",");
+                    for (String ratio : ratios) {
+                        if (selectedMixRatio.equals(ratio.trim())) {
+                            experimentTypes.add(experiment.getExperimentName());
+                            break;
+                        }
+                    }
+                }
+            }
+
+            List<String> sortedTypes = new ArrayList<>(experimentTypes);
+            java.util.Collections.sort(sortedTypes);
+
+            if (sortedTypes.isEmpty()) {
+                spinnerExperimentType.setVisibility(View.GONE);
+                return;
+            }
+
+            spinnerExperimentType.setVisibility(View.VISIBLE);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                sortedTypes
+            );
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerExperimentType.setAdapter(adapter);
+
+            if (sortedTypes.size() == 1) {
+                currentExperimentType = sortedTypes.get(0);
+                loadExperimentData(selectedMixRatio, currentExperimentType);
+            }
+        });
+    }
+
+    private void loadExperimentData(String selectedMixRatio, String selectedExperimentType) {
+        LiveData<List<ExperimentData>> experimentsLiveData = experimentDataDao.getAllExperiments();
+        experimentsLiveData.observe(this, experiments -> {
+            List<ExperimentData> filteredExperiments = new ArrayList<>();
+            Map<String, List<ExperimentData>> subTypeData = new TreeMap<>();
+
+            for (ExperimentData experiment : experiments) {
+                String mixRatiosStr = experiment.getMixRatio();
+                if (mixRatiosStr != null && experiment.getExperimentName().equals(selectedExperimentType)) {
                     String[] ratios = mixRatiosStr.split(",");
                     for (String ratio : ratios) {
                         if (selectedMixRatio.equals(ratio.trim())) {
                             filteredExperiments.add(experiment);
+                            
+                            // 按输入标签分组
+                            String subType = experiment.getInput1Label();
+                            subTypeData.computeIfAbsent(subType, k -> new ArrayList<>()).add(experiment);
+                            
+                            if (experiment.getInput2Label() != null && !experiment.getInput2Label().isEmpty()) {
+                                subType = experiment.getInput2Label();
+                                subTypeData.computeIfAbsent(subType, k -> new ArrayList<>()).add(experiment);
+                            }
                             break;
                         }
                     }
@@ -175,36 +248,73 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
 
             // 更新图表数据
-            updateLineChart(filteredExperiments);
+            updateLineChart(subTypeData);
         });
     }
 
-    private void updateLineChart(List<ExperimentData> experiments) {
-        List<Entry> entries = new ArrayList<>();
-        for (int i = 0; i < experiments.size(); i++) {
-            ExperimentData experiment = experiments.get(i);
-            try {
-                float result = Float.parseFloat(experiment.getResult());
-                entries.add(new Entry(i, result));
-            } catch (NumberFormatException e) {
-                // 跳过无法解析为数字的结果
-                continue;
+    private void updateLineChart(Map<String, List<ExperimentData>> subTypeData) {
+        lineChart.clear();
+        List<ILineDataSet> dataSets = new ArrayList<>();
+        List<String> xAxisLabels = new ArrayList<>();
+        
+        int colorIndex = 0;
+        int[] colors = new int[]{
+            Color.rgb(255, 87, 34),  // 深橙色
+            Color.rgb(33, 150, 243), // 蓝色
+            Color.rgb(76, 175, 80),  // 绿色
+            Color.rgb(156, 39, 176), // 紫色
+            Color.rgb(255, 152, 0),  // 橙色
+            Color.rgb(3, 169, 244),  // 浅蓝色
+        };
+
+        for (Map.Entry<String, List<ExperimentData>> entry : subTypeData.entrySet()) {
+            String subType = entry.getKey();
+            List<ExperimentData> dataList = entry.getValue();
+            List<Entry> entries = new ArrayList<>();
+            
+            // 按时间排序
+            dataList.sort((a, b) -> Long.compare(a.getCreateTime(), b.getCreateTime()));
+            
+            // 生成数据点
+            for (int i = 0; i < dataList.size(); i++) {
+                ExperimentData data = dataList.get(i);
+                float value;
+                if (subType.equals(data.getInput1Label())) {
+                    value = (float) data.getInput1Value();
+                } else {
+                    value = (float) data.getInput2Value();
+                }
+                entries.add(new Entry(i, value));
+                
+                // 添加时间标签
+                String timeLabel = dateFormat.format(new Date(data.getCreateTime()));
+                if (i >= xAxisLabels.size()) {
+                    xAxisLabels.add(timeLabel);
+                }
             }
+            
+            // 创建数据集
+            LineDataSet dataSet = new LineDataSet(entries, subType);
+            dataSet.setColor(colors[colorIndex % colors.length]);
+            dataSet.setCircleColor(colors[colorIndex % colors.length]);
+            dataSet.setLineWidth(2f);
+            dataSet.setCircleRadius(4f);
+            dataSet.setDrawCircleHole(false);
+            dataSet.setValueTextSize(9f);
+            dataSet.setDrawValues(true);
+            dataSet.setMode(LineDataSet.Mode.LINEAR);
+            dataSet.setCubicIntensity(0.2f);
+            
+            dataSets.add(dataSet);
+            colorIndex++;
         }
 
-        if (entries.isEmpty()) {
-            lineChart.clear();
-            return;
-        }
-
-        LineDataSet dataSet = new LineDataSet(entries, "实验结果");
-        dataSet.setColor(Color.BLUE);
-        dataSet.setCircleColor(Color.BLUE);
-        dataSet.setLineWidth(2f);
-        dataSet.setCircleRadius(4f);
-        dataSet.setDrawValues(true);
-
-        LineData lineData = new LineData(dataSet);
+        // 设置X轴标签
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(xAxisLabels));
+        
+        // 更新图表
+        LineData lineData = new LineData(dataSets);
         lineChart.setData(lineData);
         lineChart.invalidate();
     }

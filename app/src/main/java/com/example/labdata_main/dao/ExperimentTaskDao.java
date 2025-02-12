@@ -52,4 +52,7 @@ public interface ExperimentTaskDao {
            "AND experiment_completion_time BETWEEN :startTime AND :endTime " +
            "ORDER BY experiment_completion_time DESC")
     List<ExperimentTask> getCompletedTasksByTimeRange(String companyId, long startTime, long endTime);
+
+    @Query("SELECT * FROM experiment_tasks WHERE taskName = :taskName LIMIT 1")
+    ExperimentTask getTaskByName(String taskName);
 }

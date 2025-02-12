@@ -49,6 +49,7 @@ public class ExperimentTask implements Parcelable {
     @TypeConverters(Converters.class)
     private List<String> selectedFormingDevices;  // 选择的成型设备
     private String notes;
+    private String experimentType; // 新增实验类型字段：MIXTURE 或 ASPHALT
 
     public ExperimentTask() {
         selectedMixRatios = new ArrayList<>();
@@ -73,6 +74,7 @@ public class ExperimentTask implements Parcelable {
         status = in.readString();
         moldingMethod = in.readString();
         notes = in.readString();
+        experimentType = in.readString();
 
         // 使用Gson来序列化和反序列化复杂对象
         Gson gson = new Gson();
@@ -114,6 +116,7 @@ public class ExperimentTask implements Parcelable {
         dest.writeString(status);
         dest.writeString(moldingMethod);
         dest.writeString(notes);
+        dest.writeString(experimentType);
 
         // 使用Gson来序列化复杂对象
         Gson gson = new Gson();
@@ -291,5 +294,13 @@ public class ExperimentTask implements Parcelable {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getExperimentType() {
+        return experimentType;
+    }
+
+    public void setExperimentType(String experimentType) {
+        this.experimentType = experimentType;
     }
 }

@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,7 +33,9 @@ import com.example.labdata_main.fragment.BottomSheetMakeSpecimenFragment;
 import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.utils.SharedPrefsManager;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -119,13 +122,11 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
         // 初始化添加实验任务按钮
         MaterialButton addExperimentButton = view.findViewById(R.id.assign_task_button);
-        addExperimentButton.setOnClickListener(v -> {
-            AddExperimentBottomSheet bottomSheet = AddExperimentBottomSheet.newInstance();
-            bottomSheet.setOnExperimentNameSubmitListener(experimentName -> {
-                ExperimentTaskSetupActivity.start(requireContext(), experimentName);
-            });
-            bottomSheet.show(getChildFragmentManager(), "bottom_sheet_add_experiment");
-        });
+        addExperimentButton.setOnClickListener(v -> showAddExperimentDialog());
+
+        // 初始化添加沥青实验任务按钮
+        MaterialButton addAsphaltExperimentButton = view.findViewById(R.id.add_asphalt_task_button);
+        addAsphaltExperimentButton.setOnClickListener(v -> showAddAsphaltTaskDialog());
 
         // 创建下拉菜单选项
         String[] items = new String[]{"请选择实验类型", "混合料实验", "沥青试验"};
@@ -250,6 +251,67 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 Log.e("OverviewFragment", "Error loading tasks", e);
             }
         });
+    }
+
+    private void showAddExperimentDialog() {
+        AddExperimentBottomSheet bottomSheet = AddExperimentBottomSheet.newInstance();
+        bottomSheet.setOnExperimentNameSubmitListener(experimentName -> {
+            // 创建新的实验任务
+            ExperimentTask task = new ExperimentTask();
+            task.setTaskName(experimentName);
+            task.setStatus("未接受");
+            task.setExperimentType("MIXTURE"); // 设置为混合料实验类型
+
+            // 保存到数据库并跳转
+            executor.execute(() -> {
+                // 保存到数据库
+                AppDatabase.getInstance(requireContext()).experimentTaskDao().insert(task);
+                
+                // 在主线程更新UI和跳转
+                requireActivity().runOnUiThread(() -> {
+                    loadExperimentTasks();
+                    // 跳转到实验设置页面
+                    ExperimentTaskSetupActivity.start(requireContext(), experimentName);
+                });
+            });
+        });
+        bottomSheet.show(getChildFragmentManager(), "bottom_sheet_add_experiment");
+    }
+
+    private void showAddAsphaltTaskDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        View dialogView = getLayoutInflater().inflate(R.layout.bottom_sheet_name_asphalt_task_name, null);
+        dialog.setContentView(dialogView);
+
+        TextInputEditText editTextAsphaltTaskName = dialogView.findViewById(R.id.editTextAsphaltTaskName);
+        MaterialButton btnConfirm = dialogView.findViewById(R.id.btnConfirmAsphaltTaskName);
+
+        btnConfirm.setOnClickListener(v -> {
+            String taskName = editTextAsphaltTaskName.getText().toString().trim();
+            if (!taskName.isEmpty()) {
+                // 创建新的实验任务
+                ExperimentTask task = new ExperimentTask();
+                task.setTaskName(taskName);
+                task.setStatus("未接受");
+                task.setExperimentType("ASPHALT"); // 设置为沥青实验类型
+                task.setCompanyId(sharedPrefsManager.getUserCompany()); // 设置公司ID
+
+                // 保存到数据库并跳转
+                executor.execute(() -> {
+                    // 保存到数据库
+                    AppDatabase.getInstance(requireContext()).experimentTaskDao().insert(task);
+                    
+                    // 在主线程更新UI和跳转
+                    requireActivity().runOnUiThread(() -> {
+                        loadExperimentTasks(); // 刷新任务列表
+                        dialog.dismiss();
+                        AsphaltExperimentTaskSetupActivity.start(requireContext(), taskName);
+                    });
+                });
+            }
+        });
+
+        dialog.show();
     }
 
     @Override

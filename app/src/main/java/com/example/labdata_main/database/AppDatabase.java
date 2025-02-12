@@ -12,6 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 import com.example.labdata_main.dao.DeviceDao;
 import com.example.labdata_main.dao.ExperimentDataDao;
 import com.example.labdata_main.dao.ExperimentTaskDao;
+import com.example.labdata_main.dao.ExperimentTypeDao;
 import com.example.labdata_main.dao.MaterialDao;
 import com.example.labdata_main.dao.MixRatioDao;
 import com.example.labdata_main.dao.MoldingMethodDao;
@@ -19,11 +20,14 @@ import com.example.labdata_main.dao.SpecimenDao;
 import com.example.labdata_main.model.Device;
 import com.example.labdata_main.model.ExperimentData;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.model.ExperimentType;
 import com.example.labdata_main.model.Material;
 import com.example.labdata_main.model.MixDesign;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
 import com.example.labdata_main.model.Specimen;
+import java.util.Arrays;
+import java.util.List;
 
 @Database(entities = {
     MixRatio.class, 
@@ -33,8 +37,9 @@ import com.example.labdata_main.model.Specimen;
     MoldingMethod.class,
     ExperimentTask.class,
     ExperimentData.class,  // 添加 ExperimentData 实体
-    Device.class  // 添加 Device 实体
-}, version = 15)
+    Device.class,  // 添加 Device 实体
+    ExperimentType.class  // 添加 ExperimentType 实体
+}, version = 17)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
@@ -48,6 +53,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract ExperimentTaskDao experimentTaskDao();
     public abstract ExperimentDataDao experimentDataDao();  // 添加 ExperimentDataDao
     public abstract DeviceDao deviceDao();  // 添加 DeviceDao
+    public abstract ExperimentTypeDao experimentTypeDao();  // 添加 ExperimentTypeDao
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -274,6 +280,26 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_15_16 = new Migration(15, 16) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 15 to version 16");
+            database.execSQL("ALTER TABLE experiment_tasks ADD COLUMN experimentType TEXT");
+            database.execSQL("UPDATE experiment_tasks SET experimentType = 'MIXTURE' WHERE experimentType IS NULL");
+        }
+    };
+
+    static final Migration MIGRATION_16_17 = new Migration(16, 17) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 16 to version 17");
+            database.execSQL("CREATE TABLE IF NOT EXISTS experiment_types (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "name TEXT NOT NULL, " +
+                    "type TEXT NOT NULL)");
+        }
+    };
+
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
@@ -283,11 +309,48 @@ public abstract class AppDatabase extends RoomDatabase {
                             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
                                     MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
                                     MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
-                                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+                            .addCallback(new Callback() {
+                                @Override
+                                public void onCreate(@NonNull SupportSQLiteDatabase db) {
+                                    super.onCreate(db);
+                                    // 在新线程中初始化数据
+                                    new Thread(() -> initializeData(context)).start();
+                                }
+                            })
                             .build();
                 }
             }
         }
         return instance;
+    }
+
+    private static void initializeData(Context context) {
+        ExperimentTypeDao dao = getInstance(context).experimentTypeDao();
+        
+        // 检查是否已经初始化
+        if (dao.getCount() > 0) {
+            return;
+        }
+
+        // 预设实验类型
+        List<ExperimentType> experimentTypes = Arrays.asList(
+            new ExperimentType("沥青密度与相对密度试验", "ASPHALT"),
+            new ExperimentType("沥青针入度试验", "ASPHALT"),
+            new ExperimentType("沥青延度试验", "ASPHALT"),
+            new ExperimentType("沥青软化点试验（环球法）", "ASPHALT"),
+            new ExperimentType("沥青薄膜加热试验", "ASPHALT"),
+            new ExperimentType("沥青旋转薄膜加热试验", "ASPHALT"),
+            new ExperimentType("沥青闪点与燃点试验（克利夫兰开口杯法）", "ASPHALT"),
+            new ExperimentType("沥青旋转黏度试验（布洛克菲尔德黏度计法）", "ASPHALT"),
+            new ExperimentType("沥青弯曲蠕变劲度试验（弯曲梁流变仪法）", "ASPHALT"),
+            new ExperimentType("沥青流变性质试验（动态剪切流变仪法）", "ASPHALT"),
+            new ExperimentType("沥青断裂性能试验（直接拉伸法）", "ASPHALT"),
+            new ExperimentType("压力老化容器加速沥青老化试验", "ASPHALT"),
+            new ExperimentType("沥青多重应力蠕变恢复试验（MSCR）", "ASPHALT"),
+            new ExperimentType("沥青拉伸性能试验（测力延度仪法）", "ASPHALT")
+        );
+
+        dao.insertAll(experimentTypes);
     }
 }

@@ -104,7 +104,7 @@
                     android:orientation="horizontal"
                     android:padding="12dp"
                     android:gravity="center"
-                    android:weightSum="2">
+                    android:weightSum="3">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/assign_task_button"
@@ -113,6 +113,19 @@
                         android:layout_weight="0.95"
                         android:layout_marginEnd="8dp"
                         android:text="制定实验任务"
+                        android:textSize="15sp"
+                        app:cornerRadius="8dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        style="@style/Widget.MaterialComponents.Button"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/add_asphalt_task_button"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="0.95"
+                        android:layout_marginEnd="8dp"
+                        android:text="制定沥青任务"
                         android:textSize="15sp"
                         app:cornerRadius="8dp"
                         android:insetTop="0dp"
