@@ -148,21 +148,7 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
                 viewPager.setCurrentItem(currentStep + 1);
             } else {
                 // 在后台线程中保存任务
-                executor.execute(() -> {
-                    try {
-                        saveExperimentTask();
-                        // 在主线程中显示成功消息并关闭页面
-                        runOnUiThread(() -> {
-                            Toast.makeText(this, "任务保存成功", Toast.LENGTH_SHORT).show();
-                            finish();
-                        });
-                    } catch (Exception e) {
-                        // 在主线程中显示错误消息
-                        runOnUiThread(() -> {
-                            Toast.makeText(this, "保存失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                });
+                saveExperimentTask();
             }
         });
     }
@@ -175,26 +161,15 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         SelectMoldingMethodFragment moldingMethodFragment = pagerAdapter.getMoldingMethodFragment();
         ExperimentAssignmentFragment assignmentFragment = pagerAdapter.getExperimentAssignmentFragment();
 
-        if (mixRatioFragment == null || moldingMethodFragment == null || assignmentFragment == null) {
-            throw new IllegalStateException("必要的Fragment未初始化");
-        }
-
-        String taskId = TaskIdGenerator.generateTaskId(this);
-
-        // 获取当前用户的公司ID
-        String companyId = sharedPrefsManager.getUserCompany();
-        if (companyId == null) {
-            throw new IllegalStateException("无法获取公司信息");
-        }
-
         ExperimentTask task = new ExperimentTask();
-        task.setTaskId(taskId);
-        task.setTaskName(taskName);  // 设置任务名称
-        task.setCompanyId(companyId); // 设置公司ID
+        task.setTaskName(taskName);
+        task.setStatus("未接受");
+        task.setExperimentType("MIXTURE"); // 设置为混合料实验类型
+        task.setCompanyId(sharedPrefsManager.getUserCompany()); // 设置公司ID
         task.setProjectId(selectedProject.getId());
-        task.setProjectName(selectedProject.getName());  // 设置项目名称
-        
-        // 将日期字符串转换为时间戳
+        task.setProjectName(selectedProject.getName());
+
+        // 设置截止日期
         try {
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
             String deadlineStr = selectedProject.getDeadline();
@@ -215,11 +190,16 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         task.setNotes(assignmentFragment.getNotes());
         task.setCreationTime(System.currentTimeMillis());
 
-        AppDatabase.getInstance(this).experimentTaskDao().insert(task);
+        executor.execute(() -> {
+            AppDatabase.getInstance(this).experimentTaskDao().insert(task);
 
-        // 发送广播通知主页刷新
-        Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
-        sendBroadcast(refreshIntent);
+            // 发送广播通知主页刷新
+            Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+            sendBroadcast(refreshIntent);
+
+            // 返回主页
+            finish();
+        });
     }
 
     private void updateStepIndicators() {

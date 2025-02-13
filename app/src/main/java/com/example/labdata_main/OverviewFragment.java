@@ -13,7 +13,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,14 +20,13 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
-import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.adapter.ExperimentTaskAdapter;
 import com.example.labdata_main.adapter.ProjectCardAdapter;
 import com.example.labdata_main.database.AppDatabase;
+import com.example.labdata_main.fragment.BottomSheetAsphaltTaskDetailFragment;
 import com.example.labdata_main.fragment.BottomSheetMakeSpecimenFragment;
 import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
@@ -38,7 +36,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -128,15 +125,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         MaterialButton addAsphaltExperimentButton = view.findViewById(R.id.add_asphalt_task_button);
         addAsphaltExperimentButton.setOnClickListener(v -> showAddAsphaltTaskDialog());
 
-        // 创建下拉菜单选项
-        String[] items = new String[]{"请选择实验类型", "混合料实验", "沥青试验"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                requireContext(),
-                R.layout.spinner_item,
-                items
-        );
-        adapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
-        spinner.setAdapter(adapter);
+        // 设置下拉菜单选项
         spinner.setOnItemSelectedListener(this);
 
         // 加载实验任务
@@ -256,24 +245,8 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void showAddExperimentDialog() {
         AddExperimentBottomSheet bottomSheet = AddExperimentBottomSheet.newInstance();
         bottomSheet.setOnExperimentNameSubmitListener(experimentName -> {
-            // 创建新的实验任务
-            ExperimentTask task = new ExperimentTask();
-            task.setTaskName(experimentName);
-            task.setStatus("未接受");
-            task.setExperimentType("MIXTURE"); // 设置为混合料实验类型
-
-            // 保存到数据库并跳转
-            executor.execute(() -> {
-                // 保存到数据库
-                AppDatabase.getInstance(requireContext()).experimentTaskDao().insert(task);
-                
-                // 在主线程更新UI和跳转
-                requireActivity().runOnUiThread(() -> {
-                    loadExperimentTasks();
-                    // 跳转到实验设置页面
-                    ExperimentTaskSetupActivity.start(requireContext(), experimentName);
-                });
-            });
+            // 直接跳转到实验设置页面，在那里创建任务
+            ExperimentTaskSetupActivity.start(requireContext(), experimentName);
         });
         bottomSheet.show(getChildFragmentManager(), "bottom_sheet_add_experiment");
     }
@@ -320,14 +293,13 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         String experimentType;
         
         switch (selectedType) {
-            case "混合料实验":
+            case "沥青混合料试验":
                 experimentType = "MIXTURE";
                 break;
             case "沥青试验":
                 experimentType = "ASPHALT";
                 break;
             default:
-                loadExperimentTasks(); // 加载所有任务
                 return;
         }
         
@@ -337,43 +309,14 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void filterTasksByType(String type) {
         executor.execute(() -> {
             try {
-                // 获取当前用户的公司ID
                 String companyId = sharedPrefsManager.getUserCompany();
                 if (companyId == null) {
                     Log.e("OverviewFragment", "Company ID is null");
                     return;
                 }
 
-                // 获取该公司的所有任务
-                List<ExperimentTask> allTasks = database.experimentTaskDao().getTasksByCompany(companyId);
-                List<ExperimentTask> filteredTasks = new ArrayList<>();
-
-                // 根据实验类型过滤任务
-                for (ExperimentTask task : allTasks) {
-                    Map<Long, List<String>> assignments = task.getExperimentAssignments();
-                    if (assignments != null) {
-                        boolean hasMatchingType = false;
-                        for (List<String> types : assignments.values()) {
-                            if (types != null) {
-                                for (String experimentType : types) {
-                                    if (type.equals("MIXTURE") && 
-                                        (experimentType.contains("混合料") || experimentType.contains("配合比"))) {
-                                        hasMatchingType = true;
-                                        break;
-                                    } else if (type.equals("ASPHALT") && 
-                                             experimentType.contains("沥青")) {
-                                        hasMatchingType = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (hasMatchingType) break;
-                        }
-                        if (hasMatchingType) {
-                            filteredTasks.add(task);
-                        }
-                    }
-                }
+                // 获取该公司的指定类型的任务
+                List<ExperimentTask> filteredTasks = database.experimentTaskDao().getTasksByCompanyAndType(companyId, type);
                 
                 // 分离已接受和未接受的任务
                 List<ExperimentTask> acceptedTasks = new ArrayList<>();
@@ -382,7 +325,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 for (ExperimentTask task : filteredTasks) {
                     if (task.getStatus() != null && task.getStatus().equals("已接受")) {
                         acceptedTasks.add(task);
-                    } else {
+                    } else if (task.getStatus() == null || !task.getStatus().equals("已完成")) {
                         unacceptedTasks.add(task);
                     }
                 }
@@ -410,7 +353,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                     }
                 });
             } catch (Exception e) {
-                Log.e("OverviewFragment", "Error loading tasks", e);
+                Log.e("OverviewFragment", "Error filtering tasks", e);
             }
         });
     }
@@ -422,26 +365,48 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
     @Override
     public void onTaskClick(ExperimentTask task) {
-        TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
-        bottomSheet.setTaskAcceptListener(new TaskDetailBottomSheet.TaskAcceptListener() {
-            @Override
-            public void onTaskAccepted(ExperimentTask task) {
-                // 在后台线程中更新任务状态
-                executor.execute(() -> {
-                    // 更新任务状态为已接受
-                    task.setStatus("已接受");
-                    database.experimentTaskDao().update(task);
-
-                    // 在主线程中更新UI
-                    requireActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), "已接受任务：" + task.getTaskName(), Toast.LENGTH_SHORT).show();
-                        // 刷新任务列表
-                        loadExperimentTasks();
-                    });
-                });
+        // 先获取完整的任务信息
+        executor.execute(() -> {
+            ExperimentTask fullTask = database.experimentTaskDao().getFullTaskById(task.getId());
+            if (fullTask == null) {
+                Log.e("OverviewFragment", "Task not found: " + task.getId());
+                return;
             }
+
+            requireActivity().runOnUiThread(() -> {
+                if ("ASPHALT".equals(fullTask.getExperimentType())) {
+                    // 显示沥青实验任务详情
+                    BottomSheetAsphaltTaskDetailFragment bottomSheet = BottomSheetAsphaltTaskDetailFragment.newInstance(fullTask);
+                    bottomSheet.setOnTaskActionListener(new BottomSheetAsphaltTaskDetailFragment.OnTaskActionListener() {
+                        @Override
+                        public void onTaskAccepted(ExperimentTask task) {
+                            onTaskAccepted(task);
+                        }
+
+                        @Override
+                        public void onTaskRejected(ExperimentTask task) {
+                            executor.execute(() -> {
+                                database.experimentTaskDao().update(task);
+                                requireActivity().runOnUiThread(() -> {
+                                    loadExperimentTasks();
+                                });
+                            });
+                        }
+                    });
+                    bottomSheet.show(getChildFragmentManager(), "asphalt_task_detail");
+                } else {
+                    // 显示混合料实验任务详情
+                    TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(fullTask);
+                    bottomSheet.setTaskAcceptListener(new TaskDetailBottomSheet.TaskAcceptListener() {
+                        @Override
+                        public void onTaskAccepted(ExperimentTask task) {
+                            onTaskAccepted(task);
+                        }
+                    });
+                    bottomSheet.show(getChildFragmentManager(), "task_detail");
+                }
+            });
         });
-        bottomSheet.show(getChildFragmentManager(), "TaskDetailBottomSheet");
     }
 
     @Override

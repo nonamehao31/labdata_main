@@ -84,7 +84,8 @@
                         android:background="@drawable/spinner_background"
                         android:spinnerMode="dropdown"
                         android:popupBackground="@android:color/white"
-                        android:overlapAnchor="false"/>
+                        android:overlapAnchor="false"
+                        android:entries="@array/experiment_types"/>
 
                 </LinearLayout>
 

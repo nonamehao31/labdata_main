@@ -19,13 +19,16 @@ import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.ExperimentType;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.stream.Collectors;
 
 public class AsphaltExperimentAssignmentFragment extends Fragment {
     private static final String ARG_TASK_NAME = "task_name";
@@ -121,12 +124,24 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
                 String taskName = getArguments().getString(ARG_TASK_NAME);
                 ExperimentTask task = database.experimentTaskDao().getTaskByName(taskName);
                 if (task != null) {
+                    // 设置截止日期
+                    try {
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                        Date expiryDate = dateFormat.parse(asphalt.getExpiryDate());
+                        if (expiryDate != null) {
+                            task.setDeadline(expiryDate.getTime());
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
                     // 将选中的实验和沥青信息保存到notes字段
                     StringBuilder notes = new StringBuilder();
                     notes.append("沥青信息:\n");
                     notes.append("标号: ").append(asphalt.getGrade()).append("\n");
                     notes.append("类型: ").append(asphalt.getType()).append("\n");
-                    notes.append("供应商: ").append(asphalt.getSupplier()).append("\n\n");
+                    notes.append("供应商: ").append(asphalt.getSupplier()).append("\n");
+                    notes.append("检测截止日期: ").append(asphalt.getExpiryDate()).append("\n\n");
                     notes.append("选中的实验:\n");
                     int index = 1;
                     for (ExperimentType experiment : selectedExperiments) {
@@ -181,9 +196,22 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
                 ExperimentTask task = new ExperimentTask();
                 task.setTaskName(taskName);
                 task.setExperimentType("ASPHALT");
-                task.setStatus("待开始");
+                task.setStatus("未接受");
+                task.setCreationTime(System.currentTimeMillis());
+                
+                // 解析检测截止日期字符串为时间戳
+                try {
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                    Date expiryDate = dateFormat.parse(asphalt.getExpiryDate());
+                    if (expiryDate != null) {
+                        task.setDeadline(expiryDate.getTime());
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
                 // 将沥青信息存储在notes字段中
-                String notes = String.format("沥青标号：%s\n类型：%s\n供应商：%s\n实验：%s",
+                String notes = String.format("沥青信息:\n标号: %s\n类型: %s\n供应商: %s\n\n选中的实验:\n%s",
                     asphalt.getGrade(),
                     asphalt.getType(),
                     asphalt.getSupplier(),
@@ -200,13 +228,14 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
                 for (ExperimentTask task : tasks) {
                     db.experimentTaskDao().insert(task);
                 }
-                getActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "实验任务已保存", Toast.LENGTH_SHORT).show();
-                    getActivity().finish();
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "任务已创建", Toast.LENGTH_SHORT).show();
+                    requireActivity().finish();
                 });
             } catch (Exception e) {
-                getActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "创建任务失败", Toast.LENGTH_SHORT).show();
                 });
             }
         }).start();

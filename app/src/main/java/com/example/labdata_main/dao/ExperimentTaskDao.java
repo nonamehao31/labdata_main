@@ -55,4 +55,10 @@ public interface ExperimentTaskDao {
 
     @Query("SELECT * FROM experiment_tasks WHERE taskName = :taskName LIMIT 1")
     ExperimentTask getTaskByName(String taskName);
+
+    @Query("SELECT * FROM experiment_tasks WHERE companyId = :companyId AND experimentType = :type AND (task_status IS NULL OR task_status != '已完成') ORDER BY creationTime DESC")
+    List<ExperimentTask> getTasksByCompanyAndType(String companyId, String type);
+
+    @Query("SELECT * FROM experiment_tasks WHERE id = :taskId")
+    ExperimentTask getFullTaskById(long taskId);
 }
