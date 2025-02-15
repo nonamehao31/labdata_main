@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
 import com.example.labdata_main.GenerateSpecimenCodeActivity;
 import com.example.labdata_main.RecordExperimentDataActivity;
+import com.example.labdata_main.RecordMixtureExperimentDataActivity;
 import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
@@ -260,14 +261,14 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
                     } else {
                         // 启动新的Activity来生成试件码
                         Intent intent = new Intent(v.getContext(), GenerateSpecimenCodeActivity.class);
-                        intent.putExtra("taskId", task.getTaskId());  // 使用taskId而不是id
+                        intent.putExtra("taskId", String.valueOf(task.getId()));  // 使用 String.valueOf() 转换 ID
                         v.getContext().startActivity(intent);
                     }
                 }
             });
 
             btnStep3Action.setOnClickListener(v -> {
-                Intent intent = new Intent(itemView.getContext(), RecordExperimentDataActivity.class);
+                Intent intent = new Intent(itemView.getContext(), RecordMixtureExperimentDataActivity.class);
                 intent.putExtra("taskId", task.getId());
                 ((FragmentActivity)itemView.getContext()).startActivityForResult(intent, RECORD_EXPERIMENT_DATA_REQUEST);
             });

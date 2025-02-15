@@ -23,7 +23,7 @@
             android:paddingBottom="24dp">
 
             <TextView
-                android:id="@+id/welcome_text"
+                android:id="@+id/welcomeText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="20sp"
@@ -78,7 +78,7 @@
                         android:layout_marginBottom="12dp"/>
 
                     <Spinner
-                        android:id="@+id/experiment_spinner"
+                        android:id="@+id/spinner"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
                         android:background="@drawable/spinner_background"
@@ -179,7 +179,7 @@
                         android:layout_height="wrap_content">
 
                         <androidx.recyclerview.widget.RecyclerView
-                            android:id="@+id/rvMyTasks"
+                            android:id="@+id/rvTasks"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"

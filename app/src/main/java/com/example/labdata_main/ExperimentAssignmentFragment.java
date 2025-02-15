@@ -103,14 +103,15 @@ public class ExperimentAssignmentFragment extends Fragment {
         chipGroup.setSelectionRequired(false);
         chipGroup.setSingleSelection(false);
 
-        // 添加实验类型选项
+        // 添加混合料实验类型选项
         String[] experimentTypes = {
-            "抗压强度",
-            "抗折强度",
-            "抗渗性能",
-            "抗冻性能",
-            "收缩性能",
-            "其他性能"
+            "马歇尔稳定度试验",
+            "理论最大相对密度试验",
+            "体积密度试验",
+            "空隙率试验",
+            "飞散试验",
+            "动稳定度试验",
+            "沥青混合料车辙实验（汉堡车辙）"
         };
 
         for (String type : experimentTypes) {

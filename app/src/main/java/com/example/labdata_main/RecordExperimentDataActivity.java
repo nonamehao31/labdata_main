@@ -13,30 +13,35 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.labdata_main.adapter.ExperimentDataAdapter;
+import com.example.labdata_main.adapter.AsphaltExperimentDataAdapter;
 import com.example.labdata_main.database.AppDatabase;
+import com.example.labdata_main.model.AsphaltExperimentData;
+import com.example.labdata_main.model.Device;
 import com.example.labdata_main.model.DeviceInfo;
 import com.example.labdata_main.model.ExperimentData;
 import com.example.labdata_main.model.ExperimentDataItem;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.model.ExperimentType;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.gson.Gson;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class RecordExperimentDataActivity extends AppCompatActivity implements ExperimentDataAdapter.OnScanDeviceClickListener {
+public class RecordExperimentDataActivity extends AppCompatActivity implements AsphaltExperimentDataAdapter.OnDeviceScanListener {
     private RecyclerView rvExperiments;
-    private ExperimentDataAdapter adapter;
+    private AsphaltExperimentDataAdapter asphaltAdapter;
     private MaterialButton btnSave;
     private AppDatabase database;
     private ExecutorService executor;
     private long taskId;
+    private String experimentType;
     private int currentScanPosition = -1;
     private SharedPrefsManager sharedPrefsManager;
 
@@ -59,8 +64,10 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements E
         }
         setContentView(R.layout.activity_record_experiment_data);
 
-        // 获取任务ID
+        // 获取任务ID和实验类型
         taskId = getIntent().getLongExtra("taskId", -1);
+        experimentType = getIntent().getStringExtra("experiment_type");
+        
         if (taskId == -1) {
             Toast.makeText(this, "无效的任务ID", Toast.LENGTH_SHORT).show();
             finish();
@@ -88,217 +95,236 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements E
         // 设置RecyclerView
         rvExperiments.setLayoutManager(new LinearLayoutManager(this));
         
-        // 加载实验数据
-        loadExperimentData();
+        // 根据实验类型加载不同的适配器和数据
+        if ("ASPHALT".equals(experimentType)) {
+            setupAsphaltExperiment();
+        } else {
+            // TODO: 实现其他实验类型的逻辑
+        }
 
         // 设置保存按钮点击事件
         btnSave.setOnClickListener(v -> saveExperimentData());
     }
 
-    private void loadExperimentData() {
+    private void setupAsphaltExperiment() {
+        // 创建沥青实验适配器
+        asphaltAdapter = new AsphaltExperimentDataAdapter();
+        asphaltAdapter.setOnDeviceScanListener(this);
+        rvExperiments.setAdapter(asphaltAdapter);
+
+        // 加载沥青实验数据
         executor.execute(() -> {
-            ExperimentTask task = database.experimentTaskDao().getExperimentTaskById(taskId);
-            if (task != null) {
-                List<ExperimentDataItem> items = createExperimentList(task.getExperimentAssignments());
+            try {
+                Log.d("SetupAsphalt", "开始加载沥青实验类型...");
+                
+                // 获取所有沥青实验类型
+                List<ExperimentType> experimentTypes = database.experimentTypeDao()
+                    .getExperimentTypesByCategory(ExperimentType.CATEGORY_ASPHALT);
+                
+                Log.d("SetupAsphalt", "查询结果: " + 
+                    (experimentTypes != null ? experimentTypes.size() : 0) + " 个实验类型");
+                if (experimentTypes != null) {
+                    for (ExperimentType type : experimentTypes) {
+                        Log.d("SetupAsphalt", "实验类型: " + type.getName() + 
+                            ", 类型: " + type.getType() + 
+                            ", 类别: " + type.getCategory());
+                    }
+                }
+
+                // 如果没有找到实验类型，显示错误消息
+                if (experimentTypes == null || experimentTypes.isEmpty()) {
+                    Log.w("SetupAsphalt", "未找到任何实验类型");
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "未找到任何实验类型", Toast.LENGTH_SHORT).show();
+                        finish();
+                    });
+                    return;
+                }
+
+                // 在主线程中更新UI
                 runOnUiThread(() -> {
-                    adapter = new ExperimentDataAdapter(items, this);
-                    rvExperiments.setAdapter(adapter);
+                    List<String> typeNames = new ArrayList<>();
+                    for (ExperimentType type : experimentTypes) {
+                        typeNames.add(type.getType());
+                    }
+                    Log.d("SetupAsphalt", "更新UI，显示 " + typeNames.size() + " 个实验类型");
+                    asphaltAdapter.setExperimentTypes(typeNames);
+                });
+            } catch (Exception e) {
+                Log.e("SetupAsphalt", "Error loading experiment types", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "加载实验类型时出错：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    finish();
                 });
             }
         });
     }
 
-    private List<ExperimentDataItem> createExperimentList(Map<Long, List<String>> experimentAssignments) {
-        List<ExperimentDataItem> items = new ArrayList<>();
-        
-        if (experimentAssignments != null) {
-            for (Map.Entry<Long, List<String>> entry : experimentAssignments.entrySet()) {
-                for (String experiment : entry.getValue()) {
-                    ExperimentDataItem item = null;
-                    switch (experiment) {
-                        case "抗压强度":
-                            item = new ExperimentDataItem("抗压强度实验", "抗压值", null);
-                            break;
-                        case "抗折强度":
-                            item = new ExperimentDataItem("抗折强度实验", "抗折强度", null);
-                            break;
-                        case "抗渗性能":
-                            item = new ExperimentDataItem("抗渗性能实验", "渗漏值", "性能值");
-                            break;
-                        case "抗冻性能":
-                            item = new ExperimentDataItem("抗冻性能实验", "最低温度", "劈裂值");
-                            break;
-                        case "收缩性能":
-                            item = new ExperimentDataItem("收缩性能实验", "收缩值", "收缩温度");
-                            break;
-                    }
-                    if (item != null) {
-                        items.add(item);
-                    }
-                }
-            }
-        }
-
-        return items;
-    }
-
     @Override
-    public void onScanDeviceClick(int position) {
+    public void onScanDevice(int position) {
         currentScanPosition = position;
-        Intent intent = new Intent(this, ScanActivity.class);
+        // 启动扫描设备的Activity
+        Intent intent = new Intent(this, ScanDeviceActivity.class);
         scanDeviceLauncher.launch(intent);
     }
 
-    private void processScannedDevice(String scannedContent) {
-        try {
-            DeviceInfo deviceInfo = new Gson().fromJson(scannedContent, DeviceInfo.class);
-            if (deviceInfo != null && deviceInfo.getType().equals("TESTING")) {
-                deviceInfo.setName(String.format("%s %s", deviceInfo.getManufacturer(), deviceInfo.getModel()));
-                deviceInfo.setDeviceId(deviceInfo.getModel());
-                adapter.updateDeviceInfo(currentScanPosition, deviceInfo);
-            } else {
-                Toast.makeText(this, "无效的实验设备", Toast.LENGTH_SHORT).show();
+    private void processScannedDevice(String deviceCode) {
+        // 处理扫描到的设备编号
+        if (asphaltAdapter != null && currentScanPosition >= 0) {
+            try {
+                // 验证设备编号格式
+                if (deviceCode == null || deviceCode.trim().isEmpty()) {
+                    throw new IllegalArgumentException("无效的设备编号");
+                }
+
+                // 在数据库中查找设备
+                executor.execute(() -> {
+                    try {
+                        Device device = database.deviceDao().getDeviceByCode(deviceCode);
+                        if (device != null) {
+                            // 将 Device 转换为 DeviceInfo，确保设置所有必要字段
+                            DeviceInfo deviceInfo = new DeviceInfo(
+                                device.getId(),          // deviceId
+                                device.getType(),        // type
+                                device.getManufacturer(), // manufacturer
+                                device.getModel(),        // model
+                                device.getPurchaseYear(), // purchaseYear
+                                device.getCompanyId()     // companyId
+                            );
+                            
+                            // 在主线程中更新UI
+                            runOnUiThread(() -> {
+                                Log.d("DeviceInfo", "Updating device info: " + 
+                                    "Name=" + deviceInfo.getName() + 
+                                    ", Manufacturer=" + deviceInfo.getManufacturer() + 
+                                    ", Model=" + deviceInfo.getModel());
+                                    
+                                asphaltAdapter.updateDeviceInfo(currentScanPosition, deviceInfo);
+                                Toast.makeText(RecordExperimentDataActivity.this, 
+                                    "设备扫描成功：" + deviceInfo.getName(), 
+                                    Toast.LENGTH_SHORT).show();
+                            });
+                        } else {
+                            runOnUiThread(() -> {
+                                Toast.makeText(RecordExperimentDataActivity.this, 
+                                    "未找到该设备：" + deviceCode, 
+                                    Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    } catch (Exception e) {
+                        Log.e("ProcessDevice", "Error processing device: " + deviceCode, e);
+                        runOnUiThread(() -> {
+                            Toast.makeText(RecordExperimentDataActivity.this, 
+                                "处理设备信息时出错：" + e.getMessage(), 
+                                Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+            } catch (Exception e) {
+                Log.e("ProcessDevice", "Error validating device code", e);
+                Toast.makeText(this, "设备码格式错误：" + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        } catch (Exception e) {
-            Toast.makeText(this, "二维码格式错误", Toast.LENGTH_SHORT).show();
         }
-        currentScanPosition = -1;
     }
 
     private void saveExperimentData() {
-        List<ExperimentDataItem> items = adapter.getItems();
-        Log.d("RecordExperiment", "Starting to save experiment data for task: " + taskId);
-        
-        // 验证数据
-        boolean isValid = true;
-        for (ExperimentDataItem item : items) {
-            if (item.getInput1Value() == 0) {
-                isValid = false;
-                Toast.makeText(this, "请填写所有必要的数据", Toast.LENGTH_SHORT).show();
-                break;
-            }
-            if (item.hasSecondInput() && item.getInput2Value() == 0) {
-                isValid = false;
-                Toast.makeText(this, "请填写所有必要的数据", Toast.LENGTH_SHORT).show();
-                break;
-            }
-            if (!item.hasDevice()) {
-                isValid = false;
-                Toast.makeText(this, "请为所有实验选择设备", Toast.LENGTH_SHORT).show();
-                break;
-            }
+        if ("ASPHALT".equals(experimentType)) {
+            saveAsphaltExperimentData();
+        } else {
+            Toast.makeText(this, "暂不支持该实验类型", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void saveAsphaltExperimentData() {
+        if (!validateExperimentData()) {
+            return;
         }
 
-        if (isValid) {
-            executor.execute(() -> {
-                try {
-                    database.runInTransaction(() -> {
-                        // 更新任务状态为已完成
-                        ExperimentTask task = database.experimentTaskDao().getExperimentTaskById(taskId);
-                        Log.d("RecordExperiment", "Retrieved task: " + task);
-                        if (task != null) {
-                            Log.d("RecordExperiment", "Current task status: " + task.getStatus());
-                            task.setStatus("已完成");
-                            // 设置实验人员为当前登录用户
-                            String currentUser = sharedPrefsManager.getUserName();
-                            Log.d("RecordExperiment", "Current user name from SharedPrefs: " + currentUser);
-                            if (currentUser != null && !currentUser.isEmpty()) {
-                                task.setExperimenter(currentUser);
-                                Log.d("RecordExperiment", "Set experimenter to: " + currentUser);
-                            } else {
-                                Log.w("RecordExperiment", "Current user name is null or empty");
-                                // 尝试从其他方式获取用户信息
-                                String email = sharedPrefsManager.getUserEmail();
-                                if (email != null && !email.isEmpty()) {
-                                    task.setExperimenter(email);
-                                    Log.d("RecordExperiment", "Set experimenter to email: " + email);
-                                }
-                            }
-                            task.setExperimentCompletionTime(System.currentTimeMillis());
-                            database.experimentTaskDao().update(task);
-                            Log.d("RecordExperiment", "Updated task with experimenter: " + task.getExperimenter());
-                            
-                            // 验证更新是否成功
-                            ExperimentTask updatedTask = database.experimentTaskDao().getExperimentTaskById(taskId);
-                            Log.d("RecordExperiment", "Verified task status after update: " + 
-                                (updatedTask != null ? updatedTask.getStatus() : "task not found"));
-                        } else {
-                            Log.e("RecordExperiment", "Task not found with id: " + taskId);
-                            return;
-                        }
+        executor.execute(() -> {
+            try {
+                database.runInTransaction(() -> {
+                    // 获取实验数据
+                    Map<String, Map<String, String>> experimentData = asphaltAdapter.getExperimentData();
+                    String experimenter = sharedPrefsManager.getUserName();
+                    long createTime = System.currentTimeMillis();
 
-                        // 保存所有实验数据
-                        for (ExperimentDataItem item : items) {
-                            ExperimentData data = new ExperimentData();
-                            data.setTaskId(taskId);
-                            data.setExperimentName(item.getExperimentName());
-                            data.setInput1Label(item.getInput1Label());
-                            data.setInput1Value(item.getInput1Value());
-                            
-                            if (item.hasSecondInput()) {
-                                data.setInput2Label(item.getInput2Label());
-                                data.setInput2Value(item.getInput2Value());
-                            }
-
-                            // 设置实验结果
-                            StringBuilder result = new StringBuilder();
-                            result.append(item.getInput1Value());
-                            if (item.hasSecondInput()) {
-                                result.append(", ").append(item.getInput2Value());
-                            }
-                            data.setResult(result.toString());
-
-                            // 从任务中获取并设置配比信息
-                            if (task != null) {
-                                List<MixRatio> selectedMixRatios = task.getSelectedMixRatios();
-                                if (selectedMixRatios != null && !selectedMixRatios.isEmpty()) {
-                                    // 将所有配比名称拼接在一起
-                                    StringBuilder mixRatioNames = new StringBuilder();
-                                    for (int i = 0; i < selectedMixRatios.size(); i++) {
-                                        if (i > 0) {
-                                            mixRatioNames.append(", ");
-                                        }
-                                        mixRatioNames.append(selectedMixRatios.get(i).getName());
-                                    }
-                                    data.setMixRatio(mixRatioNames.toString());
-                                }
-                            }
-
-                            DeviceInfo deviceInfo = item.getDeviceInfo();
-                            data.setDeviceManufacturer(deviceInfo.getManufacturer());
-                            data.setDeviceModel(deviceInfo.getModel());
-                            data.setDevicePurchaseYear(deviceInfo.getPurchaseYear());
-                            data.setCreateTime(System.currentTimeMillis());
-
-                            long dataId = database.experimentDataDao().insert(data);
-                            Log.d("RecordExperiment", "Saved experiment data with id: " + dataId);
-                        }
-                    });
-
-                    runOnUiThread(() -> {
-                        // 发送广播通知任务状态更新
-                        Intent intent = new Intent("com.example.labdata_main.REFRESH_TASKS");
-                        sendBroadcast(intent);
+                    // 保存每个实验的数据
+                    for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
+                        String type = entry.getKey();
+                        Map<String, String> data = entry.getValue();
                         
-                        Toast.makeText(RecordExperimentDataActivity.this, 
-                            "数据保存成功", Toast.LENGTH_SHORT).show();
-                        setResult(RESULT_OK);
-                        finish();
-                    });
-                } catch (Exception e) {
-                    Log.e("RecordExperiment", "Error saving data", e);
-                    runOnUiThread(() -> {
-                        Toast.makeText(RecordExperimentDataActivity.this, 
-                            "保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-                }
-            });
+                        AsphaltExperimentData experimentRecord = new AsphaltExperimentData();
+                        experimentRecord.setTaskId(taskId);
+                        experimentRecord.setExperimentType(type);
+                        experimentRecord.setExperimentValues(data);
+                        experimentRecord.setExperimenter(experimenter);
+                        experimentRecord.setCreateTime(createTime);
+                        
+                        // 设置设备信息
+                        if (data.containsKey("device_id")) {
+                            experimentRecord.setDeviceCode(data.get("device_id"));
+                            // 设置设备制造商和型号
+                            if (data.containsKey("device_manufacturer")) {
+                                experimentRecord.setDeviceManufacturer(data.get("device_manufacturer"));
+                            }
+                            if (data.containsKey("device_model")) {
+                                experimentRecord.setDeviceModel(data.get("device_model"));
+                            }
+                        }
+                        
+                        database.asphaltExperimentDataDao().insert(experimentRecord);
+                    }
+
+                    // 更新任务状态为已完成
+                    ExperimentTask task = database.experimentTaskDao().getTaskById((int)taskId);
+                    if (task != null) {
+                        task.setStatus("已完成"); // 设置任务状态为"已完成"
+                        task.setExperimentCompletionTime(System.currentTimeMillis()); // 设置完成时间
+                        database.experimentTaskDao().update(task);
+                    }
+                });
+
+                // 发送广播通知更新任务列表
+                Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+                sendBroadcast(refreshIntent);
+
+                // 在主线程中显示成功消息并关闭页面
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "实验数据保存成功，任务已完成", Toast.LENGTH_SHORT).show();
+                    setResult(RESULT_OK); // 设置结果码，通知上一个页面刷新数据
+                    finish();
+                });
+            } catch (Exception e) {
+                Log.e("SaveData", "Error saving experiment data", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(this, 
+                        String.format("保存数据时出错：%s", e.getMessage()), 
+                        Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private boolean validateExperimentData() {
+        if (asphaltAdapter == null) {
+            Toast.makeText(this, "实验数据适配器未初始化", Toast.LENGTH_SHORT).show();
+            return false;
         }
+
+        Map<String, Map<String, String>> experimentData = asphaltAdapter.getExperimentData();
+        if (experimentData == null || experimentData.isEmpty()) {
+            Toast.makeText(this, "没有要保存的实验数据", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        return true;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executor.shutdown();
+        if (executor != null) {
+            executor.shutdown();
+        }
     }
 }

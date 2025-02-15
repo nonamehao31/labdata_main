@@ -16,7 +16,7 @@ import androidx.room.PrimaryKey;
                 @Index(value = {"experimentName"}),
                 @Index(value = {"experimentName", "input1Label", "input1Value"}),
                 @Index(value = {"experimentName", "input2Label", "input2Value"}),
-                @Index(value = {"deviceManufacturer", "deviceModel"}),
+                @Index(value = {"deviceId", "deviceManufacturer", "deviceModel"}),
                 @Index(value = {"taskId"}),
                 @Index(value = {"mixRatio"}),
                 @Index(value = {"result"})
@@ -33,6 +33,7 @@ public class ExperimentData {
     private double input2Value;
     
     // 设备信息
+    private String deviceId;
     private String deviceManufacturer;
     private String deviceModel;
     private String devicePurchaseYear;
@@ -100,6 +101,14 @@ public class ExperimentData {
 
     public void setInput2Value(double input2Value) {
         this.input2Value = input2Value;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public String getDeviceManufacturer() {

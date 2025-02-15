@@ -104,22 +104,69 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
     private List<AsphaltExperimentItem> parseExperimentData() {
         List<AsphaltExperimentItem> items = new ArrayList<>();
         String notes = task.getNotes();
-        if (notes != null) {
-            String[] sections = notes.split("\n\n");
-            for (String section : sections) {
-                if (section.startsWith("沥青信息:")) {
-                    items.add(new AsphaltExperimentItem(
-                        "沥青信息",
-                        section.substring("沥青信息:".length()).trim()
-                    ));
-                } else if (section.startsWith("选中的实验:")) {
-                    items.add(new AsphaltExperimentItem(
-                        "实验指派",
-                        section.substring("选中的实验:".length()).trim()
-                    ));
+        
+        if (notes != null && !notes.isEmpty()) {
+            // 分割主要部分
+            String[] mainSections = notes.split("---+\\s*\\n");
+            
+            for (String section : mainSections) {
+                section = section.trim();
+                
+                // 处理沥青信息部分
+                if (section.startsWith("沥青信息")) {
+                    String[] lines = section.split("\\n");
+                    StringBuilder asphaltInfo = new StringBuilder();
+                    
+                    // 跳过标题行，从第二行开始处理
+                    for (int i = 1; i < lines.length; i++) {
+                        String line = lines[i].trim();
+                        if (!line.isEmpty()) {
+                            asphaltInfo.append(line).append("\n");
+                        }
+                    }
+                    
+                    if (asphaltInfo.length() > 0) {
+                        items.add(new AsphaltExperimentItem(
+                            "沥青信息",
+                            asphaltInfo.toString().trim()
+                        ));
+                    }
+                }
+                // 处理实验指派部分
+                else if (section.startsWith("实验指派")) {
+                    String[] lines = section.split("\\n");
+                    StringBuilder experimentInfo = new StringBuilder();
+                    
+                    // 跳过标题行，从第二行开始处理
+                    for (int i = 1; i < lines.length; i++) {
+                        String line = lines[i].trim();
+                        if (!line.isEmpty()) {
+                            // 如果是新的实验类型，添加一个项目符号
+                            if (!line.startsWith("•")) {
+                                experimentInfo.append("• ");
+                            }
+                            experimentInfo.append(line).append("\n");
+                        }
+                    }
+                    
+                    if (experimentInfo.length() > 0) {
+                        items.add(new AsphaltExperimentItem(
+                            "实验指派",
+                            experimentInfo.toString().trim()
+                        ));
+                    }
                 }
             }
         }
+        
+        // 如果没有找到任何数据，添加一个提示信息
+        if (items.isEmpty()) {
+            items.add(new AsphaltExperimentItem(
+                "提示",
+                "暂无实验信息"
+            ));
+        }
+        
         return items;
     }
 

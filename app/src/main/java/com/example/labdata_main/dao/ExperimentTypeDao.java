@@ -9,12 +9,15 @@ import java.util.List;
 
 @Dao
 public interface ExperimentTypeDao {
-    @Query("SELECT * FROM experiment_types WHERE type = :type")
-    List<ExperimentType> getExperimentTypesByCategory(String type);
+    @Query("SELECT * FROM experiment_types WHERE category = :category")
+    List<ExperimentType> getExperimentTypesByCategory(String category);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertAll(List<ExperimentType> experimentTypes);
+    List<Long> insertAll(List<ExperimentType> experimentTypes);
 
     @Query("SELECT COUNT(*) FROM experiment_types")
     int getCount();
+
+    @Query("SELECT * FROM experiment_types WHERE type = :type LIMIT 1")
+    ExperimentType findByType(String type);
 }

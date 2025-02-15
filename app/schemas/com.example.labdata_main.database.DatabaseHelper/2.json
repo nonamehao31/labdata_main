@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "da5df4c31b5a4aed7be139a58236da50",
+    "identityHash": "25eed0ebbea5e66a4b788d5d56a29a6b",
     "entities": [
       {
         "tableName": "projects",
@@ -262,7 +262,7 @@
       },
       {
         "tableName": "experiment_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT NOT NULL, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -274,7 +274,7 @@
             "fieldPath": "taskId",
             "columnName": "taskId",
             "affinity": "TEXT",
-            "notNull": false
+            "notNull": true
           },
           {
             "fieldPath": "taskName",
@@ -398,7 +398,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'da5df4c31b5a4aed7be139a58236da50')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '25eed0ebbea5e66a4b788d5d56a29a6b')"
     ]
   }
 }

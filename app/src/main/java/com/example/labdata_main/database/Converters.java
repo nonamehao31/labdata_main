@@ -98,4 +98,21 @@ public class Converters {
         Type listType = new TypeToken<List<String>>() {}.getType();
         return gson.fromJson(json, listType);
     }
+
+    @TypeConverter
+    public static String mapToString(Map<String, String> map) {
+        if (map == null) {
+            return null;
+        }
+        return gson.toJson(map);
+    }
+
+    @TypeConverter
+    public static Map<String, String> stringToMap(String value) {
+        if (value == null) {
+            return null;
+        }
+        Type type = new TypeToken<Map<String, String>>(){}.getType();
+        return gson.fromJson(value, type);
+    }
 }

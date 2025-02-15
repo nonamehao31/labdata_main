@@ -6,20 +6,27 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.TypeConverters;
 import androidx.room.ColumnInfo;
+import androidx.annotation.NonNull;
 import com.example.labdata_main.database.Converters;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Entity(tableName = "experiment_tasks")
 public class ExperimentTask implements Parcelable {
     @PrimaryKey(autoGenerate = true)
     private long id;
+
+    @NonNull
+    @ColumnInfo(name = "taskId")
     private String taskId; // 格式：TASK_yyyyMMdd_HHmmss_序号
     private String taskName; // 任务名称
     private long projectId;
@@ -56,6 +63,9 @@ public class ExperimentTask implements Parcelable {
         experimentAssignments = new HashMap<>();
         selectedMixingDevices = new ArrayList<>();
         selectedFormingDevices = new ArrayList<>();
+        // 为taskId设置一个默认值
+        SimpleDateFormat taskIdFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+        taskId = "TASK_" + taskIdFormat.format(new Date()) + "_0";
     }
 
     protected ExperimentTask(Parcel in) {

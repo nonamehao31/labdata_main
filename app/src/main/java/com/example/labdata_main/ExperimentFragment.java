@@ -23,6 +23,7 @@ import com.example.labdata_main.adapter.CompletedExperimentAdapter;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ExperimentData;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.model.AsphaltExperimentData;
 import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.button.MaterialButton;
 
@@ -107,16 +108,46 @@ public class ExperimentFragment extends Fragment {
                     return;
                 }
 
+                // 获取已完成的任务
                 List<ExperimentTask> completedTasks = database.experimentTaskDao().getCompletedTasksByCompany(companyId);
                 List<CompletedExperimentAdapter.TaskWithData> tasksWithData = new ArrayList<>();
 
                 for (ExperimentTask task : completedTasks) {
-                    Log.d("ExperimentFragment", "Processing task: " + task.getTaskName() + ", Experimenter: " + task.getExperimenter());
-                    List<ExperimentData> experimentDataList = database.experimentDataDao().getExperimentDataByTaskId(task.getId());
-                    tasksWithData.add(new CompletedExperimentAdapter.TaskWithData(task, experimentDataList));
+                    Log.d("ExperimentFragment", String.format(
+                        "Processing task - ID: %d, TaskId: %s, Name: %s, Type: %s, Status: %s",
+                        task.getId(),
+                        task.getTaskId(),
+                        task.getTaskName(),
+                        task.getExperimentType(),
+                        task.getStatus()
+                    ));
+
+                    // 根据实验类型获取对应的实验数据
+                    if ("ASPHALT".equals(task.getExperimentType())) {
+                        // 获取沥青实验数据
+                        List<AsphaltExperimentData> asphaltData = 
+                            database.asphaltExperimentDataDao().getByTaskId(task.getId());
+                        if (!asphaltData.isEmpty()) {
+                            tasksWithData.add(new CompletedExperimentAdapter.TaskWithData(task, asphaltData));
+                        }
+                    } else if ("MIXTURE".equals(task.getExperimentType())) {
+                        // 获取混合料实验数据
+                        List<ExperimentData> mixtureData = 
+                            database.experimentDataDao().getExperimentDataByTaskId(task.getId());
+                        if (!mixtureData.isEmpty()) {
+                            tasksWithData.add(new CompletedExperimentAdapter.TaskWithData(task, mixtureData));
+                        }
+                    } else {
+                        // 获取其他类型的实验数据
+                        List<ExperimentData> experimentDataList = 
+                            database.experimentDataDao().getExperimentDataByTaskId(task.getId());
+                        if (!experimentDataList.isEmpty()) {
+                            tasksWithData.add(new CompletedExperimentAdapter.TaskWithData(task, experimentDataList));
+                        }
+                    }
                 }
 
-                Log.d("ExperimentFragment", "Loaded " + completedTasks.size() + " completed tasks with data");
+                Log.d("ExperimentFragment", "Loaded " + tasksWithData.size() + " completed tasks with data");
 
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (tasksWithData.isEmpty()) {

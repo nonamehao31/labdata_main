@@ -9,16 +9,20 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+import com.example.labdata_main.dao.AsphaltExperimentDataDao;
 import com.example.labdata_main.dao.DeviceDao;
 import com.example.labdata_main.dao.ExperimentDataDao;
+import com.example.labdata_main.dao.ExperimentDataFieldDao;
 import com.example.labdata_main.dao.ExperimentTaskDao;
 import com.example.labdata_main.dao.ExperimentTypeDao;
 import com.example.labdata_main.dao.MaterialDao;
 import com.example.labdata_main.dao.MixRatioDao;
 import com.example.labdata_main.dao.MoldingMethodDao;
 import com.example.labdata_main.dao.SpecimenDao;
+import com.example.labdata_main.model.AsphaltExperimentData;
 import com.example.labdata_main.model.Device;
 import com.example.labdata_main.model.ExperimentData;
+import com.example.labdata_main.model.ExperimentDataField;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.ExperimentType;
 import com.example.labdata_main.model.Material;
@@ -26,6 +30,7 @@ import com.example.labdata_main.model.MixDesign;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
 import com.example.labdata_main.model.Specimen;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -36,24 +41,28 @@ import java.util.List;
     MixDesign.class, 
     MoldingMethod.class,
     ExperimentTask.class,
-    ExperimentData.class,  // 添加 ExperimentData 实体
-    Device.class,  // 添加 Device 实体
-    ExperimentType.class  // 添加 ExperimentType 实体
-}, version = 17)
+    ExperimentData.class,  
+    Device.class,  
+    ExperimentType.class,  
+    ExperimentDataField.class,  
+    AsphaltExperimentData.class
+}, version = 19)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
     private static final String DATABASE_NAME = "labdata_db";
-    private static volatile AppDatabase instance;
+    private static volatile AppDatabase INSTANCE;
 
     public abstract MixRatioDao mixRatioDao();
     public abstract SpecimenDao specimenDao();
     public abstract MaterialDao materialDao();
     public abstract MoldingMethodDao moldingMethodDao();
     public abstract ExperimentTaskDao experimentTaskDao();
-    public abstract ExperimentDataDao experimentDataDao();  // 添加 ExperimentDataDao
-    public abstract DeviceDao deviceDao();  // 添加 DeviceDao
-    public abstract ExperimentTypeDao experimentTypeDao();  // 添加 ExperimentTypeDao
+    public abstract ExperimentDataDao experimentDataDao();  
+    public abstract DeviceDao deviceDao();  
+    public abstract ExperimentTypeDao experimentTypeDao();  
+    public abstract ExperimentDataFieldDao experimentDataFieldDao();
+    public abstract AsphaltExperimentDataDao asphaltExperimentDataDao();
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -296,61 +305,279 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("CREATE TABLE IF NOT EXISTS experiment_types (" +
                     "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                     "name TEXT NOT NULL, " +
-                    "type TEXT NOT NULL)");
+                    "type TEXT NOT NULL, " +
+                    "category TEXT NOT NULL)");
+        }
+    };
+
+    static final Migration MIGRATION_17_18 = new Migration(17, 18) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 创建沥青实验数据表
+            database.execSQL(
+                "CREATE TABLE IF NOT EXISTS `asphalt_experiment_data` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`taskId` INTEGER NOT NULL, " +
+                "`experimentType` TEXT, " +
+                "`deviceCode` TEXT, " +
+                "`createTime` INTEGER NOT NULL, " +
+                "`experimenter` TEXT, " +
+                "`experimentValues` TEXT)"
+            );
+
+            // 创建索引以提高查询性能
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_asphalt_experiment_data_taskId` " +
+                "ON `asphalt_experiment_data` (`taskId`)"
+            );
+
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_asphalt_experiment_data_experimentType` " +
+                "ON `asphalt_experiment_data` (`experimentType`)"
+            );
+        }
+    };
+
+    static final Migration MIGRATION_18_19 = new Migration(18, 19) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 创建实验数据字段表
+            database.execSQL("CREATE TABLE IF NOT EXISTS experiment_data_fields (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL," +
+                    "field_name TEXT NOT NULL," +
+                    "field_key TEXT NOT NULL," +
+                    "unit TEXT NOT NULL," +
+                    "precision REAL NOT NULL," +
+                    "experiment_type_id INTEGER NOT NULL," +
+                    "FOREIGN KEY(experiment_type_id) REFERENCES experiment_types(id) ON DELETE CASCADE)");
+            
+            // 创建索引
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_experiment_data_fields_experiment_type_id " +
+                    "ON experiment_data_fields(experiment_type_id)");
+        }
+    };
+
+    private static RoomDatabase.Callback roomCallback = new RoomDatabase.Callback() {
+        @Override
+        public void onCreate(@NonNull SupportSQLiteDatabase db) {
+            super.onCreate(db);
+            // 初始化默认的实验类型数据
+            new Thread(() -> {
+                try {
+                    AppDatabase database = INSTANCE;
+                    if (database != null) {
+                        ExperimentTypeDao experimentTypeDao = database.experimentTypeDao();
+                        ExperimentDataFieldDao fieldDao = database.experimentDataFieldDao();
+                        
+                        // 检查是否已经有数据
+                        if (experimentTypeDao.getCount() == 0) {
+                            // 创建实验类型
+                            List<ExperimentType> types = Arrays.asList(
+                                // 针入度试验
+                                new ExperimentType(
+                                    "针入度试验",
+                                    "penetration",
+                                    "ASPHALT"
+                                ),
+                                
+                                // 延度试验
+                                new ExperimentType(
+                                    "延度试验",
+                                    "ductility",
+                                    "ASPHALT"
+                                ),
+                                
+                                // 软化点试验
+                                new ExperimentType(
+                                    "软化点试验（环球法）",
+                                    "softening_point",
+                                    "ASPHALT"
+                                ),
+
+                                // 马歇尔稳定度试验
+                                new ExperimentType(
+                                    "马歇尔稳定度试验",
+                                    "marshall_stability",
+                                    "MIXTURE"
+                                ),
+
+                                // 理论最大相对密度试验
+                                new ExperimentType(
+                                    "理论最大相对密度试验",
+                                    "theoretical_density",
+                                    "MIXTURE"
+                                ),
+
+                                // 体积密度试验
+                                new ExperimentType(
+                                    "体积密度试验",
+                                    "bulk_density",
+                                    "MIXTURE"
+                                ),
+
+                                // 空隙率试验
+                                new ExperimentType(
+                                    "空隙率试验",
+                                    "void_ratio",
+                                    "MIXTURE"
+                                ),
+
+                                // 飞散试验
+                                new ExperimentType(
+                                    "飞散试验",
+                                    "cantabro",
+                                    "MIXTURE"
+                                ),
+
+                                // 动稳定度试验
+                                new ExperimentType(
+                                    "动稳定度试验",
+                                    "dynamic_stability",
+                                    "MIXTURE"
+                                ),
+
+                                // 车辙试验
+                                new ExperimentType(
+                                    "沥青混合料车辙实验（汉堡车辙）",
+                                    "hamburg_wheel_tracking",
+                                    "MIXTURE"
+                                )
+                            );
+                            
+                            // 插入实验类型并获取生成的ID
+                            List<Long> typeIds = experimentTypeDao.insertAll(types);
+                            Log.i(TAG, "Initialized experiment types data");
+
+                            // 为每个实验类型创建数据字段
+                            for (int i = 0; i < types.size(); i++) {
+                                ExperimentType type = types.get(i);
+                                long typeId = typeIds.get(i);
+                                List<ExperimentDataField> fields = new ArrayList<>();
+                                
+                                switch (type.getType()) {
+                                    case "penetration":
+                                        fields.add(new ExperimentDataField(
+                                            "温度", "temperature", "℃", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "针入度", "penetration", "mm", 0.1, typeId
+                                        ));
+                                        break;
+                                        
+                                    case "ductility":
+                                        fields.add(new ExperimentDataField(
+                                            "温度", "temperature", "℃", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "延度", "ductility", "cm", 0.1, typeId
+                                        ));
+                                        break;
+                                        
+                                    case "softening_point":
+                                        fields.add(new ExperimentDataField(
+                                            "温度", "temperature", "℃", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "软化点", "softening_point", "℃", 0.5, typeId
+                                        ));
+                                        break;
+
+                                    case "marshall_stability":
+                                        fields.add(new ExperimentDataField(
+                                            "稳定度1", "stability_1", "kN", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "稳定度2", "stability_2", "kN", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "稳定度3", "stability_3", "kN", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "流值1", "flow_1", "mm", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "流值2", "flow_2", "mm", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "流值3", "flow_3", "mm", 0.1, typeId
+                                        ));
+                                        break;
+
+                                    case "hamburg_wheel_tracking":
+                                        fields.add(new ExperimentDataField(
+                                            "第一稳态曲线斜率", "first_steady_slope", "mm/cycle", 0.001, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "第一稳态曲线截距", "first_steady_intercept", "mm", 0.1, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "第二稳态曲线斜率", "second_steady_slope", "mm/cycle", 0.001, typeId
+                                        ));
+                                        fields.add(new ExperimentDataField(
+                                            "第二稳态曲线截距", "second_steady_intercept", "mm", 0.1, typeId
+                                        ));
+                                        break;
+
+                                    case "theoretical_density":
+                                        fields.add(new ExperimentDataField(
+                                            "理论最大相对密度", "theoretical_density", "g/cm³", 0.001, typeId
+                                        ));
+                                        break;
+
+                                    case "bulk_density":
+                                        fields.add(new ExperimentDataField(
+                                            "体积密度", "bulk_density", "g/cm³", 0.001, typeId
+                                        ));
+                                        break;
+
+                                    case "void_ratio":
+                                        fields.add(new ExperimentDataField(
+                                            "空隙率", "void_ratio", "%", 0.1, typeId
+                                        ));
+                                        break;
+
+                                    case "cantabro":
+                                        fields.add(new ExperimentDataField(
+                                            "飞散损失率", "cantabro_loss", "%", 0.1, typeId
+                                        ));
+                                        break;
+
+                                    case "dynamic_stability":
+                                        fields.add(new ExperimentDataField(
+                                            "动稳定度", "dynamic_stability", "次/mm", 1, typeId
+                                        ));
+                                        break;
+                                }
+                                
+                                if (!fields.isEmpty()) {
+                                    fieldDao.insertAll(fields);
+                                }
+                            }
+                            Log.i(TAG, "Initialized experiment data fields");
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing database", e);
+                }
+            }).start();
         }
     };
 
     public static synchronized AppDatabase getInstance(Context context) {
-        if (instance == null) {
-            synchronized (AppDatabase.class) {
-                if (instance == null) {
-                    instance = Room.databaseBuilder(context.getApplicationContext(),
-                            AppDatabase.class, DATABASE_NAME)
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                                    MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
-                                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
-                            .addCallback(new Callback() {
-                                @Override
-                                public void onCreate(@NonNull SupportSQLiteDatabase db) {
-                                    super.onCreate(db);
-                                    // 在新线程中初始化数据
-                                    new Thread(() -> initializeData(context)).start();
-                                }
-                            })
-                            .build();
-                }
-            }
+        if (INSTANCE == null) {
+            INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
+                    AppDatabase.class, DATABASE_NAME)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
+                            MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+                            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
+                            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+                    .addCallback(roomCallback)
+                    // 如果数据库升级失败，允许重建数据库
+                    .fallbackToDestructiveMigration()
+                    .build();
         }
-        return instance;
-    }
-
-    private static void initializeData(Context context) {
-        ExperimentTypeDao dao = getInstance(context).experimentTypeDao();
-        
-        // 检查是否已经初始化
-        if (dao.getCount() > 0) {
-            return;
-        }
-
-        // 预设实验类型
-        List<ExperimentType> experimentTypes = Arrays.asList(
-            new ExperimentType("沥青密度与相对密度试验", "ASPHALT"),
-            new ExperimentType("沥青针入度试验", "ASPHALT"),
-            new ExperimentType("沥青延度试验", "ASPHALT"),
-            new ExperimentType("沥青软化点试验（环球法）", "ASPHALT"),
-            new ExperimentType("沥青薄膜加热试验", "ASPHALT"),
-            new ExperimentType("沥青旋转薄膜加热试验", "ASPHALT"),
-            new ExperimentType("沥青闪点与燃点试验（克利夫兰开口杯法）", "ASPHALT"),
-            new ExperimentType("沥青旋转黏度试验（布洛克菲尔德黏度计法）", "ASPHALT"),
-            new ExperimentType("沥青弯曲蠕变劲度试验（弯曲梁流变仪法）", "ASPHALT"),
-            new ExperimentType("沥青流变性质试验（动态剪切流变仪法）", "ASPHALT"),
-            new ExperimentType("沥青断裂性能试验（直接拉伸法）", "ASPHALT"),
-            new ExperimentType("压力老化容器加速沥青老化试验", "ASPHALT"),
-            new ExperimentType("沥青多重应力蠕变恢复试验（MSCR）", "ASPHALT"),
-            new ExperimentType("沥青拉伸性能试验（测力延度仪法）", "ASPHALT")
-        );
-
-        dao.insertAll(experimentTypes);
+        return INSTANCE;
     }
 }

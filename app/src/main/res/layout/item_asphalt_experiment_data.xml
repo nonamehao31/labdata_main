@@ -15,57 +15,19 @@
         android:padding="16dp">
 
         <TextView
-            android:id="@+id/tvExperimentName"
+            android:id="@+id/tvExperimentTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
-        <LinearLayout
-            android:id="@+id/layoutInputs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <!-- 动态添加的输入框将放在这里 -->
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/input1Layout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:visibility="gone"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/input1"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/input2Layout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/input2"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-        </LinearLayout>
-
         <!-- 设备信息部分 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="16dp">
+            android:layout_marginBottom="16dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -91,15 +53,21 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnScanDevice"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="扫描实验设备码"
-                    android:textSize="14sp" />
+                    android:textSize="14sp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
             </LinearLayout>
-
         </LinearLayout>
+
+        <!-- 实验数据输入部分 -->
+        <LinearLayout
+            android:id="@+id/layoutDataInputs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
 
     </LinearLayout>
 

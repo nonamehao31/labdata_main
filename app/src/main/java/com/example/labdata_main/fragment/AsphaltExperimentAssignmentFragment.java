@@ -2,6 +2,7 @@ package com.example.labdata_main.fragment;
 
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,7 @@ import com.example.labdata_main.dialog.ExperimentSelectionBottomSheetDialog;
 import com.example.labdata_main.model.AsphaltInfo;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.ExperimentType;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import java.text.ParseException;
@@ -190,43 +192,75 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
     private void saveExperimentTask() {
         // 创建实验任务
         List<ExperimentTask> tasks = new ArrayList<>();
+        
+        // 生成基础任务ID（不包含序号）
+        SimpleDateFormat taskIdFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+        String baseTaskId = "TASK_" + taskIdFormat.format(new Date());
+        Log.d("AsphaltExperiment", "Generated base task ID: " + baseTaskId);
+        
+        // 获取当前用户的公司ID
+        String companyId = new SharedPrefsManager(requireContext()).getUserCompany();
+        Log.d("AsphaltExperiment", "Company ID: " + companyId);
+        
+        int taskIndex = 0;
         for (Map.Entry<AsphaltInfo, Set<ExperimentType>> entry : asphaltExperiments.entrySet()) {
             AsphaltInfo asphalt = entry.getKey();
-            for (ExperimentType experiment : entry.getValue()) {
-                ExperimentTask task = new ExperimentTask();
-                task.setTaskName(taskName);
-                task.setExperimentType("ASPHALT");
-                task.setStatus("未接受");
-                task.setCreationTime(System.currentTimeMillis());
-                
-                // 解析检测截止日期字符串为时间戳
-                try {
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                    Date expiryDate = dateFormat.parse(asphalt.getExpiryDate());
-                    if (expiryDate != null) {
-                        task.setDeadline(expiryDate.getTime());
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+            Set<ExperimentType> experiments = entry.getValue();
+            
+            ExperimentTask task = new ExperimentTask();
+            // 设置任务ID，格式：TASK_yyyyMMdd_HHmmss_序号
+            String fullTaskId = baseTaskId + "_" + taskIndex;
+            task.setTaskId(fullTaskId);
+            Log.d("AsphaltExperiment", "Setting task ID: " + fullTaskId);
+            
+            task.setTaskName(taskName);
+            task.setExperimentType("ASPHALT");
+            task.setStatus("未接受");
+            task.setCreationTime(System.currentTimeMillis());
+            task.setCompanyId(companyId);
+            
+            // 解析检测截止日期字符串为时间戳
+            try {
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                Date expiryDate = dateFormat.parse(asphalt.getExpiryDate());
+                if (expiryDate != null) {
+                    task.setDeadline(expiryDate.getTime());
                 }
-
-                // 将沥青信息存储在notes字段中
-                String notes = String.format("沥青信息:\n标号: %s\n类型: %s\n供应商: %s\n\n选中的实验:\n%s",
-                    asphalt.getGrade(),
-                    asphalt.getType(),
-                    asphalt.getSupplier(),
-                    experiment.getName());
-                task.setNotes(notes);
-                tasks.add(task);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+
+            // 设置实验分配
+            Map<Long, List<String>> experimentAssignments = new HashMap<>();
+            List<String> experimentTypes = new ArrayList<>();
+            for (ExperimentType experiment : experiments) {
+                experimentTypes.add(experiment.getType());
+            }
+            // 使用 0L 作为默认的配比ID，因为沥青实验不需要配比
+            experimentAssignments.put(0L, experimentTypes);
+            task.setExperimentAssignments(experimentAssignments);
+
+            // 将沥青信息存储在notes字段中
+            StringBuilder notes = new StringBuilder();
+            notes.append("沥青信息\n");
+            notes.append("标号: ").append(asphalt.getGrade()).append("\n");
+            notes.append("类型: ").append(asphalt.getType()).append("\n");
+            notes.append("供应商: ").append(asphalt.getSupplier()).append("\n");
+            notes.append("---\n"); // 添加分隔符
+            notes.append("实验指派\n");
+            for (ExperimentType experiment : experiments) {
+                notes.append(experiment.getName()).append("\n");
+            }
+            task.setNotes(notes.toString());
+            tasks.add(task);
+            taskIndex++;
         }
 
         // 在后台线程中保存任务
-        new Thread(() -> {
+        executor.execute(() -> {
             try {
-                AppDatabase db = AppDatabase.getInstance(requireContext());
                 for (ExperimentTask task : tasks) {
-                    db.experimentTaskDao().insert(task);
+                    database.experimentTaskDao().insert(task);
                 }
                 requireActivity().runOnUiThread(() -> {
                     Toast.makeText(requireContext(), "任务已创建", Toast.LENGTH_SHORT).show();
@@ -235,9 +269,9 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
             } catch (Exception e) {
                 e.printStackTrace();
                 requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "创建任务失败", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "创建任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
-        }).start();
+        });
     }
 }

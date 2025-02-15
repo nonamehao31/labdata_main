@@ -175,8 +175,8 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
             new Thread(() -> {
                 try {
                     Log.d(TAG, "Loading task data for taskId: " + taskId);
-                    // 从数据库获取任务信息
-                    ExperimentTask task = db.experimentTaskDao().getTaskByTaskId(taskId);
+                    // 从数据库获取任务信息，使用 getFullTaskById 方法
+                    ExperimentTask task = db.experimentTaskDao().getFullTaskById(Long.parseLong(taskId));
                     if (task != null) {
                         Log.d(TAG, "Task found in database");
                         
@@ -195,9 +195,11 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
                                     Gson gson = new Gson();
                                     List<MoldingMethod> methods = new ArrayList<>();
 
+                                    // 尝试解析为JSON数组
                                     if (moldingMethodStr.trim().startsWith("[")) {
-                                        // 如果是JSON数组格式，直接解析
-                                        methods = gson.fromJson(moldingMethodStr, new TypeToken<List<MoldingMethod>>(){}.getType());
+                                        // 如果是JSON数组格式
+                                        TypeToken<List<MoldingMethod>> token = new TypeToken<List<MoldingMethod>>() {};
+                                        methods = gson.fromJson(moldingMethodStr, token.getType());
                                         Log.d(TAG, "Parsed JSON array format, size: " + methods.size());
                                     } else if (moldingMethodStr.trim().startsWith("{")) {
                                         // 如果是单个JSON对象，转换为数组
@@ -262,26 +264,33 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
                                         rvMoldingMethods.setAdapter(specimenMethodAdapter);
                                         Log.d(TAG, "Updated RecyclerView with new adapter");
                                     } else {
-                                        Log.e(TAG, "RecyclerView is null when trying to update adapter");
+                                        Log.e(TAG, "RecyclerView is null");
                                     }
                                 } catch (Exception e) {
                                     Log.e(TAG, "Error parsing molding method", e);
-                                    e.printStackTrace();
+                                    Toast.makeText(GenerateSpecimenCodeActivity.this,
+                                            "解析制件方法时出错", Toast.LENGTH_SHORT).show();
                                 }
                             } else {
-                                Log.w(TAG, "Molding method string is null or empty");
+                                Log.w(TAG, "No molding method string found");
+                                Toast.makeText(GenerateSpecimenCodeActivity.this,
+                                        "未找到制件方法信息", Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else {
-                        Log.e(TAG, "Task not found in database for taskId: " + taskId);
+                        Log.e(TAG, "Task not found in database");
+                        runOnUiThread(() -> Toast.makeText(GenerateSpecimenCodeActivity.this,
+                                "未找到任务信息", Toast.LENGTH_SHORT).show());
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error loading task data", e);
-                    e.printStackTrace();
+                    runOnUiThread(() -> Toast.makeText(GenerateSpecimenCodeActivity.this,
+                            "加载任务数据时出错", Toast.LENGTH_SHORT).show());
                 }
             }).start();
         } else {
-            Log.e(TAG, "TaskId is null");
+            Log.e(TAG, "No taskId provided");
+            Toast.makeText(this, "未提供任务ID", Toast.LENGTH_SHORT).show();
         }
     }
 

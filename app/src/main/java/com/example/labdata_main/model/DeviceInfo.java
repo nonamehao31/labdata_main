@@ -47,6 +47,16 @@ public class DeviceInfo implements Parcelable {
         initExecutorService();
     }
 
+    public DeviceInfo(String deviceId, String type, String manufacturer, String model, String purchaseYear, String companyId) {
+        this.deviceId = deviceId;
+        this.type = type;
+        this.manufacturer = manufacturer;
+        this.model = model;
+        this.purchaseYear = purchaseYear;
+        this.name = String.format("%s %s", manufacturer, model);
+        initExecutorService();
+    }
+
     private void initExecutorService() {
         if (executorService == null || executorService.isShutdown()) {
             executorService = Executors.newSingleThreadExecutor();
