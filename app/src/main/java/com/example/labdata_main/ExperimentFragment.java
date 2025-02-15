@@ -94,8 +94,8 @@ public class ExperimentFragment extends Fragment {
     }
 
     private void setupExperimentRecyclerView() {
-        experimentAdapter = new CompletedExperimentAdapter();
         experimentRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        experimentAdapter = new CompletedExperimentAdapter(requireContext());
         experimentRecyclerView.setAdapter(experimentAdapter);
     }
 

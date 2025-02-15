@@ -20,4 +20,7 @@ public interface ExperimentTypeDao {
 
     @Query("SELECT * FROM experiment_types WHERE type = :type LIMIT 1")
     ExperimentType findByType(String type);
+
+    @Query("SELECT * FROM experiment_types WHERE name = :name AND category = :category")
+    List<ExperimentType> getExperimentTypesByNameAndCategory(String name, String category);
 }

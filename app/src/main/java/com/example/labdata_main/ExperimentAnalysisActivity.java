@@ -22,6 +22,7 @@ import com.google.android.material.button.MaterialButton;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -77,9 +78,8 @@ public class ExperimentAnalysisActivity extends AppCompatActivity {
         spinnerExperimenter = findViewById(R.id.spinnerExperimenter);
         recyclerViewResults = findViewById(R.id.recyclerViewResults);
 
-        // 设置RecyclerView
-        adapter = new CompletedExperimentAdapter();
         recyclerViewResults.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new CompletedExperimentAdapter(this);
         recyclerViewResults.setAdapter(adapter);
     }
 
@@ -145,59 +145,99 @@ public class ExperimentAnalysisActivity extends AppCompatActivity {
                 }
 
                 // 获取所有已完成的实验任务
-                List<ExperimentTask> completedTasks = database.experimentTaskDao().getCompletedTasksByCompany(companyId);
-                
-                // 收集所有的实验类型、机器和实验人
+                List<ExperimentTask> tasks = database.experimentTaskDao()
+                        .getCompletedTasksByCompany(companyId);
+
                 Set<String> experimentTypes = new HashSet<>();
                 Set<String> machines = new HashSet<>();
                 Set<String> experimenters = new HashSet<>();
 
-                for (ExperimentTask task : completedTasks) {
-                    // 收集实验人
-                    if (task.getExperimenter() != null) {
+                for (ExperimentTask task : tasks) {
+                    // 获取实验人
+                    if (task.getExperimenter() != null && !task.getExperimenter().isEmpty()) {
                         experimenters.add(task.getExperimenter());
                     }
 
-                    // 获取任务的实验数据
-                    List<ExperimentData> dataList = database.experimentDataDao().getExperimentDataByTaskId(task.getId());
+                    // 获取实验类型和机器信息
+                    List<ExperimentData> dataList = database.experimentDataDao()
+                            .getExperimentDataByTaskId(task.getId());
+                    
                     for (ExperimentData data : dataList) {
-                        // 收集实验类型
+                        // 添加主实验类型
                         if (data.getExperimentName() != null) {
-                            experimentTypes.add(data.getExperimentName());
+                            String mainExperimentType = extractMainExperimentType(data.getExperimentName());
+                            if (!mainExperimentType.isEmpty()) {
+                                experimentTypes.add(mainExperimentType);
+                            }
                         }
-                        // 收集机器信息
-                        String machine = data.getDeviceManufacturer() + " " + data.getDeviceModel();
-                        if (!machine.trim().isEmpty()) {
-                            machines.add(machine);
+
+                        // 添加机器信息
+                        String deviceInfo = data.getDeviceManufacturer() + " " + data.getDeviceModel();
+                        if (!deviceInfo.trim().equals("null null")) {
+                            machines.add(deviceInfo);
                         }
                     }
                 }
+
+                // 转换为排序列表
+                List<String> sortedExperimentTypes = new ArrayList<>(experimentTypes);
+                List<String> sortedMachines = new ArrayList<>(machines);
+                List<String> sortedExperimenters = new ArrayList<>(experimenters);
+
+                Collections.sort(sortedExperimentTypes);
+                Collections.sort(sortedMachines);
+                Collections.sort(sortedExperimenters);
 
                 // 在主线程中更新UI
                 runOnUiThread(() -> {
                     // 设置实验类型下拉列表
                     ArrayAdapter<String> experimentTypeAdapter = new ArrayAdapter<>(
-                            this, android.R.layout.simple_dropdown_item_1line,
-                            new ArrayList<>(experimentTypes));
+                            this,
+                            android.R.layout.simple_dropdown_item_1line,
+                            sortedExperimentTypes
+                    );
                     spinnerExperimentType.setAdapter(experimentTypeAdapter);
 
                     // 设置机器下拉列表
                     ArrayAdapter<String> machineAdapter = new ArrayAdapter<>(
-                            this, android.R.layout.simple_dropdown_item_1line,
-                            new ArrayList<>(machines));
+                            this,
+                            android.R.layout.simple_dropdown_item_1line,
+                            sortedMachines
+                    );
                     spinnerMachine.setAdapter(machineAdapter);
 
                     // 设置实验人下拉列表
                     ArrayAdapter<String> experimenterAdapter = new ArrayAdapter<>(
-                            this, android.R.layout.simple_dropdown_item_1line,
-                            new ArrayList<>(experimenters));
+                            this,
+                            android.R.layout.simple_dropdown_item_1line,
+                            sortedExperimenters
+                    );
                     spinnerExperimenter.setAdapter(experimenterAdapter);
                 });
 
             } catch (Exception e) {
                 Log.e(TAG, "Error loading filter options", e);
+                runOnUiThread(() -> 
+                    Toast.makeText(this, "加载筛选选项出错: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
             }
         });
+    }
+
+    private String extractMainExperimentType(String experimentName) {
+        if (experimentName == null) return "";
+        
+        // 马歇尔稳定度实验
+        if (experimentName.contains("马歇尔稳定度")) {
+            return "马歇尔实验";
+        }
+        // 车辙实验
+        if (experimentName.contains("车辙")) {
+            return "车辙实验";
+        }
+        // 其他实验类型可以继续添加...
+        
+        return experimentName;
     }
 
     private void setupSearchButton() {
@@ -256,8 +296,11 @@ public class ExperimentAnalysisActivity extends AppCompatActivity {
                     
                     for (ExperimentData data : dataList) {
                         // 检查实验类型
-                        if (!type.isEmpty() && type.equals(data.getExperimentName())) {
-                            matchesType = true;
+                        if (!type.isEmpty() && data.getExperimentName() != null) {
+                            String mainExperimentType = extractMainExperimentType(data.getExperimentName());
+                            if (type.equals(mainExperimentType)) {
+                                matchesType = true;
+                            }
                         }
                         
                         // 检查机器

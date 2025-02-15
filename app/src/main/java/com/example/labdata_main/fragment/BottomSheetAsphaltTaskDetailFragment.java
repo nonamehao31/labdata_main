@@ -25,21 +25,29 @@ import java.util.Locale;
 
 public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragment {
     private static final String ARG_TASK = "task";
+    private static final String ARG_SHOW_ACCEPT_BUTTON = "show_accept_button";
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     private ExperimentTask task;
     private OnTaskActionListener listener;
+    private boolean showAcceptButton = true; // 默认显示按钮
 
     public interface OnTaskActionListener {
         void onTaskAccepted(ExperimentTask task);
         void onTaskRejected(ExperimentTask task);
     }
 
-    public static BottomSheetAsphaltTaskDetailFragment newInstance(ExperimentTask task) {
+    public static BottomSheetAsphaltTaskDetailFragment newInstance(ExperimentTask task, boolean showAcceptButton) {
         BottomSheetAsphaltTaskDetailFragment fragment = new BottomSheetAsphaltTaskDetailFragment();
         Bundle args = new Bundle();
         args.putParcelable(ARG_TASK, task);
+        args.putBoolean(ARG_SHOW_ACCEPT_BUTTON, showAcceptButton);
         fragment.setArguments(args);
         return fragment;
+    }
+
+    // 保持原有的 newInstance 方法以保持向后兼容
+    public static BottomSheetAsphaltTaskDetailFragment newInstance(ExperimentTask task) {
+        return newInstance(task, true);
     }
 
     public void setOnTaskActionListener(OnTaskActionListener listener) {
@@ -51,13 +59,14 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             task = getArguments().getParcelable(ARG_TASK);
+            showAcceptButton = getArguments().getBoolean(ARG_SHOW_ACCEPT_BUTTON, true);
         }
     }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-                           @Nullable Bundle savedInstanceState) {
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.bottom_sheet_asphalt_task_detail, container, false);
     }
 
@@ -86,18 +95,23 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
         AsphaltExperimentAdapter adapter = new AsphaltExperimentAdapter(parseExperimentData());
         asphaltExperimentRecyclerView.setAdapter(adapter);
 
-        // 设置接受按钮点击事件
-        fabAcceptTask.setOnClickListener(v -> {
-            if (listener != null) {
-                task.setStatus("已接受");
-                listener.onTaskAccepted(task);
-            }
-            dismiss();
-        });
+        // 根据 showAcceptButton 参数控制按钮显示
+        if (!showAcceptButton) {
+            fabAcceptTask.setVisibility(View.GONE);
+        } else {
+            // 设置接受按钮点击事件
+            fabAcceptTask.setOnClickListener(v -> {
+                if (listener != null) {
+                    task.setStatus("已接受");
+                    listener.onTaskAccepted(task);
+                }
+                dismiss();
+            });
 
-        // 如果任务已经有状态，禁用按钮
-        if (task.getStatus() != null && !task.getStatus().equals("未接受")) {
-            fabAcceptTask.setEnabled(false);
+            // 如果任务已经有状态，禁用按钮
+            if (task.getStatus() != null && !task.getStatus().equals("未接受")) {
+                fabAcceptTask.setEnabled(false);
+            }
         }
     }
 

@@ -29,8 +29,10 @@ import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -68,6 +70,8 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         taskId = getIntent().getLongExtra("taskId", -1);
         experimentType = getIntent().getStringExtra("experiment_type");
         
+        Log.d("RecordExperiment", "收到任务ID: " + taskId + ", 实验类型: " + experimentType);
+        
         if (taskId == -1) {
             Toast.makeText(this, "无效的任务ID", Toast.LENGTH_SHORT).show();
             finish();
@@ -82,7 +86,23 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         // 调试日志：打印当前登录用户信息
         String userName = sharedPrefsManager.getUserName();
         String userEmail = sharedPrefsManager.getUserEmail();
-        Log.d("RecordExperiment", "Current user information - Name: " + userName + ", Email: " + userEmail);
+        Log.d("RecordExperiment", "当前用户信息 - 姓名: " + userName + ", 邮箱: " + userEmail);
+
+        // 验证任务是否存在
+        executor.execute(() -> {
+            ExperimentTask task = database.experimentTaskDao().getFullTaskById(taskId);
+            if (task == null) {
+                Log.e("RecordExperiment", "在数据库中未找到任务: " + taskId);
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "未找到任务", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
+                return;
+            }
+            Log.d("RecordExperiment", "成功获取任务: " + task.getTaskName());
+            Log.d("RecordExperiment", "任务实验指派: " + (task.getExperimentAssignments() != null ? task.getExperimentAssignments().toString() : "null"));
+            Log.d("RecordExperiment", "任务备注: " + task.getNotes());
+        });
 
         // 设置返回按钮
         ImageView btnBack = findViewById(R.id.btnBack);
@@ -117,25 +137,107 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             try {
                 Log.d("SetupAsphalt", "开始加载沥青实验类型...");
                 
+                // 先获取任务信息
+                ExperimentTask task = database.experimentTaskDao().getFullTaskById(taskId);
+                if (task == null) {
+                    Log.e("SetupAsphalt", "未找到任务: " + taskId);
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "未找到任务", Toast.LENGTH_SHORT).show();
+                        finish();
+                    });
+                    return;
+                }
+
+                // 从任务中获取选定的实验类型
+                Set<String> selectedExperiments = new HashSet<>();
+
+                // 1. 尝试从 experimentAssignments 中获取
+                Map<Long, List<String>> assignments = task.getExperimentAssignments();
+                if (assignments != null && !assignments.isEmpty()) {
+                    // 对于沥青实验，我们使用 0L 作为键
+                    List<String> experiments = assignments.get(0L);
+                    if (experiments != null) {
+                        selectedExperiments.addAll(experiments);
+                        Log.d("SetupAsphalt", "从 experimentAssignments 中获取到 " + experiments.size() + " 个实验类型");
+                    }
+                }
+
+                // 2. 如果 experimentAssignments 为空，尝试从 notes 中解析
+                if (selectedExperiments.isEmpty()) {
+                    String notes = task.getNotes();
+                    if (notes != null && !notes.isEmpty()) {
+                        // 获取所有沥青实验类型，用于匹配
+                        List<ExperimentType> allTypes = database.experimentTypeDao()
+                            .getExperimentTypesByCategory(ExperimentType.CATEGORY_ASPHALT);
+                        
+                        // 解析 notes 中的实验类型
+                        String[] lines = notes.split("\n");
+                        boolean isExperimentSection = false;
+                        
+                        for (String line : lines) {
+                            line = line.trim();
+                            
+                            // 检查是否进入实验部分
+                            if (line.equals("选中的实验:")) {
+                                isExperimentSection = true;
+                                continue;
+                            }
+                            
+                            // 如果在实验部分，解析实验名称
+                            if (isExperimentSection && !line.isEmpty()) {
+                                // 移除序号和点号
+                                String experimentName = line.replaceAll("^\\d+\\.\\s*", "").trim();
+                                Log.d("SetupAsphalt", "从 notes 中找到实验名称: " + experimentName);
+                                
+                                // 找到最匹配的实验类型
+                                ExperimentType bestMatch = null;
+                                for (ExperimentType type : allTypes) {
+                                    if (type.getName().contains(experimentName) || 
+                                        experimentName.contains(type.getName())) {
+                                        bestMatch = type;
+                                        break;
+                                    }
+                                }
+                                
+                                if (bestMatch != null) {
+                                    selectedExperiments.add(bestMatch.getType());
+                                    Log.d("SetupAsphalt", "找到匹配的实验类型: " + bestMatch.getName() + 
+                                        " (" + bestMatch.getType() + ")");
+                                } else {
+                                    Log.w("SetupAsphalt", "未找到匹配的实验类型: " + experimentName);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (selectedExperiments.isEmpty()) {
+                    Log.w("SetupAsphalt", "任务中没有选择任何实验");
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "任务中没有选择任何实验", Toast.LENGTH_SHORT).show();
+                        finish();
+                    });
+                    return;
+                }
+
                 // 获取所有沥青实验类型
                 List<ExperimentType> experimentTypes = database.experimentTypeDao()
                     .getExperimentTypesByCategory(ExperimentType.CATEGORY_ASPHALT);
                 
-                Log.d("SetupAsphalt", "查询结果: " + 
-                    (experimentTypes != null ? experimentTypes.size() : 0) + " 个实验类型");
-                if (experimentTypes != null) {
-                    for (ExperimentType type : experimentTypes) {
-                        Log.d("SetupAsphalt", "实验类型: " + type.getName() + 
-                            ", 类型: " + type.getType() + 
-                            ", 类别: " + type.getCategory());
+                // 过滤出任务中选择的实验类型
+                List<ExperimentType> selectedTypes = new ArrayList<>();
+                for (ExperimentType type : experimentTypes) {
+                    if (selectedExperiments.contains(type.getType())) {
+                        selectedTypes.add(type);
+                        Log.d("SetupAsphalt", "匹配到实验类型: " + type.getName() + " (" + type.getType() + ")");
                     }
                 }
 
-                // 如果没有找到实验类型，显示错误消息
-                if (experimentTypes == null || experimentTypes.isEmpty()) {
-                    Log.w("SetupAsphalt", "未找到任何实验类型");
+                Log.d("SetupAsphalt", "任务中选择的实验类型数量: " + selectedTypes.size());
+                if (selectedTypes.isEmpty()) {
+                    Log.w("SetupAsphalt", "未找到任何匹配的实验类型");
                     runOnUiThread(() -> {
-                        Toast.makeText(this, "未找到任何实验类型", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "未找到任何匹配的实验类型", Toast.LENGTH_SHORT).show();
                         finish();
                     });
                     return;
@@ -144,16 +246,17 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                 // 在主线程中更新UI
                 runOnUiThread(() -> {
                     List<String> typeNames = new ArrayList<>();
-                    for (ExperimentType type : experimentTypes) {
+                    for (ExperimentType type : selectedTypes) {
                         typeNames.add(type.getType());
+                        Log.d("SetupAsphalt", "添加实验类型到UI: " + type.getName() + " (" + type.getType() + ")");
                     }
-                    Log.d("SetupAsphalt", "更新UI，显示 " + typeNames.size() + " 个实验类型");
                     asphaltAdapter.setExperimentTypes(typeNames);
                 });
+
             } catch (Exception e) {
-                Log.e("SetupAsphalt", "Error loading experiment types", e);
+                Log.e("SetupAsphalt", "加载实验类型时出错", e);
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "加载实验类型时出错：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "加载实验类型时出错: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     finish();
                 });
             }

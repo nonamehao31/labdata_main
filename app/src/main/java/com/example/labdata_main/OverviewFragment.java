@@ -536,7 +536,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
             requireActivity().runOnUiThread(() -> {
                 BottomSheetAsphaltTaskDetailFragment bottomSheet = 
-                        BottomSheetAsphaltTaskDetailFragment.newInstance(fullTask);
+                        BottomSheetAsphaltTaskDetailFragment.newInstance(fullTask, false);  // 传入 false 隐藏接受按钮
                 bottomSheet.setOnTaskActionListener(new BottomSheetAsphaltTaskDetailFragment.OnTaskActionListener() {
                     @Override
                     public void onTaskAccepted(ExperimentTask task) {
@@ -561,11 +561,25 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
     @Override
     public void onRecordData(ExperimentTask task) {
-        // 启动实验数据记录活动
-        Intent intent = new Intent(requireContext(), RecordExperimentDataActivity.class);
-        intent.putExtra("taskId", task.getId());  // 修改为 "taskId" 以匹配 RecordExperimentDataActivity
-        intent.putExtra("experiment_type", "ASPHALT");
-        startActivity(intent);
+        // 先获取完整的任务信息
+        executor.execute(() -> {
+            ExperimentTask fullTask = database.experimentTaskDao().getFullTaskById(task.getId());
+            if (fullTask == null) {
+                Log.e("OverviewFragment", "Task not found: " + task.getId());
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "未找到任务", Toast.LENGTH_SHORT).show();
+                });
+                return;
+            }
+
+            // 在主线程中启动实验数据记录活动
+            requireActivity().runOnUiThread(() -> {
+                Intent intent = new Intent(requireContext(), RecordExperimentDataActivity.class);
+                intent.putExtra("taskId", fullTask.getId());
+                intent.putExtra("experiment_type", "ASPHALT");
+                startActivity(intent);
+            });
+        });
     }
 
     // 显示混合料实验信息
