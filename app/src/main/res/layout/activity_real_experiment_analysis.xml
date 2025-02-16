@@ -25,6 +25,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- 筛选区域 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -38,6 +39,7 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <!-- 配比选择 -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -53,6 +55,7 @@
                     android:minHeight="48dp"
                     android:layout_marginBottom="16dp"/>
 
+                <!-- 实验主类选择 -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -62,7 +65,23 @@
                     android:layout_marginBottom="8dp"/>
 
                 <Spinner
-                    android:id="@+id/spinnerExperimentType"
+                    android:id="@+id/spinnerMainExperimentType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:layout_marginBottom="16dp"/>
+
+                <!-- 实验数据子类选择 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="选择数据类型"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <Spinner
+                    android:id="@+id/spinnerSubExperimentType"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:minHeight="48dp"/>
@@ -71,12 +90,14 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 折线图 -->
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/lineChart"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"/>
 
+        <!-- 实验数据列表 -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvExperimentData"
             android:layout_width="match_parent"

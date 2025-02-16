@@ -74,7 +74,7 @@ public class ExperimentAnalysisActivity extends AppCompatActivity {
         btnEndDate = findViewById(R.id.btnEndDate);
         btnSearch = findViewById(R.id.btnSearch);
         spinnerMachine = findViewById(R.id.spinnerMachine);
-        spinnerExperimentType = findViewById(R.id.spinnerExperimentType);
+        spinnerExperimentType = findViewById(R.id.realspinnerExperimentType);
         spinnerExperimenter = findViewById(R.id.spinnerExperimenter);
         recyclerViewResults = findViewById(R.id.recyclerViewResults);
 

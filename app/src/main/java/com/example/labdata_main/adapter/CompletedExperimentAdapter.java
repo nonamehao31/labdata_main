@@ -141,6 +141,35 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<RecyclerVie
         holder.tvExperimenter.setText(experimenter);
         holder.tvCompletionTime.setText(completionTime);
 
+        // 清除之前的沥青信息
+        holder.llAsphaltInfo.removeAllViews();
+
+        // 处理沥青基本信息
+        String notes = taskWithData.task.getNotes();
+        if (notes != null && !notes.isEmpty()) {
+            String[] sections = notes.split("---+\\s*\\n");
+            for (String section : sections) {
+                section = section.trim();
+                if (section.startsWith("沥青信息")) {
+                    String[] lines = section.split("\\n");
+                    StringBuilder asphaltInfo = new StringBuilder();
+                    // 跳过标题行，从第二行开始处理
+                    for (int i = 1; i < lines.length; i++) {
+                        String line = lines[i].trim();
+                        if (!line.isEmpty()) {
+                            TextView textView = new TextView(context);
+                            textView.setLayoutParams(new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT));
+                            textView.setText(line);
+                            holder.llAsphaltInfo.addView(textView);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
         // 构建实验结果字符串
         StringBuilder contentBuilder = new StringBuilder();
         StringBuilder devicesBuilder = new StringBuilder();

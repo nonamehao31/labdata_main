@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -77,11 +78,17 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.overview, container, false);
 
         // 初始化视图
+        initializeViews(view);
+
+        return view;
+    }
+
+    private void initializeViews(View view) {
+        // 初始化所有视图引用
         welcomeText = view.findViewById(R.id.welcomeText);
         spinner = view.findViewById(R.id.spinner);
         taskRecyclerView = view.findViewById(R.id.task_recycler_view);
@@ -93,64 +100,34 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         database = AppDatabase.getInstance(requireContext());
         sharedPrefsManager = new SharedPrefsManager(requireContext());
 
-        // 设置欢迎文本
-        String companyName = sharedPrefsManager.getUserCompany();
-        if (companyName != null) {
-            welcomeText.setText(String.format("你好，%s", companyName));
+        // 设置按钮点击事件
+        LinearLayout btnAssignExperiment = view.findViewById(R.id.btnAssignExperiment);
+        LinearLayout btnAssignAsphaltExperiment = view.findViewById(R.id.btnAssignAsphaltExperiment);
+        LinearLayout btnAddMixRatio = view.findViewById(R.id.btnAddMixRatio);
+
+        if (btnAssignExperiment != null) {
+            btnAssignExperiment.setOnClickListener(v -> showAddExperimentDialog());
         }
 
-        // 设置实验类型选择器
-        setupSpinner();
-
-        // 设置任务列表
-        setupTaskRecyclerView();
-        setupAcceptedTasksRecyclerView();
-
-        // 注册广播接收器
-        registerTaskRefreshReceiver();
-
-        return view;
-    }
-
-    private void setupSpinner() {
-        spinner.setOnItemSelectedListener(this);
-        
-        // 设置默认选中项
-        String[] experimentTypes = getResources().getStringArray(R.array.experiment_types);
-        if (experimentTypes.length > 0) {
-            spinner.setSelection(0);
+        if (btnAssignAsphaltExperiment != null) {
+            btnAssignAsphaltExperiment.setOnClickListener(v -> showAddAsphaltTaskDialog());
         }
-    }
 
-    private void registerTaskRefreshReceiver() {
-        IntentFilter filter = new IntentFilter("com.example.labdata_main.TASK_UPDATED");
-        taskRefreshReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                loadExperimentTasks();
-            }
-        };
-        requireActivity().registerReceiver(taskRefreshReceiver, filter);
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        if (taskRefreshReceiver != null) {
-            requireActivity().unregisterReceiver(taskRefreshReceiver);
-            taskRefreshReceiver = null;
+        if (btnAddMixRatio != null) {
+            btnAddMixRatio.setOnClickListener(v -> {
+                MixRatioBottomSheetFragment bottomSheet = MixRatioBottomSheetFragment.newInstance();
+                bottomSheet.show(getChildFragmentManager(), "MixRatioBottomSheet");
+            });
         }
-    }
 
-    private void setupTaskRecyclerView() {
+        // 设置RecyclerView
+        taskRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        myTasksRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        // 设置适配器
         taskAdapter = new ExperimentTaskAdapter(this);
-        taskRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         taskRecyclerView.setAdapter(taskAdapter);
-    }
 
-    private void setupAcceptedTasksRecyclerView() {
-        myTasksRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        
         // 初始化混合料任务适配器
         mixtureTaskAdapter = new ProjectCardAdapter();
         mixtureTaskAdapter.setOnProjectCardActionListener(new ProjectCardAdapter.OnProjectCardActionListener() {
@@ -183,6 +160,45 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 初始化沥青任务适配器
         asphaltTaskAdapter = new AsphaltProjectCardAdapter();
         asphaltTaskAdapter.setOnAsphaltTaskActionListener(this);
+
+        // 设置下拉框
+        setupSpinner();
+
+        // 注册广播接收器
+        registerTaskRefreshReceiver();
+
+        // 加载实验任务
+        loadExperimentTasks();
+    }
+
+    private void setupSpinner() {
+        spinner.setOnItemSelectedListener(this);
+        
+        // 设置默认选中项
+        String[] experimentTypes = getResources().getStringArray(R.array.experiment_types);
+        if (experimentTypes.length > 0) {
+            spinner.setSelection(0);
+        }
+    }
+
+    private void registerTaskRefreshReceiver() {
+        IntentFilter filter = new IntentFilter("com.example.labdata_main.TASK_UPDATED");
+        taskRefreshReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                loadExperimentTasks();
+            }
+        };
+        requireActivity().registerReceiver(taskRefreshReceiver, filter);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (taskRefreshReceiver != null) {
+            requireActivity().unregisterReceiver(taskRefreshReceiver);
+            taskRefreshReceiver = null;
+        }
     }
 
     @Override
@@ -208,21 +224,6 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         spinner.setOnItemSelectedListener(this);
-
-        // 初始化添加配合比按钮
-        MaterialButton addMixButton = view.findViewById(R.id.add_mix_button);
-        addMixButton.setOnClickListener(v -> {
-            MixRatioBottomSheetFragment bottomSheet = MixRatioBottomSheetFragment.newInstance();
-            bottomSheet.show(getChildFragmentManager(), "MixRatioBottomSheet");
-        });
-
-        // 初始化添加实验任务按钮
-        MaterialButton addExperimentButton = view.findViewById(R.id.assign_task_button);
-        addExperimentButton.setOnClickListener(v -> showAddExperimentDialog());
-
-        // 初始化添加沥青实验任务按钮
-        MaterialButton addAsphaltExperimentButton = view.findViewById(R.id.add_asphalt_task_button);
-        addAsphaltExperimentButton.setOnClickListener(v -> showAddAsphaltTaskDialog());
 
         loadExperimentTasks();
     }

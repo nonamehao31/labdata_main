@@ -92,63 +92,101 @@
             </androidx.cardview.widget.CardView>
 
             <!-- 按钮区域 -->
-            <androidx.cardview.widget.CardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp">
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:gravity="center"
+                android:baselineAligned="false">
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:id="@+id/btnAssignExperiment"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="12dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:orientation="vertical"
                     android:gravity="center"
-                    android:weightSum="3">
+                    android:background="@drawable/overview_button_background"
+                    android:padding="12dp"
+                    android:clickable="true"
+                    android:focusable="true">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/assign_task_button"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="0.95"
-                        android:layout_marginEnd="8dp"
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/mixture_task_assignment"
+                        android:layout_marginBottom="8dp"
+                        android:contentDescription="制定实验任务图标"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:text="制定实验任务"
-                        android:textSize="15sp"
-                        app:cornerRadius="8dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        style="@style/Widget.MaterialComponents.Button"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/add_asphalt_task_button"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="0.95"
-                        android:layout_marginEnd="8dp"
-                        android:text="制定沥青任务"
-                        android:textSize="15sp"
-                        app:cornerRadius="8dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        style="@style/Widget.MaterialComponents.Button"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/add_mix_button"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="0.95"
-                        android:layout_marginStart="8dp"
-                        android:text="添加配合比"
-                        android:textSize="15sp"
-                        app:cornerRadius="8dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        style="@style/Widget.MaterialComponents.Button"/>
-
+                        android:textSize="12sp"
+                        android:textColor="#333333"
+                        android:gravity="center"/>
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+                <LinearLayout
+                    android:id="@+id/btnAssignAsphaltExperiment"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/overview_button_background"
+                    android:padding="12dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/asphalt_task_assignment"
+                        android:layout_marginBottom="8dp"
+                        android:contentDescription="制定沥青任务图标"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="制定沥青任务"
+                        android:textSize="12sp"
+                        android:textColor="#333333"
+                        android:gravity="center"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btnAddMixRatio"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/overview_button_background"
+                    android:padding="12dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/add_mixratio"
+                        android:layout_marginBottom="8dp"
+                        android:contentDescription="添加配合比图标"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="添加配合比"
+                        android:textSize="12sp"
+                        android:textColor="#333333"
+                        android:gravity="center"/>
+                </LinearLayout>
+
+            </LinearLayout>
 
             <!-- 我的任务卡片 -->
             <androidx.cardview.widget.CardView

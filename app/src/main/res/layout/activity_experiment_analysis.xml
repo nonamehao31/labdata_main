@@ -95,7 +95,7 @@
                 android:hint="实验类型">
 
                 <AutoCompleteTextView
-                    android:id="@+id/spinnerExperimentType"
+                    android:id="@+id/realspinnerExperimentType"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="none"/>
