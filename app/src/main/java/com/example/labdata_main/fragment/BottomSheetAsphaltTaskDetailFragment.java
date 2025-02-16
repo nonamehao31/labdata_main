@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
 import com.example.labdata_main.adapter.AsphaltExperimentAdapter;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.model.MixRatio;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragment {
     private static final String ARG_TASK = "task";
@@ -117,8 +119,32 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
 
     private List<AsphaltExperimentItem> parseExperimentData() {
         List<AsphaltExperimentItem> items = new ArrayList<>();
-        String notes = task.getNotes();
         
+        // 1. 处理实验指派信息
+        Map<Long, List<String>> experimentAssignments = task.getExperimentAssignments();
+        if (experimentAssignments != null && !experimentAssignments.isEmpty()) {
+            StringBuilder experimentInfo = new StringBuilder();
+            
+            // 遍历每个配比的实验指派
+            for (Map.Entry<Long, List<String>> entry : experimentAssignments.entrySet()) {
+                List<String> experiments = entry.getValue();
+                if (experiments != null && !experiments.isEmpty()) {
+                    for (String experiment : experiments) {
+                        experimentInfo.append("• ").append(experiment).append("\n");
+                    }
+                }
+            }
+            
+            if (experimentInfo.length() > 0) {
+                items.add(new AsphaltExperimentItem(
+                    "实验指派",
+                    experimentInfo.toString().trim()
+                ));
+            }
+        }
+
+        // 2. 处理 notes 中的信息
+        String notes = task.getNotes();
         if (notes != null && !notes.isEmpty()) {
             // 分割主要部分
             String[] mainSections = notes.split("---+\\s*\\n");
@@ -146,30 +172,22 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
                         ));
                     }
                 }
-                // 处理实验指派部分
-                else if (section.startsWith("实验指派")) {
-                    String[] lines = section.split("\\n");
-                    StringBuilder experimentInfo = new StringBuilder();
-                    
-                    // 跳过标题行，从第二行开始处理
-                    for (int i = 1; i < lines.length; i++) {
-                        String line = lines[i].trim();
-                        if (!line.isEmpty()) {
-                            // 如果是新的实验类型，添加一个项目符号
-                            if (!line.startsWith("•")) {
-                                experimentInfo.append("• ");
-                            }
-                            experimentInfo.append(line).append("\n");
-                        }
-                    }
-                    
-                    if (experimentInfo.length() > 0) {
-                        items.add(new AsphaltExperimentItem(
-                            "实验指派",
-                            experimentInfo.toString().trim()
-                        ));
-                    }
-                }
+            }
+        }
+        
+        // 3. 添加混合料配比信息
+        List<MixRatio> mixRatios = task.getSelectedMixRatios();
+        if (mixRatios != null && !mixRatios.isEmpty()) {
+            StringBuilder mixRatioInfo = new StringBuilder();
+            for (MixRatio ratio : mixRatios) {
+                mixRatioInfo.append("• 配比 ").append(ratio.getName()).append("\n");
+            }
+            
+            if (mixRatioInfo.length() > 0) {
+                items.add(new AsphaltExperimentItem(
+                    "配比信息",
+                    mixRatioInfo.toString().trim()
+                ));
             }
         }
         

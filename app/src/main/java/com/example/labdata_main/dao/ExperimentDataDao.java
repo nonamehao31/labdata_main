@@ -36,4 +36,7 @@ public interface ExperimentDataDao {
 
     @Query("SELECT * FROM experiment_data WHERE deviceManufacturer = :manufacturer AND deviceModel = :model")
     List<ExperimentData> getExperimentDataByDevice(String manufacturer, String model);
+
+    @Query("SELECT * FROM experiment_data WHERE mixRatio = :mixRatio")
+    List<ExperimentData> getExperimentDataByMixRatio(String mixRatio);
 }

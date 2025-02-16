@@ -2,7 +2,6 @@ package com.example.labdata_main;
 
 import android.graphics.Color;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -175,6 +174,77 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
         });
     }
 
+    private void loadExperimentTypes(String mixRatio) {
+        new Thread(() -> {
+            try {
+                // 获取该配比下的所有实验数据
+                List<ExperimentData> experimentDataList = experimentDataDao.getExperimentDataByMixRatio(mixRatio);
+                
+                // 使用TreeMap来保存主实验类型和其对应的子类型
+                Map<String, Set<String>> experimentTypeMap = new TreeMap<>();
+                
+                for (ExperimentData data : experimentDataList) {
+                    String experimentName = data.getExperimentName();
+                    if (experimentName != null) {
+                        // 获取主实验类型
+                        String mainType = extractMainExperimentType(experimentName);
+                        
+                        // 将子类型添加到对应的主类型集合中
+                        experimentTypeMap.computeIfAbsent(mainType, k -> new HashSet<>())
+                                      .add(experimentName);
+                    }
+                }
+                
+                // 创建实验类型列表，包含所有子类型
+                List<String> experimentTypes = new ArrayList<>();
+                for (Map.Entry<String, Set<String>> entry : experimentTypeMap.entrySet()) {
+                    experimentTypes.addAll(entry.getValue());
+                }
+
+                // 在主线程中更新UI
+                runOnUiThread(() -> {
+                    ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                            this,
+                            android.R.layout.simple_spinner_item,
+                            experimentTypes
+                    ) {
+                        @Override
+                        public View getView(int position, View convertView, ViewGroup parent) {
+                            View view = super.getView(position, convertView, parent);
+                            TextView textView = (TextView) view;
+                            String item = getItem(position);
+                            // 显示完整的实验名称
+                            textView.setText(item);
+                            return view;
+                        }
+
+                        @Override
+                        public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                            View view = super.getDropDownView(position, convertView, parent);
+                            TextView textView = (TextView) view;
+                            String item = getItem(position);
+                            // 显示完整的实验名称，可以考虑添加缩进等视觉效果
+                            textView.setText(item);
+                            return view;
+                        }
+                    };
+                    
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    spinnerExperimentType.setAdapter(adapter);
+                    
+                    // 如果有数据，选择第一项
+                    if (!experimentTypes.isEmpty()) {
+                        spinnerExperimentType.setSelection(0);
+                        currentExperimentType = experimentTypes.get(0);
+                        loadExperimentData(currentMixRatio, currentExperimentType);
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
     private String extractMainExperimentType(String experimentName) {
         if (experimentName == null) return "";
         
@@ -189,19 +259,27 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
         return experimentName;
     }
 
-    private void loadExperimentTypes(String selectedMixRatio) {
+    private void loadExperimentData(String selectedMixRatio, String selectedExperimentType) {
         LiveData<List<ExperimentData>> experimentsLiveData = experimentDataDao.getAllExperiments();
         experimentsLiveData.observe(this, experiments -> {
-            Set<String> experimentTypes = new HashSet<>();
+            List<ExperimentData> filteredExperiments = new ArrayList<>();
+            Map<String, List<ExperimentData>> subTypeData = new TreeMap<>();
+
             for (ExperimentData experiment : experiments) {
                 String mixRatiosStr = experiment.getMixRatio();
-                if (mixRatiosStr != null) {
+                if (mixRatiosStr != null && experiment.getExperimentName().equals(selectedExperimentType)) {
                     String[] ratios = mixRatiosStr.split(",");
                     for (String ratio : ratios) {
                         if (selectedMixRatio.equals(ratio.trim())) {
-                            String mainType = extractMainExperimentType(experiment.getExperimentName());
-                            if (!mainType.isEmpty()) {
-                                experimentTypes.add(mainType);
+                            filteredExperiments.add(experiment);
+                            
+                            // 按输入标签分组
+                            String subType = experiment.getInput1Label();
+                            subTypeData.computeIfAbsent(subType, k -> new ArrayList<>()).add(experiment);
+                            
+                            if (experiment.getInput2Label() != null && !experiment.getInput2Label().isEmpty()) {
+                                subType = experiment.getInput2Label();
+                                subTypeData.computeIfAbsent(subType, k -> new ArrayList<>()).add(experiment);
                             }
                             break;
                         }
@@ -209,160 +287,79 @@ public class RealExperimentAnalysisActivity extends AppCompatActivity {
                 }
             }
 
-            List<String> sortedTypes = new ArrayList<>(experimentTypes);
-            java.util.Collections.sort(sortedTypes);
+            // 更新适配器数据
+            adapter.setExperiments(filteredExperiments);
+            adapter.notifyDataSetChanged();
 
-            if (sortedTypes.isEmpty()) {
-                spinnerExperimentType.setVisibility(View.GONE);
-                return;
-            }
-
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                sortedTypes
-            );
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinnerExperimentType.setAdapter(adapter);
-            
-            if (sortedTypes.size() == 1) {
-                currentExperimentType = sortedTypes.get(0);
-                loadExperimentData(selectedMixRatio, currentExperimentType);
-            }
+            // 更新图表数据
+            updateLineChart(subTypeData);
         });
     }
 
-    private void loadExperimentData(String mixRatio, String mainExperimentType) {
-        Log.d("RealExperimentAnalysis", "开始加载数据 - 配比: " + mixRatio + ", 实验类型: " + mainExperimentType);
+    private void updateLineChart(Map<String, List<ExperimentData>> subTypeData) {
+        lineChart.clear();
+        List<ILineDataSet> dataSets = new ArrayList<>();
+        List<String> xAxisLabels = new ArrayList<>();
         
-        LiveData<List<ExperimentData>> experimentsLiveData = experimentDataDao.getAllExperiments();
-        experimentsLiveData.observe(this, experiments -> {
-            Log.d("RealExperimentAnalysis", "获取到实验数据总数: " + experiments.size());
+        int colorIndex = 0;
+        int[] colors = new int[]{
+            Color.rgb(255, 87, 34),  // 深橙色
+            Color.rgb(33, 150, 243), // 蓝色
+            Color.rgb(76, 175, 80),  // 绿色
+            Color.rgb(156, 39, 176), // 紫色
+            Color.rgb(255, 152, 0),  // 橙色
+            Color.rgb(3, 169, 244),  // 浅蓝色
+        };
+
+        for (Map.Entry<String, List<ExperimentData>> entry : subTypeData.entrySet()) {
+            String subType = entry.getKey();
+            List<ExperimentData> dataList = entry.getValue();
+            List<Entry> entries = new ArrayList<>();
             
-            Map<String, List<ExperimentData>> subTypeData = new TreeMap<>();
-            List<ExperimentData> allData = new ArrayList<>();
-
-            // 按子类型分组数据
-            for (ExperimentData experiment : experiments) {
-                if (experiment.getMixRatio() != null && 
-                    experiment.getMixRatio().contains(mixRatio) && 
-                    experiment.getExperimentName() != null && 
-                    extractMainExperimentType(experiment.getExperimentName()).equals(mainExperimentType)) {
-                    
-                    String subType = experiment.getExperimentName();
-                    Log.d("RealExperimentAnalysis", "找到匹配数据 - 子类型: " + subType + 
-                        ", 配比: " + experiment.getMixRatio() + 
-                        ", 结果: " + experiment.getResult());
-                    
-                    if (!subTypeData.containsKey(subType)) {
-                        subTypeData.put(subType, new ArrayList<>());
-                    }
-                    subTypeData.get(subType).add(experiment);
-                    allData.add(experiment);
-                }
-            }
-
-            Log.d("RealExperimentAnalysis", "筛选后的数据总数: " + allData.size());
-            Log.d("RealExperimentAnalysis", "子类型数量: " + subTypeData.size());
-
-            // 更新RecyclerView显示所有数据
-            adapter.setExperiments(allData);
-
-            // 准备图表数据
-            List<ILineDataSet> dataSets = new ArrayList<>();
-            List<String> xAxisLabels = new ArrayList<>();
-            int colorIndex = 0;
-            int[] colors = {Color.RED, Color.BLUE, Color.GREEN, Color.MAGENTA, Color.CYAN};
-
-            for (Map.Entry<String, List<ExperimentData>> entry : subTypeData.entrySet()) {
-                List<Entry> entries = new ArrayList<>();
-                List<ExperimentData> subTypeExperiments = entry.getValue();
-                
-                Log.d("RealExperimentAnalysis", "处理子类型: " + entry.getKey() + 
-                    ", 数据点数量: " + subTypeExperiments.size());
-                
-                // 按时间排序
-                subTypeExperiments.sort((a, b) -> Long.compare(a.getCreateTime(), b.getCreateTime()));
-                
-                // 创建数据点
-                for (int i = 0; i < subTypeExperiments.size(); i++) {
-                    ExperimentData data = subTypeExperiments.get(i);
-                    String result = data.getResult();
-                    
-                    // 检查结果是否为空
-                    if (result == null || result.trim().isEmpty()) {
-                        Log.w("RealExperimentAnalysis", "跳过空结果 - 子类型: " + entry.getKey());
-                        continue;
-                    }
-                    
-                    try {
-                        // 尝试解析数值
-                        float resultValue;
-                        if (result.contains("kN")) {
-                            // 如果结果包含单位，去掉单位再解析
-                            resultValue = Float.parseFloat(result.replace("kN", "").trim());
-                        } else if (result.contains("mm")) {
-                            // 如果结果包含单位，去掉单位再解析
-                            resultValue = Float.parseFloat(result.replace("mm", "").trim());
-                        } else {
-                            // 直接解析数值
-                            resultValue = Float.parseFloat(result.trim());
-                        }
-                        
-                        entries.add(new Entry(i, resultValue));
-                        Log.d("RealExperimentAnalysis", "添加数据点 - 子类型: " + entry.getKey() + 
-                            ", 索引: " + i + ", 值: " + resultValue);
-                        
-                        // 添加时间标签
-                        String timeLabel = dateFormat.format(new Date(data.getCreateTime()));
-                        if (!xAxisLabels.contains(timeLabel)) {
-                            xAxisLabels.add(timeLabel);
-                        }
-                    } catch (NumberFormatException e) {
-                        Log.w("RealExperimentAnalysis", "无法解析结果值: " + result + 
-                            " - 子类型: " + entry.getKey(), e);
-                        continue;
-                    }
-                }
-
-                // 只有当有数据点时才创建数据集
-                if (!entries.isEmpty()) {
-                    // 创建数据集
-                    LineDataSet dataSet = new LineDataSet(entries, entry.getKey());
-                    dataSet.setColor(colors[colorIndex % colors.length]);
-                    dataSet.setCircleColor(colors[colorIndex % colors.length]);
-                    dataSet.setLineWidth(2f);
-                    dataSet.setCircleRadius(4f);
-                    dataSet.setDrawValues(true);
-                    dataSets.add(dataSet);
-                    
-                    Log.d("RealExperimentAnalysis", "创建数据集 - 子类型: " + entry.getKey() + 
-                        ", 数据点数量: " + entries.size());
-                    
-                    colorIndex++;
+            // 按时间排序
+            dataList.sort((a, b) -> Long.compare(a.getCreateTime(), b.getCreateTime()));
+            
+            // 生成数据点
+            for (int i = 0; i < dataList.size(); i++) {
+                ExperimentData data = dataList.get(i);
+                float value;
+                if (subType.equals(data.getInput1Label())) {
+                    value = (float) data.getInput1Value();
                 } else {
-                    Log.w("RealExperimentAnalysis", "子类型没有有效数据点: " + entry.getKey());
+                    value = (float) data.getInput2Value();
+                }
+                entries.add(new Entry(i, value));
+                
+                // 添加时间标签
+                String timeLabel = dateFormat.format(new Date(data.getCreateTime()));
+                if (i >= xAxisLabels.size()) {
+                    xAxisLabels.add(timeLabel);
                 }
             }
+            
+            // 创建数据集
+            LineDataSet dataSet = new LineDataSet(entries, subType);
+            dataSet.setColor(colors[colorIndex % colors.length]);
+            dataSet.setCircleColor(colors[colorIndex % colors.length]);
+            dataSet.setLineWidth(2f);
+            dataSet.setCircleRadius(4f);
+            dataSet.setDrawCircleHole(false);
+            dataSet.setValueTextSize(9f);
+            dataSet.setDrawValues(true);
+            dataSet.setMode(LineDataSet.Mode.LINEAR);
+            dataSet.setCubicIntensity(0.2f);
+            
+            dataSets.add(dataSet);
+            colorIndex++;
+        }
 
-            // 更新图表
-            if (!dataSets.isEmpty()) {
-                LineData lineData = new LineData(dataSets);
-                lineChart.setData(lineData);
-                
-                // 设置X轴标签
-                XAxis xAxis = lineChart.getXAxis();
-                xAxis.setValueFormatter(new IndexAxisValueFormatter(xAxisLabels));
-                xAxis.setLabelCount(xAxisLabels.size());
-                
-                lineChart.invalidate();
-                Log.d("RealExperimentAnalysis", "更新图表 - 数据集数量: " + dataSets.size() + 
-                    ", 时间标签数量: " + xAxisLabels.size());
-            } else {
-                lineChart.clear();
-                lineChart.setNoDataText("暂无数据");
-                Log.w("RealExperimentAnalysis", "没有可显示的数据集");
-            }
-        });
+        // 设置X轴标签
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(xAxisLabels));
+        
+        // 更新图表
+        LineData lineData = new LineData(dataSets);
+        lineChart.setData(lineData);
+        lineChart.invalidate();
     }
 }
