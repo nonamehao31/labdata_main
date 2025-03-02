@@ -22,6 +22,7 @@ import com.example.labdata_main.utils.SharedPrefsManager;
 import com.example.labdata_main.model.Device;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
+import com.example.labdata_main.utils.ExperimentTypeInitializer;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -47,6 +48,9 @@ public class MainActivity extends AppCompatActivity {
         database = AppDatabase.getInstance(this);
         sharedPrefsManager = new SharedPrefsManager(this);
         executorService = Executors.newSingleThreadExecutor();
+
+        // 初始化实验类型
+        ExperimentTypeInitializer.initializeExperimentTypes(this);
 
         // 添加数据库调试代码
         executorService.execute(() -> {

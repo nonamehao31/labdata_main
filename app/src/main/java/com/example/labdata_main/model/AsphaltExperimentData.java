@@ -71,6 +71,7 @@ public class AsphaltExperimentData {
     public static final String TYPE_PAV = "pav";
     public static final String TYPE_MSCR = "mscr";
     public static final String TYPE_FORCE_DUCTILITY = "force_ductility";
+    public static final String TYPE_BROOKFIELD_VISCOSITY = "brookfield_viscosity";
 
     // 数据字段常量
     public static class Fields {
@@ -132,16 +133,49 @@ public class AsphaltExperimentData {
 
         // 弯曲蠕变劲度试验
         public static class BBR {
-            public static final String LOAD = "load"; // 试验荷载
-            public static final String DEFORMATION = "deformation"; // 试件的形变量
-            public static final String STIFFNESS = "stiffness"; // 劲度模量
-            public static final String M_VALUE = "m_value"; // m值
-            public static final String RESULT_8S = "result_8s";
-            public static final String RESULT_15S = "result_15s";
-            public static final String RESULT_30S = "result_30s";
-            public static final String RESULT_60S = "result_60s";
-            public static final String RESULT_120S = "result_120s";
-            public static final String RESULT_240S = "result_240s";
+            // 试件尺寸
+            public static final String BEAM_SPAN = "beam_span"; // 弯曲梁跨度(两支点间的距离，mm)
+            public static final String SPECIMEN_WIDTH = "specimen_width"; // 试件宽度(mm)
+            public static final String SPECIMEN_HEIGHT = "specimen_height"; // 试件高度(mm)
+            
+            // 时间点数据 - 8秒
+            public static final String TEMPERATURE_8S = "temperature_8s"; // 8秒时的实验温度(°C)
+            public static final String LOAD_8S = "load_8s"; // 8秒时的施加荷载(N)
+            public static final String DEFLECTION_8S = "deflection_8s"; // 8秒时的变形挠度(mm)
+            public static final String STIFFNESS_8S = "stiffness_8s"; // 8秒时的弯曲蠕变劲度模量(MPa)
+            
+            // 时间点数据 - 15秒
+            public static final String TEMPERATURE_15S = "temperature_15s"; // 15秒时的实验温度(°C)
+            public static final String LOAD_15S = "load_15s"; // 15秒时的施加荷载(N)
+            public static final String DEFLECTION_15S = "deflection_15s"; // 15秒时的变形挠度(mm)
+            public static final String STIFFNESS_15S = "stiffness_15s"; // 15秒时的弯曲蠕变劲度模量(MPa)
+            
+            // 时间点数据 - 30秒
+            public static final String TEMPERATURE_30S = "temperature_30s"; // 30秒时的实验温度(°C)
+            public static final String LOAD_30S = "load_30s"; // 30秒时的施加荷载(N)
+            public static final String DEFLECTION_30S = "deflection_30s"; // 30秒时的变形挠度(mm)
+            public static final String STIFFNESS_30S = "stiffness_30s"; // 30秒时的弯曲蠕变劲度模量(MPa)
+            
+            // 时间点数据 - 60秒
+            public static final String TEMPERATURE_60S = "temperature_60s"; // 60秒时的实验温度(°C)
+            public static final String LOAD_60S = "load_60s"; // 60秒时的施加荷载(N)
+            public static final String DEFLECTION_60S = "deflection_60s"; // 60秒时的变形挠度(mm)
+            public static final String STIFFNESS_60S = "stiffness_60s"; // 60秒时的弯曲蠕变劲度模量(MPa)
+            
+            // 时间点数据 - 120秒
+            public static final String TEMPERATURE_120S = "temperature_120s"; // 120秒时的实验温度(°C)
+            public static final String LOAD_120S = "load_120s"; // 120秒时的施加荷载(N)
+            public static final String DEFLECTION_120S = "deflection_120s"; // 120秒时的变形挠度(mm)
+            public static final String STIFFNESS_120S = "stiffness_120s"; // 120秒时的弯曲蠕变劲度模量(MPa)
+            
+            // 时间点数据 - 240秒
+            public static final String TEMPERATURE_240S = "temperature_240s"; // 240秒时的实验温度(°C)
+            public static final String LOAD_240S = "load_240s"; // 240秒时的施加荷载(N)
+            public static final String DEFLECTION_240S = "deflection_240s"; // 240秒时的变形挠度(mm)
+            public static final String STIFFNESS_240S = "stiffness_240s"; // 240秒时的弯曲蠕变劲度模量(MPa)
+            
+            // 计算结果
+            public static final String CREEP_RATE = "creep_rate"; // 蠕变速率(m值)
         }
 
         // 动态剪切流变试验
@@ -151,6 +185,18 @@ public class AsphaltExperimentData {
             public static final String FREQUENCY = "frequency"; // 试验频率
             public static final String COMPLEX_MODULUS = "complex_modulus"; // 复合模量G*
             public static final String PHASE_ANGLE = "phase_angle"; // 相位角
+            public static final String PLATE_RADIUS = "plate_radius"; // 试验板半径(R)
+            public static final String PLATE_GAP = "plate_gap"; // 试验平板间距(h)
+            public static final String MAX_SHEAR_STRESS = "max_shear_stress"; // 最大剪切应力(τmax)
+            public static final String MAX_SHEAR_STRAIN = "max_shear_strain"; // 最大剪切应变(γmax)
+            public static final String TEMPERATURE = "temperature"; // 试验温度
+            // 动态添加的温度点数据前缀
+            public static final String TEMPERATURE_PREFIX = "temperature_"; // 试验温度前缀
+            public static final String FREQUENCY_PREFIX = "frequency_"; // 试验频率前缀
+            public static final String MAX_SHEAR_STRESS_PREFIX = "max_shear_stress_"; // 最大剪切应力前缀
+            public static final String MAX_SHEAR_STRAIN_PREFIX = "max_shear_strain_"; // 最大剪切应变前缀
+            public static final String PHASE_ANGLE_PREFIX = "phase_angle_"; // 相位角前缀
+            public static final String COMPLEX_MODULUS_PREFIX = "complex_modulus_"; // 复合模量前缀
         }
 
         // 直接拉伸试验
@@ -182,6 +228,16 @@ public class AsphaltExperimentData {
             public static final String STRETCH_SPEED = "stretch_speed"; // 拉伸速度
             public static final String MAX_FORCE = "max_force"; // 最大拉力值
             public static final String MAX_DEFORMATION = "max_deformation"; // 最大变形值
+        }
+
+        // 布鲁克菲尔德旋转黏度试验
+        public static class BrookfieldViscosity {
+            public static final String TEMPERATURE_PREFIX = "temperature_"; // 试验温度前缀
+            public static final String SPINDLE_TYPE_PREFIX = "spindle_type_"; // 转子型号前缀
+            public static final String ROTATION_SPEED_PREFIX = "rotation_speed_"; // 转速前缀
+            public static final String VISCOSITY_PREFIX = "viscosity_"; // 黏度值前缀
+            public static final String ROTOR_TYPE = "rotor_type"; // 转子型号
+            public static final String ROTATION_SPEED = "rotation_speed"; // 转速
         }
     }
 }

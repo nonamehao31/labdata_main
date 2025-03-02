@@ -22,6 +22,12 @@ public class ExperimentType {
     public static final String TYPE_PAV = "pav";
     public static final String TYPE_MSCR = "mscr";
     public static final String TYPE_FORCE_DUCTILITY = "force_ductility";
+    public static final String TYPE_BROOKFIELD_VISCOSITY = "brookfield_viscosity";
+    public static final String TYPE_MIXTURE_BENDING = "mixture_bending";
+    public static final String TYPE_DYNAMIC_MODULUS = "dynamic_modulus";
+    public static final String TYPE_DIRECT_STRETCHING_FATIGUE = "direct_stretching_fatigue";
+    public static final String TYPE_FOUR_POINT_BENDING = "four_point_bending";
+    public static final String TYPE_SINGLE_AXIS_COMPRESSION = "single_axis_compression";
 
     // 实验类别常量
     public static final String CATEGORY_ASPHALT = "ASPHALT";

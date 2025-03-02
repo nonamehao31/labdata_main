@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class OverviewFragment extends Fragment implements AdapterView.OnItemSelectedListener, 
         ExperimentTaskAdapter.OnTaskClickListener, 
@@ -57,13 +59,15 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private AsphaltProjectCardAdapter asphaltTaskAdapter;
     private AppDatabase database;
     private SharedPrefsManager sharedPrefsManager;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private ExecutorService executorService;
     private BroadcastReceiver taskRefreshReceiver;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         database = AppDatabase.getInstance(requireContext());
+        sharedPrefsManager = new SharedPrefsManager(requireContext());
+        executorService = Executors.newFixedThreadPool(4);
 
         // 注册广播接收器
         taskRefreshReceiver = new BroadcastReceiver() {
@@ -229,84 +233,93 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
 
     private void loadExperimentTasks() {
-        executor.execute(() -> {
-            try {
-                String companyId = sharedPrefsManager.getUserCompany();
-                if (companyId == null) {
-                    Log.e("OverviewFragment", "Company ID is null");
-                    return;
-                }
+        if (executorService.isShutdown()) {
+            // 如果线程池已关闭，重新创建
+            executorService = Executors.newFixedThreadPool(4);
+        }
 
-                // 获取未完成的任务
-                List<ExperimentTask> allTasks = database.experimentTaskDao().getTasksByCompany(companyId);
-
-                // 分离已接受和未接受的任务，并按实验类型分类
-                List<ExperimentTask> unacceptedTasks = new ArrayList<>();
-                List<ExperimentTask> acceptedMixtureTasks = new ArrayList<>();
-                List<ExperimentTask> acceptedAsphaltTasks = new ArrayList<>();
-
-                for (ExperimentTask task : allTasks) {
-                    String status = task.getStatus();
-                    if ("已接受".equals(status)) {
-                        // 根据实验类型分类已接受的任务
-                        if ("MIXTURE".equals(task.getExperimentType())) {
-                            acceptedMixtureTasks.add(task);
-                        } else if ("ASPHALT".equals(task.getExperimentType())) {
-                            acceptedAsphaltTasks.add(task);
-                        }
-                    } else if (!"已完成".equals(status)) {
-                        // 未完成且未接受的任务
-                        unacceptedTasks.add(task);
-                    }
-                }
-
-                // 在主线程更新UI
-                requireActivity().runOnUiThread(() -> {
-                    // 更新未接受任务列表
-                    if (unacceptedTasks.isEmpty()) {
-                        emptyTaskText.setVisibility(View.VISIBLE);
-                        taskRecyclerView.setVisibility(View.GONE);
-                    } else {
-                        emptyTaskText.setVisibility(View.GONE);
-                        taskRecyclerView.setVisibility(View.VISIBLE);
-                        taskAdapter.setTasks(unacceptedTasks);
+        try {
+            executorService.execute(() -> {
+                try {
+                    String companyId = sharedPrefsManager.getUserCompany();
+                    if (companyId == null) {
+                        Log.e("OverviewFragment", "Company ID is null");
+                        return;
                     }
 
-                    // 获取当前选中的实验类型
-                    String selectedType = spinner.getSelectedItem().toString();
-                    List<ExperimentTask> acceptedTasks;
-                    
-                    // 根据选中的实验类型显示对应的已接受任务
-                    if ("沥青混合料试验".equals(selectedType)) {
-                        myTasksRecyclerView.setAdapter(mixtureTaskAdapter);
-                        acceptedTasks = acceptedMixtureTasks;
-                    } else if ("沥青试验".equals(selectedType)) {
-                        myTasksRecyclerView.setAdapter(asphaltTaskAdapter);
-                        acceptedTasks = acceptedAsphaltTasks;
-                    } else {
-                        // 默认显示混合料任务
-                        myTasksRecyclerView.setAdapter(mixtureTaskAdapter);
-                        acceptedTasks = acceptedMixtureTasks;
-                    }
+                    // 获取未完成的任务
+                    List<ExperimentTask> allTasks = database.experimentTaskDao().getTasksByCompany(companyId);
 
-                    // 更新已接受任务列表
-                    if (acceptedTasks.isEmpty()) {
-                        emptyMyTaskText.setVisibility(View.VISIBLE);
-                        myTasksRecyclerView.setVisibility(View.GONE);
-                    } else {
-                        emptyMyTaskText.setVisibility(View.GONE);
-                        myTasksRecyclerView.setVisibility(View.VISIBLE);
-                        if (myTasksRecyclerView.getAdapter() instanceof ProjectCardAdapter) {
-                            ((ProjectCardAdapter) myTasksRecyclerView.getAdapter()).setTasks(acceptedTasks);
-                        } else if (myTasksRecyclerView.getAdapter() instanceof AsphaltProjectCardAdapter) {
-                            ((AsphaltProjectCardAdapter) myTasksRecyclerView.getAdapter()).setTasks(acceptedTasks);
+                    // 分离已接受和未接受的任务，并按实验类型分类
+                    List<ExperimentTask> unacceptedTasks = new ArrayList<>();
+                    List<ExperimentTask> acceptedMixtureTasks = new ArrayList<>();
+                    List<ExperimentTask> acceptedAsphaltTasks = new ArrayList<>();
+
+                    for (ExperimentTask task : allTasks) {
+                        String status = task.getStatus();
+                        if ("已接受".equals(status)) {
+                            // 根据实验类型分类已接受的任务
+                            if ("MIXTURE".equals(task.getExperimentType())) {
+                                acceptedMixtureTasks.add(task);
+                            } else if ("ASPHALT".equals(task.getExperimentType())) {
+                                acceptedAsphaltTasks.add(task);
+                            }
+                        } else if (!"已完成".equals(status)) {
+                            // 未完成且未接受的任务
+                            unacceptedTasks.add(task);
                         }
                     }
-                });
-            } catch (Exception e) {
-                Log.e("OverviewFragment", "Error loading tasks", e);
-            }
-        });
+
+                    // 在主线程更新UI
+                    requireActivity().runOnUiThread(() -> {
+                        // 更新未接受任务列表
+                        if (unacceptedTasks.isEmpty()) {
+                            emptyTaskText.setVisibility(View.VISIBLE);
+                            taskRecyclerView.setVisibility(View.GONE);
+                        } else {
+                            emptyTaskText.setVisibility(View.GONE);
+                            taskRecyclerView.setVisibility(View.VISIBLE);
+                            taskAdapter.setTasks(unacceptedTasks);
+                        }
+
+                        // 获取当前选中的实验类型
+                        String selectedType = spinner.getSelectedItem().toString();
+                        List<ExperimentTask> acceptedTasks;
+                        
+                        // 根据选中的实验类型显示对应的已接受任务
+                        if ("沥青混合料试验".equals(selectedType)) {
+                            myTasksRecyclerView.setAdapter(mixtureTaskAdapter);
+                            acceptedTasks = acceptedMixtureTasks;
+                        } else if ("沥青试验".equals(selectedType)) {
+                            myTasksRecyclerView.setAdapter(asphaltTaskAdapter);
+                            acceptedTasks = acceptedAsphaltTasks;
+                        } else {
+                            // 默认显示混合料任务
+                            myTasksRecyclerView.setAdapter(mixtureTaskAdapter);
+                            acceptedTasks = acceptedMixtureTasks;
+                        }
+
+                        // 更新已接受任务列表
+                        if (acceptedTasks.isEmpty()) {
+                            emptyMyTaskText.setVisibility(View.VISIBLE);
+                            myTasksRecyclerView.setVisibility(View.GONE);
+                        } else {
+                            emptyMyTaskText.setVisibility(View.GONE);
+                            myTasksRecyclerView.setVisibility(View.VISIBLE);
+                            if (myTasksRecyclerView.getAdapter() instanceof ProjectCardAdapter) {
+                                ((ProjectCardAdapter) myTasksRecyclerView.getAdapter()).setTasks(acceptedTasks);
+                            } else if (myTasksRecyclerView.getAdapter() instanceof AsphaltProjectCardAdapter) {
+                                ((AsphaltProjectCardAdapter) myTasksRecyclerView.getAdapter()).setTasks(acceptedTasks);
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e("OverviewFragment", "Error loading tasks", e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            Log.e("OverviewFragment", "Task execution rejected", e);
+        }
     }
 
     private void showAddExperimentDialog() {
@@ -337,7 +350,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 task.setCompanyId(sharedPrefsManager.getUserCompany()); // 设置公司ID
 
                 // 保存到数据库并跳转
-                executor.execute(() -> {
+                executorService.execute(() -> {
                     // 保存到数据库
                     AppDatabase.getInstance(requireContext()).experimentTaskDao().insert(task);
 
@@ -355,7 +368,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
 
     private void filterTasksByType(String type) {
-        executor.execute(() -> {
+        executorService.execute(() -> {
             try {
                 String companyId = sharedPrefsManager.getUserCompany();
                 if (companyId == null) {
@@ -414,7 +427,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     @Override
     public void onTaskClick(ExperimentTask task) {
         // 先获取完整的任务信息
-        executor.execute(() -> {
+        executorService.execute(() -> {
             ExperimentTask fullTask = database.experimentTaskDao().getFullTaskById(task.getId());
             if (fullTask == null) {
                 Log.e("OverviewFragment", "Task not found: " + task.getId());
@@ -438,7 +451,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
                         @Override
                         public void onTaskRejected(ExperimentTask task) {
-                            executor.execute(() -> {
+                            executorService.execute(() -> {
                                 database.experimentTaskDao().update(task);
                                 requireActivity().runOnUiThread(() -> {
                                     loadExperimentTasks();
@@ -460,7 +473,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         if (currentUser != null && !currentUser.isEmpty()) {
             task.setExperimenter(currentUser);
         }
-        executor.execute(() -> {
+        executorService.execute(() -> {
             database.experimentTaskDao().update(task);
             requireActivity().runOnUiThread(() -> {
                 loadExperimentTasks();
@@ -476,7 +489,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         if (currentUser != null && !currentUser.isEmpty()) {
             task.setExperimenter(currentUser);
         }
-        executor.execute(() -> {
+        executorService.execute(() -> {
             database.experimentTaskDao().update(task);
             requireActivity().runOnUiThread(() -> {
                 loadExperimentTasks();
@@ -514,7 +527,16 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         if (taskRefreshReceiver != null) {
             requireContext().unregisterReceiver(taskRefreshReceiver);
         }
-        executor.shutdown();
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(800, TimeUnit.MILLISECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+            }
+        }
     }
 
     @Override
@@ -528,7 +550,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     @Override
     public void onViewAsphaltInfo(ExperimentTask task) {
         // 显示沥青信息的底部弹窗
-        executor.execute(() -> {
+        executorService.execute(() -> {
             ExperimentTask fullTask = database.experimentTaskDao().getFullTaskById(task.getId());
             if (fullTask == null) {
                 Log.e("OverviewFragment", "Task not found: " + task.getId());
@@ -547,7 +569,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                     @Override
                     public void onTaskRejected(ExperimentTask task) {
                         // 更新任务状态
-                        executor.execute(() -> {
+                        executorService.execute(() -> {
                             database.experimentTaskDao().update(task);
                             requireActivity().runOnUiThread(() -> {
                                 loadExperimentTasks();
@@ -563,7 +585,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     @Override
     public void onRecordData(ExperimentTask task) {
         // 先获取完整的任务信息
-        executor.execute(() -> {
+        executorService.execute(() -> {
             ExperimentTask fullTask = database.experimentTaskDao().getFullTaskById(task.getId());
             if (fullTask == null) {
                 Log.e("OverviewFragment", "Task not found: " + task.getId());
@@ -585,7 +607,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
     // 显示混合料实验信息
     private void showMixtureExperimentInfo(ExperimentTask task) {
-        executor.execute(() -> {
+        executorService.execute(() -> {
             ExperimentTask fullTask = database.experimentTaskDao().getFullTaskById(task.getId());
             if (fullTask == null) {
                 Log.e("OverviewFragment", "Task not found: " + task.getId());
@@ -599,7 +621,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 // 设置完成备料的监听器
                 bottomSheet.setOnMaterialCompletedListener(updatedTask -> {
                     // 在后台线程更新数据库
-                    executor.execute(() -> {
+                    executorService.execute(() -> {
                         database.experimentTaskDao().update(updatedTask);
                         // 在主线程更新UI
                         requireActivity().runOnUiThread(() -> {

@@ -111,7 +111,12 @@ public class ExperimentAssignmentFragment extends Fragment {
             "空隙率试验",
             "飞散试验",
             "动稳定度试验",
-            "沥青混合料车辙实验（汉堡车辙）"
+            "沥青混合料车辙实验（汉堡车辙）",
+            "沥青混合料弯曲试验",
+            "动态模量试验",
+            "沥青混合料直接拉伸循环疲劳测黏弹损伤试验",
+            "沥青混合料四点弯曲疲劳寿命试验",
+            "沥青混合料单轴压缩试验(圆柱体法)"
         };
 
         for (String type : experimentTypes) {

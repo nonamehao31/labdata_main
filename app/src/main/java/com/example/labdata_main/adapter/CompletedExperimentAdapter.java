@@ -25,9 +25,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class CompletedExperimentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final int VIEW_TYPE_MIXTURE = 1;
@@ -45,6 +47,8 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<RecyclerVie
         put("density", "密度试验");
         put("viscosity", "粘度试验");
         put("flash_point", "闪点试验");
+        put("bbr", "弯曲梁流变仪试验");
+        put("dsr", "动态剪切仪试验");
         // 混合料实验类型
         put("marshall", "马歇尔试验");
         put("rutting", "车辙试验");
@@ -61,6 +65,44 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<RecyclerVie
         put("density_value", "密度值");
         put("viscosity_value", "粘度值");
         put("flash_temp", "闪点温度");
+        // BBR实验参数
+        put("beam_span", "试梁跨度(mm)");
+        put("specimen_width", "试件宽度(mm)");
+        put("specimen_height", "试件高度(mm)");
+        put("deflection_8s", "8秒时的挠度(mm)");
+        put("deflection_15s", "15秒时的挠度(mm)");
+        put("deflection_30s", "30秒时的挠度(mm)");
+        put("deflection_60s", "60秒时的挠度(mm)");
+        put("deflection_120s", "120秒时的挠度(mm)");
+        put("deflection_240s", "240秒时的挠度(mm)");
+        put("load_8s", "8秒时的加载力(mN)");
+        put("load_15s", "15秒时的加载力(mN)");
+        put("load_30s", "30秒时的加载力(mN)");
+        put("load_60s", "60秒时的加载力(mN)");
+        put("load_120s", "120秒时的加载力(mN)");
+        put("load_240s", "240秒时的加载力(mN)");
+        put("stiffness_8s", "8秒时的弯曲蠕变劲度模量(MPa)");
+        put("stiffness_15s", "15秒时的弯曲蠕变劲度模量(MPa)");
+        put("stiffness_30s", "30秒时的弯曲蠕变劲度模量(MPa)");
+        put("stiffness_60s", "60秒时的弯曲蠕变劲度模量(MPa)");
+        put("stiffness_120s", "120秒时的弯曲蠕变劲度模量(MPa)");
+        put("stiffness_240s", "240秒时的弯曲蠕变劲度模量(MPa)");
+        put("creep_rate", "蠕变速率(m值)");
+        put("temperature_8s", "8秒时的温度(℃)");
+        put("temperature_15s", "15秒时的温度(℃)");
+        put("temperature_30s", "30秒时的温度(℃)");
+        put("temperature_60s", "60秒时的温度(℃)");
+        put("temperature_120s", "120秒时的温度(℃)");
+        put("temperature_240s", "240秒时的温度(℃)");
+        // DSR实验参数
+        put("plate_radius", "试验板半径(R) (mm)");
+        put("plate_gap", "试验平板间距(h) (mm)");
+        put("temperature", "试验温度(℃)");
+        put("frequency", "试验加载频率(Hz)");
+        put("max_shear_stress", "最大剪切应力(τmax) (Pa)");
+        put("max_shear_strain", "最大剪切应变(γmax) (%)");
+        put("phase_angle", "相位角(δ)");
+        put("complex_modulus", "复合剪切模量(G*)");
         // 混合料实验参数
         put("stability", "稳定度");
         put("flow", "流值");
@@ -183,9 +225,92 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<RecyclerVie
                     String experimentType = asphaltData.getExperimentType();
                     contentBuilder.append(EXPERIMENT_TYPE_MAP.getOrDefault(experimentType, experimentType)).append("\n");
                     
-                    for (Map.Entry<String, String> entry : values.entrySet()) {
-                        String paramName = PARAMETER_MAP.getOrDefault(entry.getKey(), entry.getKey());
-                        contentBuilder.append(paramName).append(": ").append(entry.getValue()).append("\n");
+                    // 特殊处理BBR实验数据，按类别分组显示
+                    if ("bbr".equals(experimentType)) {
+                        // 试件基本信息
+                        contentBuilder.append("【试件基本信息】\n");
+                        appendParameterIfExists(values, contentBuilder, "beam_span");
+                        appendParameterIfExists(values, contentBuilder, "specimen_width");
+                        appendParameterIfExists(values, contentBuilder, "specimen_height");
+                        contentBuilder.append("\n");
+                        
+                        // 测试温度信息
+                        contentBuilder.append("【测试温度】\n");
+                        appendParameterIfExists(values, contentBuilder, "temperature_8s");
+                        appendParameterIfExists(values, contentBuilder, "temperature_15s");
+                        appendParameterIfExists(values, contentBuilder, "temperature_30s");
+                        appendParameterIfExists(values, contentBuilder, "temperature_60s");
+                        appendParameterIfExists(values, contentBuilder, "temperature_120s");
+                        appendParameterIfExists(values, contentBuilder, "temperature_240s");
+                        contentBuilder.append("\n");
+                        
+                        // 加载力信息
+                        contentBuilder.append("【加载力】\n");
+                        appendParameterIfExists(values, contentBuilder, "load_8s");
+                        appendParameterIfExists(values, contentBuilder, "load_15s");
+                        appendParameterIfExists(values, contentBuilder, "load_30s");
+                        appendParameterIfExists(values, contentBuilder, "load_60s");
+                        appendParameterIfExists(values, contentBuilder, "load_120s");
+                        appendParameterIfExists(values, contentBuilder, "load_240s");
+                        contentBuilder.append("\n");
+                        
+                        // 挠度信息
+                        contentBuilder.append("【挠度】\n");
+                        appendParameterIfExists(values, contentBuilder, "deflection_8s");
+                        appendParameterIfExists(values, contentBuilder, "deflection_15s");
+                        appendParameterIfExists(values, contentBuilder, "deflection_30s");
+                        appendParameterIfExists(values, contentBuilder, "deflection_60s");
+                        appendParameterIfExists(values, contentBuilder, "deflection_120s");
+                        appendParameterIfExists(values, contentBuilder, "deflection_240s");
+                        contentBuilder.append("\n");
+                        
+                        // 劲度模量信息
+                        contentBuilder.append("【弯曲蠕变劲度模量】\n");
+                        appendParameterIfExists(values, contentBuilder, "stiffness_8s");
+                        appendParameterIfExists(values, contentBuilder, "stiffness_15s");
+                        appendParameterIfExists(values, contentBuilder, "stiffness_30s");
+                        appendParameterIfExists(values, contentBuilder, "stiffness_60s");
+                        appendParameterIfExists(values, contentBuilder, "stiffness_120s");
+                        appendParameterIfExists(values, contentBuilder, "stiffness_240s");
+                        contentBuilder.append("\n");
+                        
+                        // 蠕变速率
+                        contentBuilder.append("【蠕变速率】\n");
+                        appendParameterIfExists(values, contentBuilder, "creep_rate");
+                        contentBuilder.append("\n");
+                    } else if ("dsr".equals(experimentType)) {
+                        // 试验板参数信息
+                        contentBuilder.append("【试验板参数】\n");
+                        appendParameterIfExists(values, contentBuilder, "plate_radius");
+                        appendParameterIfExists(values, contentBuilder, "plate_gap");
+                        contentBuilder.append("\n");
+                        
+                        // 查找所有温度点
+                        Set<String> temperaturePoints = new HashSet<>();
+                        for (String key : values.keySet()) {
+                            if (key.startsWith("temperature_")) {
+                                String pointId = key.substring("temperature_".length());
+                                temperaturePoints.add(pointId);
+                            }
+                        }
+                        
+                        // 按温度点分组显示数据
+                        for (String pointId : temperaturePoints) {
+                            contentBuilder.append("【温度点 #").append(pointId.substring(Math.max(0, pointId.length() - 4))).append("】\n");
+                            appendParameterIfExists(values, contentBuilder, "temperature_" + pointId);
+                            appendParameterIfExists(values, contentBuilder, "frequency_" + pointId);
+                            appendParameterIfExists(values, contentBuilder, "max_shear_stress_" + pointId);
+                            appendParameterIfExists(values, contentBuilder, "max_shear_strain_" + pointId);
+                            appendParameterIfExists(values, contentBuilder, "phase_angle_" + pointId);
+                            appendParameterIfExists(values, contentBuilder, "complex_modulus_" + pointId);
+                            contentBuilder.append("\n");
+                        }
+                    } else {
+                        // 其他实验类型的常规处理
+                        for (Map.Entry<String, String> entry : values.entrySet()) {
+                            String paramName = PARAMETER_MAP.getOrDefault(entry.getKey(), entry.getKey());
+                            contentBuilder.append(paramName).append(": ").append(entry.getValue()).append("\n");
+                        }
                     }
                     contentBuilder.append("\n");
 
@@ -409,6 +534,19 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<RecyclerVie
         }
         
         return "";
+    }
+
+    /**
+     * 如果参数存在，则添加到内容构建器中
+     * @param values 参数值映射
+     * @param builder 内容构建器
+     * @param key 参数键
+     */
+    private void appendParameterIfExists(Map<String, String> values, StringBuilder builder, String key) {
+        if (values.containsKey(key) && values.get(key) != null) {
+            String paramName = PARAMETER_MAP.getOrDefault(key, key);
+            builder.append(paramName).append(": ").append(values.get(key)).append("\n");
+        }
     }
 
     @Override
