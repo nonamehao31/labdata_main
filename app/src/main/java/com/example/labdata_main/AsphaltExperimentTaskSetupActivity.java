@@ -67,7 +67,7 @@ public class AsphaltExperimentTaskSetupActivity extends AppCompatActivity {
                 viewPager.setCurrentItem(viewPager.getCurrentItem() + 1);
             } else {
                 // 发送广播通知任务更新
-                Intent intent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+                Intent intent = new Intent("com.example.labdata_main.TASK_UPDATED");
                 sendBroadcast(intent);
                 finish();
             }

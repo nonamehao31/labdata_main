@@ -17,9 +17,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
 import com.example.labdata_main.model.DeviceInfo;
 import com.example.labdata_main.model.MixRatio;
+import com.example.labdata_main.calculator.SplittingTestCalculator;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import android.widget.TableLayout;
+import android.widget.TableRow;
+import android.view.Gravity;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -160,6 +164,9 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 case "沥青混合料单轴压缩试验(圆柱体法)":
                     addSingleAxisCompressionFields(mixRatioId);
                     break;
+                case "沥青混合料劈裂试验":
+                    addMixSplittingFields(mixRatioId);
+                    break;
             }
         }
 
@@ -266,6 +273,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             TextView resultsTitle = new TextView(itemView.getContext());
             resultsTitle.setText("计算结果");
             resultsTitle.setTextSize(14);
+            resultsTitle.setTypeface(null, android.graphics.Typeface.BOLD);
             resultsTitle.setPadding(0, 16, 0, 8);
             layoutInputs.addView(resultsTitle);
 
@@ -300,6 +308,839 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
 
             // 设置文本变化监听器，实时计算结果
             setupBendingCalculation(mixRatioId, specimenId, experimentName, flexuralStrengthText, maxStrainText, stiffnessModulusText);
+        }
+
+
+        private void addMixSplittingFields(long mixRatioId) {
+            String experimentName = "沥青混合料劈裂试验";
+
+            // 创建试件基本信息区域
+            TextView basicInfoTitle = new TextView(itemView.getContext());
+            basicInfoTitle.setText("试件基本信息");
+            basicInfoTitle.setTextSize(18);
+            basicInfoTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            basicInfoTitle.setPadding(0, 16, 0, 16);
+            layoutInputs.addView(basicInfoTitle);
+
+            // 添加测试温度输入字段
+            addSingleInputField("测试温度", "°C", experimentName + "_temperature", mixRatioId);
+
+            // 创建试件数量控制区域
+            LinearLayout specimenControlLayout = new LinearLayout(itemView.getContext());
+            specimenControlLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            specimenControlLayout.setOrientation(LinearLayout.HORIZONTAL);
+            specimenControlLayout.setPadding(0, 16, 0, 16);
+
+            // 创建试件数量标题
+            TextView specimenCountTitle = new TextView(itemView.getContext());
+            specimenCountTitle.setText("试件数量: ");
+            specimenCountTitle.setTextSize(16);
+            specimenCountTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            specimenCountTitle.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            specimenControlLayout.addView(specimenCountTitle);
+
+            // 创建试件数量显示
+            TextView specimenCountText = new TextView(itemView.getContext());
+            specimenCountText.setText("1");
+            specimenCountText.setTextSize(16);
+            specimenCountText.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            specimenCountText.setPadding(8, 0, 16, 0);
+            specimenControlLayout.addView(specimenCountText);
+
+            // 创建添加试件按钮
+            MaterialButton addSpecimenButton = new MaterialButton(itemView.getContext());
+            addSpecimenButton.setText("添加试件");
+            addSpecimenButton.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            specimenControlLayout.addView(addSpecimenButton);
+
+            layoutInputs.addView(specimenControlLayout);
+
+            // 添加初始的试件
+            addMixSplittingSpecimen(mixRatioId, experimentName, 1);
+
+            // 设置添加试件按钮点击事件
+            addSpecimenButton.setOnClickListener(v -> {
+                // 获取当前试件数量
+                int currentCount = Integer.parseInt(specimenCountText.getText().toString());
+                // 添加新试件
+                int newSpecimenId = currentCount + 1;
+                addMixSplittingSpecimen(mixRatioId, experimentName, newSpecimenId);
+                // 更新试件数量显示
+                specimenCountText.setText(String.valueOf(newSpecimenId));
+            });
+
+            // 添加泊松比参考表
+            addPoissonRatioReferenceTable();
+        }
+
+
+        private void addMixSplittingSpecimen(long mixRatioId, String experimentName, int specimenId) {
+            // 创建试件分组标题
+            TextView specimenTitle = new TextView(itemView.getContext());
+            specimenTitle.setText("试件 " + specimenId);
+            specimenTitle.setTextSize(16);
+            specimenTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            specimenTitle.setPadding(0, 24, 0, 8);
+            layoutInputs.addView(specimenTitle);
+
+            // 添加试件尺寸输入字段
+            TextView dimensionsTitle = new TextView(itemView.getContext());
+            dimensionsTitle.setText("试件尺寸");
+            dimensionsTitle.setTextSize(14);
+            dimensionsTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            dimensionsTitle.setPadding(0, 8, 0, 8);
+            layoutInputs.addView(dimensionsTitle);
+
+            // 添加直径输入字段
+            TextInputLayout diameterLayout = new TextInputLayout(itemView.getContext(), null, com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox);
+            diameterLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            diameterLayout.setHint("直径 (mm)");
+            diameterLayout.setHelperText("精确至0.1mm");
+
+            TextInputEditText diameterInput = new TextInputEditText(itemView.getContext());
+            diameterInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            String diameterKey = experimentName + "_diameter_" + specimenId;
+            setupDataInput(diameterInput, diameterKey, mixRatioId);
+            diameterLayout.addView(diameterInput);
+            layoutInputs.addView(diameterLayout);
+
+            // 添加高度输入字段
+            TextInputLayout heightLayout = new TextInputLayout(itemView.getContext(), null, com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox);
+            heightLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            heightLayout.setHint("高度 (mm)");
+            heightLayout.setHelperText("精确至0.1mm");
+
+            TextInputEditText heightInput = new TextInputEditText(itemView.getContext());
+            heightInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            String heightKey = experimentName + "_height_" + specimenId;
+            setupDataInput(heightInput, heightKey, mixRatioId);
+            heightLayout.addView(heightInput);
+            layoutInputs.addView(heightLayout);
+
+            // 添加抗拉强度数据表格
+            TextView strengthTitle = new TextView(itemView.getContext());
+            strengthTitle.setText("抗拉强度数据");
+            strengthTitle.setTextSize(14);
+            strengthTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            strengthTitle.setPadding(0, 16, 0, 8);
+            layoutInputs.addView(strengthTitle);
+
+            // 添加抗拉强度数据输入
+            addStrengthDataInputs(mixRatioId, experimentName, specimenId);
+
+            // 添加水平变形数据
+            TextView deformationTitle = new TextView(itemView.getContext());
+            deformationTitle.setText("水平应变变形数据");
+            deformationTitle.setTextSize(14);
+            deformationTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            deformationTitle.setPadding(0, 16, 0, 8);
+            layoutInputs.addView(deformationTitle);
+
+            // 添加水平变形数据输入
+            addDeformationDataInputs(mixRatioId, experimentName, specimenId);
+
+            // 添加计算结果区域
+            TextView resultsTitle = new TextView(itemView.getContext());
+            resultsTitle.setText("计算结果");
+            resultsTitle.setTextSize(14);
+            resultsTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            resultsTitle.setPadding(0, 16, 0, 8);
+            layoutInputs.addView(resultsTitle);
+
+            // 添加计算结果输入字段
+            addCalculationResults(mixRatioId, experimentName, specimenId);
+
+            // 设置自动计算
+            setupSplittingCalculation(mixRatioId, experimentName, specimenId);
+
+            // 添加分隔线
+            View divider = new View(itemView.getContext());
+            divider.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    2));
+            divider.setBackgroundColor(itemView.getContext().getResources().getColor(android.R.color.darker_gray));
+            LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    2);
+            dividerParams.setMargins(0, 24, 0, 24);
+            divider.setLayoutParams(dividerParams);
+            layoutInputs.addView(divider);
+        }
+
+        private void setupSplittingCalculation(long mixRatioId, String experimentName, int specimenId) {
+            // Define keys for all input fields
+            String diameterKey = experimentName + "_diameter_" + specimenId;
+            String heightKey = experimentName + "_height_" + specimenId;
+            String temperatureKey = experimentName + "_temperature";
+            String poissonRatioKey = experimentName + "_poisson_ratio_" + specimenId;
+
+            // Strength data keys
+            String p1Key = experimentName + "_strength_" + specimenId + "_p1";
+            String p2Key = experimentName + "_strength_" + specimenId + "_p2";
+            String p3Key = experimentName + "_strength_" + specimenId + "_p3";
+            String pAvgKey = experimentName + "_strength_" + specimenId + "_avg";
+
+            // Deformation data keys
+            String x1Key = experimentName + "_deformation_" + specimenId + "_x1";
+            String x2Key = experimentName + "_deformation_" + specimenId + "_x2";
+            String x3Key = experimentName + "_deformation_" + specimenId + "_x3";
+            String xAvgKey = experimentName + "_deformation_" + specimenId + "_avg";
+
+            // Result keys
+            String rtKey = experimentName + "_rt_" + specimenId;
+            String strainKey = experimentName + "_strain_" + specimenId;
+            String stKey = experimentName + "_st_" + specimenId;
+
+            // Create calculation update function
+            Runnable updateCalculation = () -> {
+                // Get the data map for this mix ratio
+                Map<String, String> mixRatioData = experimentData.computeIfAbsent(
+                        String.valueOf(mixRatioId),
+                        k -> new HashMap<>()
+                );
+                if (mixRatioData == null) {
+                    return;
+                }
+
+                try {
+                    // Get temperature and determine Poisson's ratio if not manually entered
+                    String temperatureStr = mixRatioData.get(temperatureKey);
+                    String poissonRatioStr = mixRatioData.get(poissonRatioKey);
+
+                    // If Poisson's ratio is not entered but temperature is available, determine from table
+                    if ((poissonRatioStr == null || poissonRatioStr.isEmpty()) && temperatureStr != null && !temperatureStr.isEmpty()) {
+                        double temperature = Double.parseDouble(temperatureStr);
+                        double poissonRatio = SplittingTestCalculator.getPoissonRatioFromTemperature(temperature);
+
+                        // Update Poisson's ratio in the data map and UI
+                        mixRatioData.put(poissonRatioKey, String.valueOf(poissonRatio));
+
+                        // Find and update the Poisson ratio input field
+                        for (int i = 0; i < layoutInputs.getChildCount(); i++) {
+                            View child = layoutInputs.getChildAt(i);
+                            if (child instanceof TextInputLayout) {
+                                TextInputLayout layout = (TextInputLayout) child;
+                                if (layout.getHint() != null && layout.getHint().toString().contains("泊松比")) {
+                                    TextInputEditText editText = (TextInputEditText) layout.getEditText();
+                                    if (editText != null && editText.getText().toString().isEmpty()) {
+                                        editText.setText(String.valueOf(poissonRatio));
+                                        editText.setEnabled(false); // Add this line to disable the input field
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Calculate P average
+                    String p1Str = mixRatioData.get(p1Key);
+                    String p2Str = mixRatioData.get(p2Key);
+                    String p3Str = mixRatioData.get(p3Key);
+
+                    double pSum = 0;
+                    int pCount = 0;
+
+                    if (p1Str != null && !p1Str.isEmpty()) {
+                        pSum += Double.parseDouble(p1Str);
+                        pCount++;
+                    }
+                    if (p2Str != null && !p2Str.isEmpty()) {
+                        pSum += Double.parseDouble(p2Str);
+                        pCount++;
+                    }
+                    if (p3Str != null && !p3Str.isEmpty()) {
+                        pSum += Double.parseDouble(p3Str);
+                        pCount++;
+                    }
+
+                    double pAvg = (pCount > 0) ? (pSum / pCount) : 0;
+                    mixRatioData.put(pAvgKey, String.format("%.2f", pAvg));
+
+                    // Calculate X average
+                    String x1Str = mixRatioData.get(x1Key);
+                    String x2Str = mixRatioData.get(x2Key);
+                    String x3Str = mixRatioData.get(x3Key);
+
+                    double xSum = 0;
+                    int xCount = 0;
+
+                    if (x1Str != null && !x1Str.isEmpty()) {
+                        xSum += Double.parseDouble(x1Str);
+                        xCount++;
+                    }
+                    if (x2Str != null && !x2Str.isEmpty()) {
+                        xSum += Double.parseDouble(x2Str);
+                        xCount++;
+                    }
+                    if (x3Str != null && !x3Str.isEmpty()) {
+                        xSum += Double.parseDouble(x3Str);
+                        xCount++;
+                    }
+
+                    double xAvg = (xCount > 0) ? (xSum / xCount) : 0;
+                    mixRatioData.put(xAvgKey, String.format("%.2f", xAvg));
+
+                    // Update average fields in UI
+                    for (int i = 0; i < layoutInputs.getChildCount(); i++) {
+                        View child = layoutInputs.getChildAt(i);
+                        if (child instanceof LinearLayout) {
+                            LinearLayout layout = (LinearLayout) child;
+                            for (int j = 0; j < layout.getChildCount(); j++) {
+                                View innerChild = layout.getChildAt(j);
+                                if (innerChild instanceof TextInputEditText) {
+                                    TextInputEditText editText = (TextInputEditText) innerChild;
+                                    if (editText.getHint() != null && editText.getHint().toString().equals("计算获得")) {
+                                        if (layout.getChildAt(0) instanceof TextView) {
+                                            TextView label = (TextView) layout.getChildAt(0);
+                                            if (label.getText().toString().contains("P平均值")) {
+                                                editText.setText(String.format("%.2f", pAvg));
+                                                editText.setEnabled(false);
+                                            } else if (label.getText().toString().contains("X平均值")) {
+                                                editText.setText(String.format("%.2f", xAvg));
+                                                editText.setEnabled(false);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Calculate RT, εT, and ST if all necessary data is available
+                    String diameterStr = mixRatioData.get(diameterKey);
+                    String heightStr = mixRatioData.get(heightKey);
+                    poissonRatioStr = mixRatioData.get(poissonRatioKey); // Get updated value
+
+                    if (diameterStr != null && !diameterStr.isEmpty() &&
+                            heightStr != null && !heightStr.isEmpty() &&
+                            poissonRatioStr != null && !poissonRatioStr.isEmpty() &&
+                            pAvg > 0) {
+
+                        double diameter = Double.parseDouble(diameterStr);
+                        double height = Double.parseDouble(heightStr);
+                        double poissonRatio = Double.parseDouble(poissonRatioStr);
+
+                        // Convert pAvg from KN to N
+                        double pN = pAvg * 1000;
+
+                        // Use the calculator to calculate splitting tensile strength
+                        double rt = SplittingTestCalculator.calculateSplittingTensileStrength(pN, height, diameter);
+
+                        // Use the calculator to calculate horizontal deformation if needed
+                        double xt = xAvg;
+
+                        // Use the calculator to calculate failure tensile strain
+                        double strainT = SplittingTestCalculator.calculateFailureTensileStrain(xt, poissonRatio);
+
+                        // Use the calculator to calculate stiffness modulus
+                        double st = SplittingTestCalculator.calculateStiffnessModulus(pN, height, xt, poissonRatio);
+
+                        // Update results in data map
+                        mixRatioData.put(rtKey, String.format("%.4f", rt));
+                        mixRatioData.put(strainKey, String.format("%.6f", strainT));
+                        mixRatioData.put(stKey, String.format("%.2f", st));
+
+                        // Update UI fields
+                        for (int i = 0; i < layoutInputs.getChildCount(); i++) {
+                            View child = layoutInputs.getChildAt(i);
+                            if (child instanceof TextInputLayout) {
+                                TextInputLayout layout = (TextInputLayout) child;
+                                TextInputEditText editText = (TextInputEditText) layout.getEditText();
+                                if (editText != null) {
+                                    if (layout.getHint() != null) {
+                                        String hint = layout.getHint().toString();
+                                        if (hint.contains("劈裂抗拉强度")) {
+                                            editText.setText(String.format("%.4f", rt));
+                                            editText.setEnabled(false);
+                                        } else if (hint.contains("破坏拉伸应变")) {
+                                            editText.setText(String.format("%.6f", strainT));
+                                            editText.setEnabled(false);
+                                        } else if (hint.contains("破坏韧度模量")) {
+                                            editText.setText(String.format("%.2f", st));
+                                            editText.setEnabled(false);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    // Handle invalid input
+                }
+            };
+
+            // Create TextWatcher for all input fields
+            TextWatcher textWatcher = new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    updateCalculation.run();
+                }
+            };
+
+            // Add TextWatcher to all relevant input fields
+            for (int i = 0; i < layoutInputs.getChildCount(); i++) {
+                View child = layoutInputs.getChildAt(i);
+                if (child instanceof TextInputLayout) {
+                    TextInputLayout layout = (TextInputLayout) child;
+                    TextInputEditText editText = (TextInputEditText) layout.getEditText();
+                    if (editText != null) {
+                        if (layout.getHint() != null) {
+                            String hint = layout.getHint().toString();
+                            if (hint.contains("直径") || hint.contains("高度") ||
+                                    hint.contains("泊松比") || hint.contains("测试温度")) {
+                                editText.addTextChangedListener(textWatcher);
+                            }
+                        }
+                    }
+                } else if (child instanceof LinearLayout) {
+                    LinearLayout layout = (LinearLayout) child;
+                    for (int j = 0; j < layout.getChildCount(); j++) {
+                        View innerChild = layout.getChildAt(j);
+                        if (innerChild instanceof TextInputEditText) {
+                            TextInputEditText editText = (TextInputEditText) innerChild;
+                            String tag = editText.getTag() != null ? editText.getTag().toString() : "";
+                            if (tag.contains("_strength_") || tag.contains("_deformation_")) {
+                                editText.addTextChangedListener(textWatcher);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Run initial calculation
+            updateCalculation.run();
+        }
+
+
+
+        private void addStrengthDataInputs(long mixRatioId, String experimentName, int specimenId) {
+            // 创建P值输入区域
+            LinearLayout pValuesContainer = new LinearLayout(itemView.getContext());
+            pValuesContainer.setOrientation(LinearLayout.VERTICAL);
+            pValuesContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+
+            // 添加P1-P3输入字段
+            for (int i = 1; i <= 3; i++) {
+                TextInputLayout pLayout = new TextInputLayout(itemView.getContext(), null, com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox);
+                pLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                ));
+                pLayout.setHint("P" + i + " (KN)");
+                pLayout.setHelperText("设备直接读取");
+
+                TextInputEditText pInput = new TextInputEditText(itemView.getContext());
+                pInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                String pKey = experimentName + "_strength_" + specimenId + "_p" + i;
+                setupDataInput(pInput, pKey, mixRatioId);
+                pLayout.addView(pInput);
+                pValuesContainer.addView(pLayout);
+            }
+
+            // 添加平均值计算区域
+            LinearLayout avgContainer = new LinearLayout(itemView.getContext());
+            avgContainer.setOrientation(LinearLayout.HORIZONTAL);
+            avgContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            avgContainer.setPadding(0, 16, 0, 8);
+
+            TextView avgLabel = new TextView(itemView.getContext());
+            avgLabel.setText("P平均值 (KN):");
+            avgLabel.setTextSize(14);
+            avgLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+            avgLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            avgLabel.setPadding(0, 0, 16, 0);
+            avgContainer.addView(avgLabel);
+
+            TextInputEditText avgInput = new TextInputEditText(itemView.getContext());
+            avgInput.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            avgInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            avgInput.setHint("计算获得");
+            String avgKey = experimentName + "_strength_" + specimenId + "_avg";
+            setupDataInput(avgInput, avgKey, mixRatioId);
+            avgContainer.addView(avgInput);
+
+            pValuesContainer.addView(avgContainer);
+            layoutInputs.addView(pValuesContainer);
+        }
+
+        private void addDeformationDataInputs(long mixRatioId, String experimentName, int specimenId) {
+            // 创建水平变形输入区域
+            LinearLayout deformationContainer = new LinearLayout(itemView.getContext());
+            deformationContainer.setOrientation(LinearLayout.VERTICAL);
+            deformationContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+
+            // 添加X1-X3输入字段
+            for (int i = 1; i <= 3; i++) {
+                TextInputLayout xLayout = new TextInputLayout(itemView.getContext(), null, com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox);
+                xLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                ));
+                xLayout.setHint("X" + i + " (水平应变变形) (mm)");
+                xLayout.setHelperText("设备直接读取");
+
+                TextInputEditText xInput = new TextInputEditText(itemView.getContext());
+                xInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                String xKey = experimentName + "_deformation_" + specimenId + "_x" + i;
+                setupDataInput(xInput, xKey, mixRatioId);
+                xLayout.addView(xInput);
+                deformationContainer.addView(xLayout);
+            }
+
+            // 添加平均值计算区域
+            LinearLayout avgContainer = new LinearLayout(itemView.getContext());
+            avgContainer.setOrientation(LinearLayout.HORIZONTAL);
+            avgContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            avgContainer.setPadding(0, 16, 0, 8);
+
+            TextView avgLabel = new TextView(itemView.getContext());
+            avgLabel.setText("X平均值 (mm):");
+            avgLabel.setTextSize(14);
+            avgLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+            avgLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            avgLabel.setPadding(0, 0, 16, 0);
+            avgContainer.addView(avgLabel);
+
+            TextInputEditText avgInput = new TextInputEditText(itemView.getContext());
+            avgInput.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            avgInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            avgInput.setHint("计算获得");
+            String avgKey = experimentName + "_deformation_" + specimenId + "_avg";
+            setupDataInput(avgInput, avgKey, mixRatioId);
+            avgContainer.addView(avgInput);
+
+            deformationContainer.addView(avgContainer);
+            layoutInputs.addView(deformationContainer);
+        }
+
+        private void addCalculationResults(long mixRatioId, String experimentName, int specimenId) {
+            // 创建计算结果输入区域
+            LinearLayout resultsContainer = new LinearLayout(itemView.getContext());
+            resultsContainer.setOrientation(LinearLayout.VERTICAL);
+            resultsContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+
+            // 添加标题
+            TextView resultsTitle = new TextView(itemView.getContext());
+            resultsTitle.setText("计算结果");
+            resultsTitle.setTextSize(16);
+            resultsTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            resultsTitle.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            resultsTitle.setPadding(0, 16, 0, 8);
+            resultsContainer.addView(resultsTitle);
+
+            // 添加泊松比显示
+            LinearLayout poissonContainer = new LinearLayout(itemView.getContext());
+            poissonContainer.setOrientation(LinearLayout.HORIZONTAL);
+            poissonContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            poissonContainer.setPadding(0, 8, 0, 8);
+
+            TextView poissonLabel = new TextView(itemView.getContext());
+            poissonLabel.setText("泊松比 μ:");
+            poissonLabel.setTextSize(14);
+            poissonLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+            poissonLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            poissonContainer.addView(poissonLabel);
+
+            TextView poissonValue = new TextView(itemView.getContext());
+            poissonValue.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            poissonValue.setTextSize(14);
+            poissonValue.setId(View.generateViewId());
+            String poissonKey = experimentName + "_poisson_ratio_" + specimenId;
+            // 设置初始值
+            Map<String, String> mixRatioData = experimentData.computeIfAbsent(
+                    String.valueOf(mixRatioId),
+                    k -> new HashMap<>()
+            );
+            String poissonRatioStr = mixRatioData.get(poissonKey);
+            if (poissonRatioStr != null && !poissonRatioStr.isEmpty()) {
+                poissonValue.setText(poissonRatioStr);
+            }
+            poissonContainer.addView(poissonValue);
+            resultsContainer.addView(poissonContainer);
+
+            // 添加参考表提示
+            TextView referenceText = new TextView(itemView.getContext());
+            referenceText.setText("参考表T 0716");
+            referenceText.setTextSize(12);
+            referenceText.setTextColor(Color.GRAY);
+            referenceText.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            referenceText.setPadding(0, 0, 0, 16);
+            resultsContainer.addView(referenceText);
+
+            // 添加劈裂抗拉强度显示
+            LinearLayout rtContainer = new LinearLayout(itemView.getContext());
+            rtContainer.setOrientation(LinearLayout.HORIZONTAL);
+            rtContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            rtContainer.setPadding(0, 8, 0, 8);
+
+            TextView rtLabel = new TextView(itemView.getContext());
+            rtLabel.setText("劈裂抗拉强度 RT (MPa):");
+            rtLabel.setTextSize(14);
+            rtLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+            rtLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            rtContainer.addView(rtLabel);
+
+            TextView rtValue = new TextView(itemView.getContext());
+            rtValue.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            rtValue.setTextSize(14);
+            rtValue.setId(View.generateViewId());
+            String rtKey = experimentName + "_rt_" + specimenId;
+            // 设置初始值
+            String rtStr = mixRatioData.get(rtKey);
+            if (rtStr != null && !rtStr.isEmpty()) {
+                rtValue.setText(rtStr);
+            }
+            rtContainer.addView(rtValue);
+            resultsContainer.addView(rtContainer);
+
+            // 添加公式提示
+            TextView rtFormulaText = new TextView(itemView.getContext());
+            rtFormulaText.setText("根据公式T 0716-1或T 0716-2计算");
+            rtFormulaText.setTextSize(12);
+            rtFormulaText.setTextColor(Color.GRAY);
+            rtFormulaText.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            rtFormulaText.setPadding(0, 0, 0, 16);
+            resultsContainer.addView(rtFormulaText);
+
+            // 添加破坏拉伸应变显示
+            LinearLayout strainContainer = new LinearLayout(itemView.getContext());
+            strainContainer.setOrientation(LinearLayout.HORIZONTAL);
+            strainContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            strainContainer.setPadding(0, 8, 0, 8);
+
+            TextView strainLabel = new TextView(itemView.getContext());
+            strainLabel.setText("破坏拉伸应变 εT:");
+            strainLabel.setTextSize(14);
+            strainLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+            strainLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            strainContainer.addView(strainLabel);
+
+            TextView strainValue = new TextView(itemView.getContext());
+            strainValue.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            strainValue.setTextSize(14);
+            strainValue.setId(View.generateViewId());
+            String strainKey = experimentName + "_strain_" + specimenId;
+            // 设置初始值
+            String strainStr = mixRatioData.get(strainKey);
+            if (strainStr != null && !strainStr.isEmpty()) {
+                strainValue.setText(strainStr);
+            }
+            strainContainer.addView(strainValue);
+            resultsContainer.addView(strainContainer);
+
+            // 添加公式提示
+            TextView strainFormulaText = new TextView(itemView.getContext());
+            strainFormulaText.setText("根据公式T 0716-4计算");
+            strainFormulaText.setTextSize(12);
+            strainFormulaText.setTextColor(Color.GRAY);
+            strainFormulaText.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            strainFormulaText.setPadding(0, 0, 0, 16);
+            resultsContainer.addView(strainFormulaText);
+
+            // 添加破坏韧度模量显示
+            LinearLayout stContainer = new LinearLayout(itemView.getContext());
+            stContainer.setOrientation(LinearLayout.HORIZONTAL);
+            stContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            stContainer.setPadding(0, 8, 0, 8);
+
+            TextView stLabel = new TextView(itemView.getContext());
+            stLabel.setText("破坏韧度模量 ST (MPa):");
+            stLabel.setTextSize(14);
+            stLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+            stLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            stContainer.addView(stLabel);
+
+            TextView stValue = new TextView(itemView.getContext());
+            stValue.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1
+            ));
+            stValue.setTextSize(14);
+            stValue.setId(View.generateViewId());
+            String stKey = experimentName + "_st_" + specimenId;
+            // 设置初始值
+            String stStr = mixRatioData.get(stKey);
+            if (stStr != null && !stStr.isEmpty()) {
+                stValue.setText(stStr);
+            }
+            stContainer.addView(stValue);
+            resultsContainer.addView(stContainer);
+
+            // 添加公式提示
+            TextView stFormulaText = new TextView(itemView.getContext());
+            stFormulaText.setText("根据公式T 0716-5计算");
+            stFormulaText.setTextSize(12);
+            stFormulaText.setTextColor(Color.GRAY);
+            stFormulaText.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            stFormulaText.setPadding(0, 0, 0, 16);
+            resultsContainer.addView(stFormulaText);
+
+            // 保存TextView的引用，以便在setupSplittingCalculation中更新
+            mixRatioData.put(poissonKey + "_view_id", String.valueOf(poissonValue.getId()));
+            mixRatioData.put(rtKey + "_view_id", String.valueOf(rtValue.getId()));
+            mixRatioData.put(strainKey + "_view_id", String.valueOf(strainValue.getId()));
+            mixRatioData.put(stKey + "_view_id", String.valueOf(stValue.getId()));
+
+            layoutInputs.addView(resultsContainer);
+        }
+
+        private void addPoissonRatioReferenceTable() {
+            // 创建泊松比参考表标题
+            TextView tableTitle = new TextView(itemView.getContext());
+            tableTitle.setText("表 T 0716 泊松比参考值");
+            tableTitle.setTextSize(16);
+            tableTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            tableTitle.setPadding(0, 24, 0, 8);
+            layoutInputs.addView(tableTitle);
+
+            // 创建表格容器
+            TableLayout tableLayout = new TableLayout(itemView.getContext());
+            tableLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            tableLayout.setStretchAllColumns(true);
+
+            // 添加表头行
+            TableRow headerRow = new TableRow(itemView.getContext());
+            String[] headers = {"试验温度(°C)", "≤10", "15", "20", "25", "30"};
+
+            for (String header : headers) {
+                TextView headerText = new TextView(itemView.getContext());
+                headerText.setText(header);
+                headerText.setTextSize(14);
+                headerText.setTypeface(null, android.graphics.Typeface.BOLD);
+                headerText.setPadding(8, 8, 8, 8);
+                headerText.setGravity(Gravity.CENTER);
+                headerText.setBackgroundResource(R.drawable.border_background);
+                headerRow.addView(headerText);
+            }
+            tableLayout.addView(headerRow);
+
+            // 添加数据行
+            TableRow dataRow = new TableRow(itemView.getContext());
+            String[] values = {"泊松比 μ 值", "0.25", "0.30", "0.35", "0.40", "0.45"};
+
+            for (String value : values) {
+                TextView valueText = new TextView(itemView.getContext());
+                valueText.setText(value);
+                valueText.setTextSize(14);
+                valueText.setPadding(8, 8, 8, 8);
+                valueText.setGravity(Gravity.CENTER);
+                valueText.setBackgroundResource(R.drawable.border_background);
+                dataRow.addView(valueText);
+            }
+            tableLayout.addView(dataRow);
+
+            layoutInputs.addView(tableLayout);
         }
 
         private void setupBendingCalculation(long mixRatioId, int specimenId, String experimentName, 
@@ -861,17 +1702,17 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             dataRow.addView(stageText);
             
             // 循环次数列 - 可编辑
-            TextInputEditText cycleInput = createDataInput(dataRow, 1);
+            TextInputEditText cycleInput = createDataInput(dataRow);
             String cycleKey = experimentName + "_dynamic_" + specimenId + "_" + stage.toLowerCase() + "_cycle";
             setupDataInput(cycleInput, cycleKey, mixRatioId);
             
             // 动态模量列 - 可编辑
-            TextInputEditText modulusInput = createDataInput(dataRow, 1);
+            TextInputEditText modulusInput = createDataInput(dataRow);
             String modulusKey = experimentName + "_dynamic_" + specimenId + "_" + stage.toLowerCase() + "_modulus";
             setupDataInput(modulusInput, modulusKey, mixRatioId);
             
             // 相位角列 - 可编辑
-            TextInputEditText phaseInput = createDataInput(dataRow, 1);
+            TextInputEditText phaseInput = createDataInput(dataRow);
             String phaseKey = experimentName + "_dynamic_" + specimenId + "_" + stage.toLowerCase() + "_phase";
             setupDataInput(phaseInput, phaseKey, mixRatioId);
             
@@ -1548,7 +2389,6 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             String pKey = experimentName + "_strength_" + specimenId + "_p" + pIndex;
             setupDataInput(pInput, pKey, mixRatioId);
             pRow.addView(pInput);
-            
             container.addView(pRow);
             return pInput;
         }

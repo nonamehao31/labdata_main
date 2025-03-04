@@ -4,4 +4,25 @@
         <item>沥青混合料试验</item>
         <item>沥青试验</item>
     </string-array>
+    
+    <!-- 同步间隔选项 -->
+    <string-array name="sync_interval_entries">
+        <item>5分钟</item>
+        <item>15分钟</item>
+        <item>30分钟</item>
+        <item>1小时</item>
+        <item>2小时</item>
+        <item>4小时</item>
+        <item>手动同步</item>
+    </string-array>
+    
+    <string-array name="sync_interval_values">
+        <item>5</item>
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+        <item>240</item>
+        <item>0</item>
+    </string-array>
 </resources>

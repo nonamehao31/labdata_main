@@ -194,7 +194,7 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
             AppDatabase.getInstance(this).experimentTaskDao().insert(task);
 
             // 发送广播通知主页刷新
-            Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+            Intent refreshIntent = new Intent("com.example.labdata_main.TASK_UPDATED");
             sendBroadcast(refreshIntent);
 
             // 返回主页

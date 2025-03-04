@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res/androidx.preference">
+
+    <PreferenceCategory
+        android:title="数据同步设置"
+        android:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:key="enable_realtime_sync"
+            android:title="启用实时同步"
+            android:summary="通过WebSocket接收实时数据更新"
+            android:defaultValue="true"
+            android:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:key="sync_on_wifi_only"
+            android:title="仅在WiFi下同步"
+            android:summary="仅在连接WiFi网络时进行同步"
+            android:defaultValue="false"
+            android:dependency="enable_realtime_sync"
+            android:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:key="sync_interval"
+            android:title="自动同步间隔"
+            android:summary="设置自动同步的时间间隔"
+            android:defaultValue="30"
+            android:entries="@array/sync_interval_entries"
+            android:entryValues="@array/sync_interval_values"
+            android:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="WebSocket连接设置"
+        android:iconSpaceReserved="false">
+
+        <EditTextPreference
+            android:key="websocket_url"
+            android:title="WebSocket服务器地址"
+            android:summary="设置WebSocket服务器的URL"
+            android:defaultValue="ws://your-server-ip:8080/ws/websocket"
+            android:iconSpaceReserved="false" />
+
+        <Preference
+            android:key="test_connection"
+            android:title="测试连接"
+            android:summary="测试WebSocket连接是否正常"
+            android:iconSpaceReserved="false" />
+
+        <Preference
+            android:key="connection_status"
+            android:title="连接状态"
+            android:summary="未连接"
+            android:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

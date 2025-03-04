@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 连接状态视图的自定义属性 -->
+    <declare-styleable name="ConnectionStatusView">
+        <attr name="connectedColor" format="color" />
+        <attr name="disconnectedColor" format="color" />
+        <attr name="isConnected" format="boolean" />
+    </declare-styleable>
+</resources>

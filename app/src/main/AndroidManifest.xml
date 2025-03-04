@@ -16,9 +16,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:name=".LabDataApplication"
+        android:name="com.example.labdata_main.App"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -28,8 +29,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Labdata_main"
+        android:usesCleartextTraffic="true"
         tools:targetApi="31">
         
+        <!-- 注册实时同步服务 -->
+        <service
+            android:name=".service.RealtimeService"
+            android:enabled="true"
+            android:exported="false" />
+            
         <activity
             android:name=".LoginActivity"
             android:exported="true"
@@ -54,7 +62,7 @@
             android:name=".RegisterActivity"
             android:exported="false"
             android:screenOrientation="portrait"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="stateAlwaysHidden|adjustPan" />
 
         <activity
             android:name=".EquipmentInitActivity"

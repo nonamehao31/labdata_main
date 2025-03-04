@@ -49,6 +49,7 @@ public class ExperimentTypeInitializer {
             experimentTypes.add(new ExperimentType("沥青混合料直接拉伸循环疲劳测黏弹损伤试验", ExperimentType.TYPE_DIRECT_STRETCHING_FATIGUE, ExperimentType.CATEGORY_MIXTURE));
             experimentTypes.add(new ExperimentType("沥青混合料四点弯曲疲劳寿命试验", ExperimentType.TYPE_FOUR_POINT_BENDING, ExperimentType.CATEGORY_MIXTURE));
             experimentTypes.add(new ExperimentType("沥青混合料单轴压缩试验(圆柱体法)", ExperimentType.TYPE_SINGLE_AXIS_COMPRESSION, ExperimentType.CATEGORY_MIXTURE));
+            experimentTypes.add(new ExperimentType("沥青混合料劈裂试验", ExperimentType.TYPE_MIX_SPLITTING, ExperimentType.CATEGORY_MIXTURE));
 
             try {
                 db.experimentTypeDao().insertAll(experimentTypes);
