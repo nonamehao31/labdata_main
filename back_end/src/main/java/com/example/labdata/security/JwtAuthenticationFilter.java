@@ -30,10 +30,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
+            // 详细记录请求信息
+            String requestURI = request.getRequestURI();
+            String method = request.getMethod();
+            logger.info("Processing request: {} {}", method, requestURI);
+            
             String jwt = getJwtFromRequest(request);
+            logger.info("JWT token present: {}", (jwt != null ? "Yes" : "No"));
 
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 Long userId = tokenProvider.getUserIdFromJWT(jwt);
+                logger.info("JWT token validated successfully for user ID: {}", userId);
 
                 UserDetails userDetails = customUserDetailsService.loadUserById(userId);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -41,9 +48,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                logger.info("User authentication set in SecurityContext");
+            } else if (StringUtils.hasText(jwt)) {
+                logger.warn("JWT token validation failed");
             }
         } catch (Exception ex) {
-            logger.error("Could not set user authentication in security context", ex);
+            logger.error("Could not set user authentication in security context: {}", ex.getMessage(), ex);
         }
 
         filterChain.doFilter(request, response);

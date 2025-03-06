@@ -1,6 +1,7 @@
 package com.example.labdata_main;
 
 import android.app.ProgressDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -686,8 +687,10 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        if (TextUtils.isEmpty(phone)) {
-            etPhone.setError("请输入电话号码");
+        // 验证手机号格式
+        String phoneError = ValidationUtils.getPhoneErrorMessage(phone);
+        if (phoneError != null) {
+            etPhone.setError(phoneError);
             etPhone.requestFocus();
             return;
         }
@@ -757,84 +760,221 @@ public class RegisterActivity extends AppCompatActivity {
      * 将用户数据提交到服务器
      */
     private void submitToServer(String name, String email, String phone, String password, String organization) {
-        try {
-            // 检查网络连接
-            if (!NetworkUtils.isNetworkConnected(this)) {
-                Log.w(TAG, "无网络连接，无法提交用户数据到服务器");
-                Toast.makeText(this, "无网络连接，请检查网络设置", Toast.LENGTH_LONG).show();
-                return;
-            }
-            
-            String username = email.substring(0, email.indexOf('@')); // 使用邮箱前缀作为用户名
-            
-            // 创建API服务
-            ApiService apiService = RetrofitClient.getInstance().createService(ApiService.class);
-            
-            // 创建注册请求
-            RegisterRequest request = new RegisterRequest(name, username, email, password, phone, organization);
-            
-            // 显示进度对话框
-            final ProgressDialog progressDialog = new ProgressDialog(this);
-            progressDialog.setMessage("正在注册...");
-            progressDialog.setCancelable(false);
-            progressDialog.show();
-            
-            // 发送注册请求
-            apiService.register(request).enqueue(new Callback<ApiResponse>() {
-                @Override
-                public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
-                    progressDialog.dismiss();
-                    if (response.isSuccessful() && response.body() != null) {
-                        ApiResponse apiResponse = response.body();
-                        if (apiResponse.isSuccess()) {
-                            Log.d(TAG, "服务器注册成功: " + apiResponse.getMessage());
-                            Toast.makeText(RegisterActivity.this, "注册成功！", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Log.e(TAG, "服务器注册失败: " + apiResponse.getMessage());
-                            Toast.makeText(RegisterActivity.this, "注册失败: " + apiResponse.getMessage(), Toast.LENGTH_LONG).show();
-                        }
-                    } else {
-                        try {
-                            if (response.errorBody() != null) {
-                                String errorBody = response.errorBody().string();
-                                Log.e(TAG, "服务器注册失败，响应码: " + response.code() + ", 错误信息: " + errorBody);
-                                Toast.makeText(RegisterActivity.this, "服务器错误 (" + response.code() + ")", Toast.LENGTH_LONG).show();
-                            } else {
-                                Log.e(TAG, "服务器注册失败，响应码: " + response.code());
-                                Toast.makeText(RegisterActivity.this, "服务器错误 (" + response.code() + ")", Toast.LENGTH_LONG).show();
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, "解析错误响应失败: " + e.getMessage());
-                            Toast.makeText(RegisterActivity.this, "解析响应失败", Toast.LENGTH_LONG).show();
-                        }
-                    }
+        // 检查网络连接
+        if (!NetworkUtils.isNetworkConnected(this)) {
+            Log.w(TAG, "无网络连接，无法提交用户数据到服务器");
+            Toast.makeText(this, "无网络连接，请检查网络设置", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        // 生成符合规范的用户名（基于邮箱前缀，但确保符合用户名规范）
+        String username = generateValidUsername(email);
+        
+        // 创建API服务
+        ApiService apiService = RetrofitClient.getInstance().createService(ApiService.class);
+        
+        // 创建注册请求
+        RegisterRequest request = new RegisterRequest(name, username, email, password, phone, organization);
+        
+        // 显示进度对话框
+        final ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("正在注册...");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+        
+        // 发送注册请求
+        apiService.register(request).enqueue(new Callback<ApiResponse<Void>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Void>> call, Response<ApiResponse<Void>> response) {
+                // 关闭进度对话框
+                safelyDismissDialog(progressDialog);
+                
+                if (isFinishing() || isDestroyed()) {
+                    // Activity已经结束，不需要处理响应
+                    return;
                 }
                 
-                @Override
-                public void onFailure(Call<ApiResponse> call, Throwable t) {
-                    progressDialog.dismiss();
-                    Log.e(TAG, "服务器注册请求失败: " + t.getMessage(), t);
-                    Toast.makeText(RegisterActivity.this, "连接服务器失败: " + t.getMessage(), Toast.LENGTH_LONG).show();
-                    // 尝试检查连接是否可达
-                    new Thread(() -> {
-                        try {
-                            URL url = new URL(ApiConfig.BASE_URL);
-                            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                            connection.setConnectTimeout(5000);
-                            connection.setRequestMethod("HEAD");
-                            int responseCode = connection.getResponseCode();
-                            final String message = "服务器连接测试: " + (responseCode >= 200 && responseCode < 400 ? "成功" : "失败 (" + responseCode + ")");
-                            runOnUiThread(() -> Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_LONG).show());
-                        } catch (Exception e) {
-                            final String errorMsg = e.getMessage();
-                            runOnUiThread(() -> Toast.makeText(RegisterActivity.this, "服务器不可达: " + errorMsg, Toast.LENGTH_LONG).show());
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<Void> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        Log.d(TAG, "服务器注册成功: " + apiResponse.getMessage());
+                        Toast.makeText(RegisterActivity.this, "注册成功！", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Log.e(TAG, "服务器注册失败: " + apiResponse.getMessage());
+                        handleRegistrationError(apiResponse.getMessage());
+                    }
+                } else {
+                    try {
+                        if (response.errorBody() != null) {
+                            String errorBody = response.errorBody().string();
+                            Log.e(TAG, "服务器注册失败，响应码: " + response.code() + ", 错误信息: " + errorBody);
+                            handleErrorBody(errorBody, response.code());
+                        } else {
+                            Log.e(TAG, "服务器注册失败，响应码: " + response.code());
+                            Toast.makeText(RegisterActivity.this, "服务器错误 (" + response.code() + ")", Toast.LENGTH_LONG).show();
                         }
-                    }).start();
+                    } catch (Exception e) {
+                        Log.e(TAG, "解析错误响应失败: " + e.getMessage());
+                        Toast.makeText(RegisterActivity.this, "解析响应失败", Toast.LENGTH_LONG).show();
+                    }
                 }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "提交到服务器出错: " + e.getMessage(), e);
-            Toast.makeText(this, "提交失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Void>> call, Throwable t) {
+                // 关闭进度对话框
+                safelyDismissDialog(progressDialog);
+                
+                if (isFinishing() || isDestroyed()) {
+                    // Activity已经结束，不需要处理响应
+                    return;
+                }
+                
+                Log.e(TAG, "服务器注册请求失败: " + t.getMessage(), t);
+                Toast.makeText(RegisterActivity.this, "连接服务器失败: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                // 尝试检查连接是否可达
+                new Thread(() -> {
+                    try {
+                        URL url = new URL(ApiConfig.BASE_URL);
+                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                        connection.setConnectTimeout(5000);
+                        connection.setRequestMethod("HEAD");
+                        int responseCode = connection.getResponseCode();
+                        final String message = "服务器连接测试: " + (responseCode >= 200 && responseCode < 400 ? "成功" : "失败 (" + responseCode + ")");
+                        runOnUiThread(() -> Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_LONG).show());
+                    } catch (Exception e) {
+                        final String errorMsg = e.getMessage();
+                        runOnUiThread(() -> Toast.makeText(RegisterActivity.this, "服务器不可达: " + errorMsg, Toast.LENGTH_LONG).show());
+                    }
+                }).start();
+            }
+        });
+    }
+
+    /**
+     * 生成有效的用户名（符合后端验证规则）
+     * 基于邮箱前缀，但确保符合用户名规范：只允许字母、数字和下划线，长度5-20位
+     *
+     * @param email 用户邮箱
+     * @return 符合规范的用户名
+     */
+    private String generateValidUsername(String email) {
+        // 获取邮箱前缀作为用户名基础
+        String baseUsername = email.substring(0, email.indexOf('@'));
+        
+        // 移除所有非法字符（只保留字母、数字和下划线）
+        String cleanUsername = baseUsername.replaceAll("[^a-zA-Z0-9_]", "");
+        
+        // 如果清理后长度不足5位，添加随机数字作为后缀
+        if (cleanUsername.length() < 5) {
+            StringBuilder sb = new StringBuilder(cleanUsername);
+            // 添加随机数字直到长度达到5位
+            while (sb.length() < 5) {
+                sb.append((int) (Math.random() * 10));
+            }
+            cleanUsername = sb.toString();
+        } 
+        // 如果长度超过20位，截取前20位
+        else if (cleanUsername.length() > 20) {
+            cleanUsername = cleanUsername.substring(0, 20);
         }
+        
+        return cleanUsername;
+    }
+
+    /**
+     * 处理注册错误信息
+     * @param message 错误信息
+     */
+    private void handleRegistrationError(String message) {
+        // 显示错误信息提示
+        Toast.makeText(this, "注册失败: " + message, Toast.LENGTH_LONG).show();
+
+        // 根据错误信息提示对应的输入框
+        if (message.toLowerCase().contains("email") || message.toLowerCase().contains("邮箱")) {
+            etEmail.setError(message);
+            etEmail.requestFocus();
+        } else if (message.toLowerCase().contains("username") || message.toLowerCase().contains("用户名")) {
+            // 用户名错误提示在邮箱输入框显示，因为用户名是基于邮箱前缀生成的
+            etEmail.setError("用户名无效或已被占用: " + message);
+            etEmail.requestFocus();
+        } else if (message.toLowerCase().contains("password") || message.toLowerCase().contains("密码")) {
+            etPassword.setError(message);
+            etPassword.requestFocus();
+        } else if (message.toLowerCase().contains("phone") || message.toLowerCase().contains("手机号") || 
+                  message.toLowerCase().contains("电话")) {
+            etPhone.setError(message);
+            etPhone.requestFocus();
+        } else if (message.toLowerCase().contains("name") || message.toLowerCase().contains("姓名") || 
+                  message.toLowerCase().contains("名字")) {
+            etName.setError(message);
+            etName.requestFocus();
+        } else if (message.toLowerCase().contains("organization") || message.toLowerCase().contains("单位") || 
+                  message.toLowerCase().contains("公司")) {
+            etCompany.setError(message);
+            etCompany.requestFocus();
+        }
+    }
+
+    /**
+     * 处理错误响应体
+     * @param errorBody 错误响应体
+     * @param responseCode HTTP响应码
+     */
+    private void handleErrorBody(String errorBody, int responseCode) {
+        try {
+            // 尝试从错误响应体中提取错误信息
+            if (errorBody.contains("message")) {
+                // 简单的JSON解析，直接提取message字段的值
+                int startIndex = errorBody.indexOf("message") + 10; // "message":" 的长度
+                int endIndex = errorBody.indexOf("\"", startIndex);
+                if (startIndex > 10 && endIndex > startIndex) {
+                    String errorMessage = errorBody.substring(startIndex, endIndex);
+                    handleRegistrationError(errorMessage);
+                    return;
+                }
+            }
+            
+            // 如果无法提取错误信息，显示通用的错误提示
+            String msg = "服务器错误 (" + responseCode + ")";
+            if (responseCode == 400) {
+                msg = "请求参数错误，请检查输入";
+            } else if (responseCode == 409) {
+                msg = "用户名或邮箱已被占用";
+                etEmail.setError("用户名或邮箱已被占用");
+                etEmail.requestFocus();
+            } else if (responseCode == 401 || responseCode == 403) {
+                msg = "无权访问，请检查登录状态";
+            } else if (responseCode >= 500) {
+                msg = "服务器内部错误，请稍后重试";
+            }
+            
+            Toast.makeText(RegisterActivity.this, msg, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Log.e(TAG, "解析错误响应体失败: " + e.getMessage(), e);
+            Toast.makeText(RegisterActivity.this, "解析响应失败", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * 安全关闭对话框
+     * @param dialog 对话框
+     */
+    private void safelyDismissDialog(Dialog dialog) {
+        try {
+            if (dialog != null && dialog.isShowing()) {
+                dialog.dismiss();
+            }
+        } catch (Exception e) {
+            // 忽略异常，防止窗口泄漏
+            Log.w(TAG, "关闭对话框异常: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 释放资源，防止内存泄漏
+        // ...
     }
 }

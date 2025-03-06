@@ -57,43 +57,43 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // 配置HTTP安全性
         http
-            .cors().and()
-            .csrf().disable()
-            .exceptionHandling()
+            .cors().and()                       // 启用CORS支持
+            .csrf().disable()                   // 禁用CSRF保护（在使用JWT时不需要）
+            .exceptionHandling()                // 配置异常处理
                 .authenticationEntryPoint(unauthorizedHandler)
                 .and()
-            .sessionManagement()
+            .sessionManagement()                // 配置会话管理
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-            .authorizeHttpRequests()
-                // 公开端点 - 不需要认证
-                .requestMatchers(
-                    "/auth/**",                     // 所有认证相关端点
-                    "/user/checkUsernameAvailability", 
-                    "/user/checkEmailAvailability"
-                ).permitAll()
-                // 静态资源
-                .requestMatchers(
-                    "/favicon.ico",
-                    "/**/*.png",
-                    "/**/*.gif",
-                    "/**/*.svg",
-                    "/**/*.jpg",
-                    "/**/*.html",
-                    "/**/*.css",
-                    "/**/*.js"
-                ).permitAll()
-                // 公开用户资料
-                .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
-                // 其他所有请求需要认证
-                .anyRequest().authenticated();
-
-        // 添加认证提供者
-        http.authenticationProvider(authenticationProvider());
+                .and();
         
-        // 添加JWT过滤器，在用户名密码过滤器之前
-        http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+        // 配置请求授权规则
+        http.authorizeHttpRequests(requests -> requests
+                // 公开端点 - 允许所有用户访问
+                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/user/checkUsernameAvailability").permitAll()
+                .requestMatchers("/user/checkEmailAvailability").permitAll()
+                
+                // 静态资源 - 允许所有用户访问
+                .requestMatchers("/favicon.ico").permitAll()
+                .requestMatchers("/images/**").permitAll()
+                .requestMatchers("/css/**").permitAll()
+                .requestMatchers("/js/**").permitAll()
+                
+                // 用户资料 - 允许GET请求访问
+                .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
+                
+                // 设备API - 需要认证才能访问
+                .requestMatchers("/devices/**").authenticated()
+                
+                // 其他所有请求都需要认证
+                .anyRequest().authenticated()
+        );
+
+        // 添加自定义过滤器和认证提供者
+        http.authenticationProvider(authenticationProvider())
+            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }

@@ -349,6 +349,64 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * 根据邮箱获取用户信息
+     * @param email 用户邮箱
+     * @return 用户对象，如果不存在则返回null
+     */
+    public User getUserByEmail(String email) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        User user = null;
+
+        try {
+            String[] columns = {
+                COLUMN_ID,
+                COLUMN_COMPANY,
+                COLUMN_NAME,
+                COLUMN_PHONE,
+                COLUMN_EMAIL,
+                COLUMN_PASSWORD,
+                COLUMN_USER_TYPE
+            };
+
+            String selection = COLUMN_EMAIL + " = ?";
+            String[] selectionArgs = {email};
+
+            android.util.Log.d(TAG, "Fetching user with email: " + email);
+
+            Cursor cursor = db.query(TABLE_USERS,
+                    columns,
+                    selection,
+                    selectionArgs,
+                    null,
+                    null,
+                    null);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                String company = cursor.getString(cursor.getColumnIndex(COLUMN_COMPANY));
+                String name = cursor.getString(cursor.getColumnIndex(COLUMN_NAME));
+                String phone = cursor.getString(cursor.getColumnIndex(COLUMN_PHONE));
+                String password = cursor.getString(cursor.getColumnIndex(COLUMN_PASSWORD));
+                int userType = cursor.getInt(cursor.getColumnIndex(COLUMN_USER_TYPE));
+                
+                user = new User(company, name, phone, email, password, userType);
+                user.setId(cursor.getInt(cursor.getColumnIndex(COLUMN_ID)));
+                
+                android.util.Log.d(TAG, "User found. ID: " + user.getId() + ", Type: " + user.getUserType());
+                cursor.close();
+            } else {
+                android.util.Log.d(TAG, "No user found with email: " + email);
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error fetching user: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            db.close();
+        }
+
+        return user;
+    }
+
+    /**
      * 检查邮箱是否已被注册
      * @param email 要检查的邮箱
      * @return true表示邮箱已存在，false表示邮箱可用

@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.utils.MaterialPropertyInitializer;
+import com.example.labdata_main.api.ApiClient;
 
 public class LabDataApplication extends Application {
     private ExecutorService executorService;
@@ -12,7 +13,11 @@ public class LabDataApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        // 初始化数据库实例
         AppDatabase.getInstance(this);
+        
+        // 初始化 API 客户端
+        ApiClient.init(this);
         
         // 创建单线程执行器
         executorService = Executors.newSingleThreadExecutor();

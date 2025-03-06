@@ -165,19 +165,30 @@ public class EquipmentInitActivity extends AppCompatActivity {
                 intent.putExtra("company_id", companyId);
                 // 将设备列表转换为Equipment对象列表并传递
                 ArrayList<Equipment> equipmentList = new ArrayList<>();
-                for (Device device : devices) {
-                    Equipment equipment = new Equipment(
-                        companyId,
-                        device.getType(),
-                        device.getModel(),
-                        device.getManufacturer(),
-                        device.getPurchaseYear()
-                    );
-                    equipmentList.add(equipment);
+                try {
+                    for (Device device : devices) {
+                        Equipment equipment = new Equipment(
+                            companyId,
+                            device.getType(),
+                            device.getModel(),
+                            device.getManufacturer(),
+                            device.getPurchaseYear()
+                        );
+                        equipmentList.add(equipment);
+                    }
+                    Log.d("EquipmentInit", "Created equipment list with " + equipmentList.size() + " items");
+                    
+                    // 使用JSON序列化传递Equipment对象列表
+                    String equipmentJson = Equipment.toJsonString(equipmentList);
+                    intent.putExtra("equipment_json", equipmentJson);
+                    
+                    Log.d("EquipmentInit", "Serialized equipment list to JSON");
+                    startActivity(intent);
+                    finish();
+                } catch (Exception e) {
+                    Log.e("EquipmentInit", "Error preparing equipment data: " + e.getMessage(), e);
+                    Toast.makeText(this, "设备信息处理失败", Toast.LENGTH_SHORT).show();
                 }
-                intent.putParcelableArrayListExtra("equipment_list", equipmentList);
-                startActivity(intent);
-                finish();
             } else {
                 Toast.makeText(this, "设备信息保存失败", Toast.LENGTH_SHORT).show();
             }

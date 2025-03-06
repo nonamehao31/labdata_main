@@ -20,6 +20,10 @@ public class SharedPrefsManager {
     private static final String KEY_USER_PHONE = "userPhone";
     private static final String KEY_USER_AVATAR = "userAvatar";
     private static final String KEY_USER_TYPE = "userType";
+    
+    // 新增JWT相关的键
+    private static final String KEY_AUTH_TOKEN = "authToken";
+    private static final String KEY_TOKEN_TYPE = "tokenType";
 
     private final SharedPreferences sharedPreferences;
     private final SharedPreferences.Editor editor;
@@ -42,15 +46,67 @@ public class SharedPrefsManager {
      * @param phone 用户电话
      * @param userType 用户类型
      */
-    public void saveUserLoginSession(int id, String email, String name, String company, String phone, int userType) {
+    public void saveUserLoginSession(long id, String email, String name, String company, String phone, int userType) {
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
-        editor.putInt(KEY_USER_ID, id);
+        editor.putLong(KEY_USER_ID, id);
         editor.putString(KEY_USER_EMAIL, email);
         editor.putString(KEY_USER_NAME, name);
         editor.putString(KEY_USER_COMPANY, company);
         editor.putString(KEY_USER_PHONE, phone);
         editor.putInt(KEY_USER_TYPE, userType);
         editor.apply();
+    }
+    
+    /**
+     * 保存用户登录状态和基本信息（字符串类型的用户类型）
+     * @param id 用户ID
+     * @param email 用户邮箱
+     * @param name 用户姓名
+     * @param company 用户单位
+     * @param phone 用户电话
+     * @param userType 用户类型（字符串）
+     */
+    public void saveUserLoginSession(long id, String email, String name, String company, String phone, String userType) {
+        editor.putBoolean(KEY_IS_LOGGED_IN, true);
+        editor.putLong(KEY_USER_ID, id);
+        editor.putString(KEY_USER_EMAIL, email);
+        editor.putString(KEY_USER_NAME, name);
+        editor.putString(KEY_USER_COMPANY, company);
+        editor.putString(KEY_USER_PHONE, phone);
+        editor.putInt(KEY_USER_TYPE, "admin".equals(userType) ? 1 : 0); // admin类型为1，其他类型为0
+        editor.apply();
+    }
+    
+    /**
+     * 保存JWT令牌信息
+     * @param token JWT令牌
+     * @param tokenType 令牌类型（例如"Bearer"）
+     */
+    public void saveAuthToken(String token, String tokenType) {
+        editor.putString(KEY_AUTH_TOKEN, token);
+        editor.putString(KEY_TOKEN_TYPE, tokenType);
+        editor.apply();
+    }
+    
+    /**
+     * 获取Authorization头信息
+     * @return Authorization头信息，格式为"Bearer [token]"
+     */
+    public String getAuthHeader() {
+        String tokenType = sharedPreferences.getString(KEY_TOKEN_TYPE, "Bearer");
+        String token = sharedPreferences.getString(KEY_AUTH_TOKEN, "");
+        if (token.isEmpty()) {
+            return null;
+        }
+        return tokenType + " " + token;
+    }
+    
+    /**
+     * 获取JWT令牌
+     * @return JWT令牌字符串
+     */
+    public String getAuthToken() {
+        return sharedPreferences.getString(KEY_AUTH_TOKEN, null);
     }
 
     /**
@@ -73,8 +129,8 @@ public class SharedPrefsManager {
      * 获取用户ID
      * @return 用户ID，如果未登录返回-1
      */
-    public int getUserId() {
-        return sharedPreferences.getInt(KEY_USER_ID, -1);
+    public long getUserId() {
+        return sharedPreferences.getLong(KEY_USER_ID, -1);
     }
 
     /**
@@ -161,5 +217,14 @@ public class SharedPrefsManager {
         int userType = sharedPreferences.getInt(KEY_USER_TYPE, -1);
         android.util.Log.d("SharedPrefsManager", "Getting user type: " + userType);
         return userType;
+    }
+    
+    /**
+     * 获取用户类型（字符串）
+     * @return 用户类型字符串，"admin"或"user"
+     */
+    public String getUserTypeString() {
+        int userType = getUserType();
+        return userType == 1 ? "admin" : "user";
     }
 }

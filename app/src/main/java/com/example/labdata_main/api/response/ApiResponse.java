@@ -1,11 +1,19 @@
 package com.example.labdata_main.api.response;
 
+import com.google.gson.annotations.SerializedName;
+
 /**
  * 通用API响应
  */
-public class ApiResponse {
+public class ApiResponse<T> {
+    @SerializedName("success")
     private boolean success;
+    
+    @SerializedName("message")
     private String message;
+    
+    @SerializedName("data")
+    private T data;
     
     public ApiResponse() {
     }
@@ -13,6 +21,12 @@ public class ApiResponse {
     public ApiResponse(boolean success, String message) {
         this.success = success;
         this.message = message;
+    }
+    
+    public ApiResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
     }
     
     public boolean isSuccess() {
@@ -29,5 +43,13 @@ public class ApiResponse {
     
     public void setMessage(String message) {
         this.message = message;
+    }
+    
+    public T getData() {
+        return data;
+    }
+    
+    public void setData(T data) {
+        this.data = data;
     }
 }

@@ -2,6 +2,11 @@ package com.example.labdata_main.model;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Equipment implements Parcelable {
     private int id;
@@ -10,6 +15,8 @@ public class Equipment implements Parcelable {
     private String model;      // 设备型号
     private String manufacturer; // 生产厂家
     private String purchaseYear;   // 购买年限
+
+    private static final Gson gson = new Gson();
 
     public Equipment() {
     }
@@ -42,6 +49,21 @@ public class Equipment implements Parcelable {
             return new Equipment[size];
         }
     };
+    
+    // Convert equipment list to JSON string
+    public static String toJsonString(List<Equipment> equipmentList) {
+        return gson.toJson(equipmentList);
+    }
+    
+    // Convert JSON string back to equipment list
+    public static ArrayList<Equipment> fromJsonString(String jsonString) {
+        if (jsonString == null || jsonString.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        Type listType = new TypeToken<ArrayList<Equipment>>(){}.getType();
+        return gson.fromJson(jsonString, listType);
+    }
 
     // Getters and Setters
     public int getId() {

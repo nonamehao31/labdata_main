@@ -12,15 +12,24 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.api.ApiService;
+import com.example.labdata_main.api.request.LoginRequest;
+import com.example.labdata_main.api.response.LoginResponse;
 import com.example.labdata_main.db.DatabaseHelper;
 import com.example.labdata_main.model.User;
 import com.example.labdata_main.utils.SharedPrefsManager;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * 登录界面Activity
  * 处理用户登录和注册跳转功能
  */
 public class LoginActivity extends AppCompatActivity {
+    private static final String TAG = "LoginActivity";
     private EditText etEmail;
     private EditText etPassword;
     private Button btnLogin;
@@ -28,6 +37,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private DatabaseHelper databaseHelper;
     private SharedPrefsManager sharedPrefsManager;
+    private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +50,7 @@ public class LoginActivity extends AppCompatActivity {
         // 初始化工具类
         databaseHelper = new DatabaseHelper(this);
         sharedPrefsManager = new SharedPrefsManager(this);
+        apiService = ApiClient.getApiService();
 
         // 检查是否已登录
         if (sharedPrefsManager.isLoggedIn()) {
@@ -85,31 +96,105 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // 验证用户登录
-        User user = databaseHelper.checkUser(email, password);
-        if (user != null) {
-            // 添加日志
-            Log.d("LoginActivity", "Login successful. User type: " + user.getUserType());
-            
-            // 保存登录状态和用户信息
-            sharedPrefsManager.saveUserLoginSession(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getCompany(),
-                user.getPhone(),
-                user.getUserType()
-            );
-            
-            // 添加日志验证保存后的用户类型
-            Log.d("LoginActivity", "Saved user type. Verifying: " + sharedPrefsManager.getUserType());
-            
-            // 登录成功，跳转到主界面
-            startMainActivity();
-            finish();
-        } else {
-            Toast.makeText(this, "账号或密码错误", Toast.LENGTH_SHORT).show();
-        }
+        // 显示登录中提示
+        Toast.makeText(this, "登录中...", Toast.LENGTH_SHORT).show();
+        btnLogin.setEnabled(false);
+
+        // 创建登录请求对象
+        LoginRequest loginRequest = new LoginRequest(email, password);
+        
+        // 调用后端API进行认证
+        apiService.login(loginRequest).enqueue(new Callback<LoginResponse>() {
+            @Override
+            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
+                btnLogin.setEnabled(true);
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    LoginResponse loginResponse = response.body();
+                    Log.d(TAG, "API登录成功. 用户ID: " + loginResponse.getUserId());
+                    
+                    // 查询本地数据库获取用户类型和其他信息
+                    User user = databaseHelper.getUserByEmail(email);
+                    if (user != null) {
+                        // 保存登录状态和用户信息
+                        sharedPrefsManager.saveUserLoginSession(
+                            loginResponse.getUserId(),
+                            email,
+                            loginResponse.getUsername(),
+                            user.getCompany(),
+                            user.getPhone(),
+                            user.getUserType()
+                        );
+                        
+                        // 保存token信息
+                        sharedPrefsManager.saveAuthToken(
+                            loginResponse.getAccessToken(),
+                            loginResponse.getTokenType()
+                        );
+                        
+                        // 重置API客户端，确保新的认证令牌生效
+                        ApiClient.resetClient();
+                        
+                        // 登录成功，跳转到主界面
+                        startMainActivity();
+                        finish();
+                    } else {
+                        // 用户在后端存在但本地数据库没有记录，创建本地记录
+                        User newUser = new User();
+                        newUser.setEmail(email);
+                        newUser.setName(loginResponse.getUsername());
+                        newUser.setPassword(password); // 密码应该加密保存
+                        newUser.setUserType(0); // 默认普通用户(0:实验员, 1:管理员)
+                        
+                        long userId = databaseHelper.addUser(newUser);
+                        if (userId > 0) {
+                            // 保存登录状态和用户信息
+                            sharedPrefsManager.saveUserLoginSession(
+                                loginResponse.getUserId(),
+                                email,
+                                loginResponse.getUsername(),
+                                "", // 公司信息为空
+                                "", // 电话信息为空
+                                0 // 默认用户类型
+                            );
+                            
+                            // 保存token信息
+                            sharedPrefsManager.saveAuthToken(
+                                loginResponse.getAccessToken(),
+                                loginResponse.getTokenType()
+                            );
+                            
+                            // 重置API客户端，确保新的认证令牌生效
+                            ApiClient.resetClient();
+                            
+                            // 登录成功，跳转到主界面
+                            startMainActivity();
+                            finish();
+                        } else {
+                            Toast.makeText(LoginActivity.this, "本地数据保存失败", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                } else {
+                    // 登录失败
+                    String errorMsg = "登录失败: ";
+                    if (response.errorBody() != null) {
+                        errorMsg += "服务器验证错误";
+                    } else {
+                        errorMsg += "账号或密码错误";
+                    }
+                    Toast.makeText(LoginActivity.this, errorMsg, Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, errorMsg);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<LoginResponse> call, Throwable t) {
+                btnLogin.setEnabled(true);
+                // 网络错误
+                Toast.makeText(LoginActivity.this, "网络连接失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "登录网络请求失败", t);
+            }
+        });
     }
 
     private void startMainActivity() {

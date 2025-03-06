@@ -41,12 +41,20 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
             }
 
             // 获取传递过来的设备列表
-            equipmentList = getIntent().getParcelableArrayListExtra("equipment_list");
-            Log.d(TAG, "Received equipment list: " + (equipmentList != null ? equipmentList.size() : "null"));
-            
-            if (equipmentList == null) {
+            Intent intent = getIntent();
+            if (intent.hasExtra("equipment_json")) {
+                try {
+                    // 从JSON字符串反序列化设备列表
+                    String equipmentJson = intent.getStringExtra("equipment_json");
+                    equipmentList = Equipment.fromJsonString(equipmentJson);
+                    Log.d(TAG, "Deserialized equipment list from JSON: " + (equipmentList != null ? equipmentList.size() : "null"));
+                } catch (Exception e) {
+                    Log.e(TAG, "Error deserializing equipment list: " + e.getMessage(), e);
+                    equipmentList = new ArrayList<>();
+                }
+            } else {
                 equipmentList = new ArrayList<>();
-                Log.w(TAG, "Equipment list is null, creating empty list");
+                Log.w(TAG, "Equipment JSON not found, creating empty list");
             }
 
             // 初始化 ViewPager2
@@ -82,10 +90,10 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
             }
             btnFinish.setOnClickListener(v -> {
                 // 创建返回主页的意图
-                Intent intent = new Intent(this, MainActivity.class);
+                Intent mainIntent = new Intent(this, MainActivity.class);
                 // 清除任务栈中所有活动
-                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                startActivity(intent);
+                mainIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(mainIntent);
                 // 确保当前活动被销毁
                 finish();
             });
