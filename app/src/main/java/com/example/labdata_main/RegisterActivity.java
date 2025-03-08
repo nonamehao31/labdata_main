@@ -28,6 +28,9 @@ import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.ContextThemeWrapper;
+import android.view.Window;
+import java.io.IOException;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -47,6 +50,7 @@ import com.example.labdata_main.utils.ValidationUtils;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -74,6 +78,9 @@ public class RegisterActivity extends AppCompatActivity {
 
     private DatabaseHelper databaseHelper;
     private SharedPrefsManager sharedPrefsManager;
+
+    // 成员变量：用于跟踪当前活动的对话框
+    private ProgressDialog mProgressDialog = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -776,77 +783,80 @@ public class RegisterActivity extends AppCompatActivity {
         // 创建注册请求
         RegisterRequest request = new RegisterRequest(name, username, email, password, phone, organization);
         
-        // 显示进度对话框
-        final ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("正在注册...");
-        progressDialog.setCancelable(false);
-        progressDialog.show();
+        // 关闭任何可能存在的进度对话框
+        dismissProgressDialog();
+        
+        // 显示新的进度对话框
+        mProgressDialog = new ProgressDialog(this);
+        mProgressDialog.setMessage("正在注册...");
+        mProgressDialog.setCancelable(false);
+        mProgressDialog.show();
+        
+        // 标记是否已处理响应，防止多次处理
+        final AtomicBoolean responseHandled = new AtomicBoolean(false);
         
         // 发送注册请求
-        apiService.register(request).enqueue(new Callback<ApiResponse<Void>>() {
+        Call<ApiResponse<Void>> call = apiService.register(request);
+        
+        call.enqueue(new Callback<ApiResponse<Void>>() {
             @Override
             public void onResponse(Call<ApiResponse<Void>> call, Response<ApiResponse<Void>> response) {
-                // 关闭进度对话框
-                safelyDismissDialog(progressDialog);
-                
-                if (isFinishing() || isDestroyed()) {
-                    // Activity已经结束，不需要处理响应
+                // 如果Activity已销毁或响应已处理，直接返回
+                if (isFinishing() || isDestroyed() || responseHandled.getAndSet(true)) {
+                    dismissProgressDialog();
                     return;
                 }
+                
+                // 关闭进度对话框
+                dismissProgressDialog();
                 
                 if (response.isSuccessful() && response.body() != null) {
                     ApiResponse<Void> apiResponse = response.body();
                     if (apiResponse.isSuccess()) {
                         Log.d(TAG, "服务器注册成功: " + apiResponse.getMessage());
                         Toast.makeText(RegisterActivity.this, "注册成功！", Toast.LENGTH_SHORT).show();
+                        
+                        // 进入登录页面
+                        Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                        startActivity(intent);
+                        finish();
                     } else {
-                        Log.e(TAG, "服务器注册失败: " + apiResponse.getMessage());
+                        // API成功但业务逻辑失败
                         handleRegistrationError(apiResponse.getMessage());
                     }
                 } else {
+                    // API调用失败
+                    String errorBodyString = "";
                     try {
                         if (response.errorBody() != null) {
-                            String errorBody = response.errorBody().string();
-                            Log.e(TAG, "服务器注册失败，响应码: " + response.code() + ", 错误信息: " + errorBody);
-                            handleErrorBody(errorBody, response.code());
-                        } else {
-                            Log.e(TAG, "服务器注册失败，响应码: " + response.code());
-                            Toast.makeText(RegisterActivity.this, "服务器错误 (" + response.code() + ")", Toast.LENGTH_LONG).show();
+                            errorBodyString = response.errorBody().string();
                         }
-                    } catch (Exception e) {
-                        Log.e(TAG, "解析错误响应失败: " + e.getMessage());
-                        Toast.makeText(RegisterActivity.this, "解析响应失败", Toast.LENGTH_LONG).show();
+                    } catch (IOException e) {
+                        Log.e(TAG, "读取错误响应体失败", e);
                     }
+                    
+                    handleErrorBody(errorBodyString, response.code());
                 }
             }
-            
+
             @Override
             public void onFailure(Call<ApiResponse<Void>> call, Throwable t) {
-                // 关闭进度对话框
-                safelyDismissDialog(progressDialog);
-                
-                if (isFinishing() || isDestroyed()) {
-                    // Activity已经结束，不需要处理响应
+                // 如果Activity已销毁或响应已处理，直接返回
+                if (isFinishing() || isDestroyed() || responseHandled.getAndSet(true)) {
+                    dismissProgressDialog();
                     return;
                 }
                 
-                Log.e(TAG, "服务器注册请求失败: " + t.getMessage(), t);
-                Toast.makeText(RegisterActivity.this, "连接服务器失败: " + t.getMessage(), Toast.LENGTH_LONG).show();
-                // 尝试检查连接是否可达
-                new Thread(() -> {
-                    try {
-                        URL url = new URL(ApiConfig.BASE_URL);
-                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                        connection.setConnectTimeout(5000);
-                        connection.setRequestMethod("HEAD");
-                        int responseCode = connection.getResponseCode();
-                        final String message = "服务器连接测试: " + (responseCode >= 200 && responseCode < 400 ? "成功" : "失败 (" + responseCode + ")");
-                        runOnUiThread(() -> Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_LONG).show());
-                    } catch (Exception e) {
-                        final String errorMsg = e.getMessage();
-                        runOnUiThread(() -> Toast.makeText(RegisterActivity.this, "服务器不可达: " + errorMsg, Toast.LENGTH_LONG).show());
-                    }
-                }).start();
+                // 关闭进度对话框
+                dismissProgressDialog();
+                
+                if (t instanceof IOException) {
+                    Log.e(TAG, "网络错误: " + t.getMessage(), t);
+                    Toast.makeText(RegisterActivity.this, "网络连接失败，请检查网络设置", Toast.LENGTH_LONG).show();
+                } else {
+                    Log.e(TAG, "注册失败: " + t.getMessage(), t);
+                    Toast.makeText(RegisterActivity.this, "注册失败: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                }
             }
         });
     }
@@ -957,17 +967,18 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     /**
-     * 安全关闭对话框
-     * @param dialog 对话框
+     * 安全地关闭进度对话框
      */
-    private void safelyDismissDialog(Dialog dialog) {
-        try {
-            if (dialog != null && dialog.isShowing()) {
-                dialog.dismiss();
+    private void dismissProgressDialog() {
+        if (mProgressDialog != null && mProgressDialog.isShowing()) {
+            try {
+                mProgressDialog.dismiss();
+            } catch (IllegalArgumentException e) {
+                // 窗口已分离，记录但不处理
+                Log.w(TAG, "关闭对话框时出现异常: " + e.getMessage());
+            } finally {
+                mProgressDialog = null;
             }
-        } catch (Exception e) {
-            // 忽略异常，防止窗口泄漏
-            Log.w(TAG, "关闭对话框异常: " + e.getMessage());
         }
     }
 
@@ -975,6 +986,6 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         // 释放资源，防止内存泄漏
-        // ...
+        dismissProgressDialog();
     }
 }
