@@ -54,7 +54,15 @@ public class ExperimentFragment extends Fragment {
                 }
             }
         };
-        requireContext().registerReceiver(taskRefreshReceiver, new IntentFilter("com.example.labdata_main.REFRESH_TASKS"));
+        // 注册广播接收器时添加兼容性检查，支持Android 13+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requireContext().registerReceiver(taskRefreshReceiver, 
+                new IntentFilter("com.example.labdata_main.REFRESH_TASKS"),
+                android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            requireContext().registerReceiver(taskRefreshReceiver, 
+                new IntentFilter("com.example.labdata_main.REFRESH_TASKS"));
+        }
     }
 
     @Override

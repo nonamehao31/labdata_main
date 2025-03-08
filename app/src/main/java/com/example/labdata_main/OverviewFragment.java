@@ -78,7 +78,14 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 }
             }
         };
-        requireContext().registerReceiver(taskRefreshReceiver, new IntentFilter("com.example.labdata_main.REFRESH_TASKS"));
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requireContext().registerReceiver(taskRefreshReceiver, 
+                new IntentFilter("com.example.labdata_main.REFRESH_TASKS"),
+                android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            requireContext().registerReceiver(taskRefreshReceiver, 
+                new IntentFilter("com.example.labdata_main.REFRESH_TASKS"));
+        }
     }
 
     @Override
@@ -193,7 +200,11 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 loadExperimentTasks();
             }
         };
-        requireActivity().registerReceiver(taskRefreshReceiver, filter);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requireActivity().registerReceiver(taskRefreshReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            requireActivity().registerReceiver(taskRefreshReceiver, filter);
+        }
     }
 
     @Override
@@ -220,7 +231,11 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 loadExperimentTasks();
             }
         };
-        requireContext().registerReceiver(taskRefreshReceiver, filter);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requireContext().registerReceiver(taskRefreshReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            requireContext().registerReceiver(taskRefreshReceiver, filter);
+        }
 
         // 设置Spinner
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(requireContext(),
