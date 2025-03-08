@@ -25,6 +25,14 @@ public class MaterialService {
         return materialRepository.findAll();
     }
     
+    public List<Material> getMaterialsByOrganization(Long organizationId) {
+        return materialRepository.findByOrganizationId(organizationId);
+    }
+    
+    public List<Material> getMaterialsByTypeAndOrganization(String type, Long organizationId) {
+        return materialRepository.findByTypeAndOrganizationId(type, organizationId);
+    }
+    
     public Material getMaterialById(Long id) {
         return materialRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Material", "id", id));
@@ -81,6 +89,14 @@ public class MaterialService {
     
     public List<Material> findModifiedSince(Instant lastSyncTime) {
         return materialRepository.findModifiedSince(lastSyncTime);
+    }
+    
+    public List<Material> findModifiedSince(Instant lastSyncTime, Long organizationId) {
+        // 按组织ID和最后同步时间过滤材料
+        List<Material> modifiedMaterials = materialRepository.findModifiedSince(lastSyncTime);
+        return modifiedMaterials.stream()
+                .filter(material -> material.getOrganizationId() == null || material.getOrganizationId().equals(organizationId))
+                .toList();
     }
     
     @Transactional

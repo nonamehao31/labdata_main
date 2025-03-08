@@ -40,8 +40,22 @@ public class MixRatio extends UserDateAudit {
     @CollectionTable(name = "material_percentages", joinColumns = @JoinColumn(name = "mix_ratio_id"))
     private List<MaterialPercentage> materialPercentages = new ArrayList<>();
     
-    // Sync fields
+    // 总量 (如kg或g)
+    private String totalAmount;
+    
+    // 项目ID
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    private Project project;
+    
+    // 关联混合方法
+    @ManyToOne
+    @JoinColumn(name = "mixing_method_id")
+    private MixingMethod mixingMethod;
+    
+    // 同步标记字段
     private Long clientId;
+    private Long organizationId; // 限制仅显示用户所在单位的数据
     private boolean synced = false;
     private String syncStatus = "NEW";
     
@@ -50,6 +64,7 @@ public class MixRatio extends UserDateAudit {
     @NoArgsConstructor
     public static class MaterialPercentage {
         private Long materialId;
+        private String materialName; // 冗余存储，方便查询
         private Double percentage;
         
         public MaterialPercentage(Long materialId, Double percentage) {
@@ -58,4 +73,3 @@ public class MixRatio extends UserDateAudit {
         }
     }
 }
-

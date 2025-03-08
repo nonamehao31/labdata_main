@@ -13,32 +13,54 @@ import java.util.Objects;
 
 public class UserPrincipal implements UserDetails {
     private Long id;
+    private String name;
     private String username;
     private String email;
+    private String organization;
+    private Long organizationId;
+    private boolean admin;
     
     @JsonIgnore
     private String password;
     
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserPrincipal(Long id, String username, String email, String password, 
+    public UserPrincipal(Long id, String name, String username, String email, String password, 
+                         String organization, Long organizationId, boolean admin,
                          Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
+        this.name = name;
         this.username = username;
         this.email = email;
         this.password = password;
+        this.organization = organization;
+        this.organizationId = organizationId;
+        this.admin = admin;
         this.authorities = authorities;
     }
 
     public static UserPrincipal create(User user) {
-        List<GrantedAuthority> authorities = Collections.singletonList(
-                new SimpleGrantedAuthority("ROLE_USER"));
+        List<GrantedAuthority> authorities;
+        
+        if (user.isAdmin()) {
+            authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_USER"),
+                new SimpleGrantedAuthority("ROLE_ADMIN")
+            );
+        } else {
+            authorities = Collections.singletonList(
+                    new SimpleGrantedAuthority("ROLE_USER"));
+        }
 
         return new UserPrincipal(
                 user.getId(),
+                user.getName(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
+                user.getOrganization(),
+                user.getOrganizationId(),  // 使用用户的组织ID
+                user.isAdmin(),
                 authorities
         );
     }
@@ -46,9 +68,25 @@ public class UserPrincipal implements UserDetails {
     public Long getId() {
         return id;
     }
+    
+    public String getName() {
+        return name;
+    }
 
     public String getEmail() {
         return email;
+    }
+    
+    public String getOrganization() {
+        return organization;
+    }
+    
+    public Long getOrganizationId() {
+        return organizationId;
+    }
+    
+    public boolean isAdmin() {
+        return admin;
     }
 
     @Override

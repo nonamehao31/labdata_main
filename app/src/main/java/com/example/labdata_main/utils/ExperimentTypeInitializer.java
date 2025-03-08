@@ -8,55 +8,56 @@ import com.example.labdata_main.model.ExperimentType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class ExperimentTypeInitializer {
     private static final String TAG = "ExperimentTypeInitializer";
-    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    // 初始化实验类型列表
     public static void initializeExperimentTypes(Context context) {
+        // 使用单线程执行器执行数据库操作
+        Executor executor = Executors.newSingleThreadExecutor();
+        
         executor.execute(() -> {
+            // 获取数据库实例
             AppDatabase db = AppDatabase.getInstance(context);
             
-            // 检查是否已经初始化
-            if (db.experimentTypeDao().getCount() > 0) {
+            // 获取已存在的实验类型数量
+            int existingCount = db.experimentTypeDao().getCount();
+            
+            // 如果已有数据，则不再重复初始化
+            if (existingCount > 0) {
+                Log.d(TAG, "实验类型数据已存在，无需初始化");
                 return;
             }
-
+            
             List<ExperimentType> experimentTypes = new ArrayList<>();
-
-            // 添加沥青实验类型
+            
+            // 按照请求，仅保留以下沥青实验类型
             experimentTypes.add(new ExperimentType("针入度试验", ExperimentType.TYPE_PENETRATION, ExperimentType.CATEGORY_ASPHALT));
             experimentTypes.add(new ExperimentType("延度试验", ExperimentType.TYPE_DUCTILITY, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("软化点试验", ExperimentType.TYPE_SOFTENING_POINT, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("沥青弯曲蠕变劲度试验(弯曲梁流变仪法)", ExperimentType.TYPE_BBR, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("密度试验", ExperimentType.TYPE_DENSITY, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("薄膜烘箱试验", ExperimentType.TYPE_TFOT, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("旋转薄膜烘箱试验", ExperimentType.TYPE_RTFOT, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("闪点试验", ExperimentType.TYPE_FLASH_POINT, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("粘度试验", ExperimentType.TYPE_VISCOSITY, ExperimentType.CATEGORY_ASPHALT));
+            experimentTypes.add(new ExperimentType("软化点试验（环球法）", ExperimentType.TYPE_SOFTENING_POINT, ExperimentType.CATEGORY_ASPHALT));
+            experimentTypes.add(new ExperimentType("沥青弯曲蠕变劲度试验（弯曲梁流变仪法）", ExperimentType.TYPE_BBR, ExperimentType.CATEGORY_ASPHALT));
             experimentTypes.add(new ExperimentType("动态剪切流变试验", ExperimentType.TYPE_DSR, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("直接拉伸试验", ExperimentType.TYPE_DTT, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("沥青旋转黏度试验(布鲁克菲尔德黏度计法)", ExperimentType.TYPE_BROOKFIELD_VISCOSITY, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("压力老化试验", ExperimentType.TYPE_PAV, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("多重应力蠕变恢复试验", ExperimentType.TYPE_MSCR, ExperimentType.CATEGORY_ASPHALT));
-            experimentTypes.add(new ExperimentType("力学延度试验", ExperimentType.TYPE_FORCE_DUCTILITY, ExperimentType.CATEGORY_ASPHALT));
+            experimentTypes.add(new ExperimentType("沥青旋转黏度试验（布鲁克菲尔德黏度计法）", ExperimentType.TYPE_BROOKFIELD_VISCOSITY, ExperimentType.CATEGORY_ASPHALT));
             
-            // 添加沥青混合料实验类型
+            // 按照请求，仅保留以下沥青混合料实验类型
+            // 由于缺少常量定义，我们直接使用字符串定义这些类型
+            experimentTypes.add(new ExperimentType("马歇尔稳定度试验", "marshall", ExperimentType.CATEGORY_MIXTURE));
+            experimentTypes.add(new ExperimentType("动稳定度试验", "dynamic_stability", ExperimentType.CATEGORY_MIXTURE));
+            experimentTypes.add(new ExperimentType("沥青混合料车辙试验（汉堡车辙）", "hamburg_rutting", ExperimentType.CATEGORY_MIXTURE));
             experimentTypes.add(new ExperimentType("沥青混合料弯曲试验", ExperimentType.TYPE_MIXTURE_BENDING, ExperimentType.CATEGORY_MIXTURE));
             experimentTypes.add(new ExperimentType("动态模量试验", ExperimentType.TYPE_DYNAMIC_MODULUS, ExperimentType.CATEGORY_MIXTURE));
-            experimentTypes.add(new ExperimentType("沥青混合料直接拉伸循环疲劳测黏弹损伤试验", ExperimentType.TYPE_DIRECT_STRETCHING_FATIGUE, ExperimentType.CATEGORY_MIXTURE));
+            experimentTypes.add(new ExperimentType("沥青混合料直接拉伸循环疲劳试验", ExperimentType.TYPE_DIRECT_STRETCHING_FATIGUE, ExperimentType.CATEGORY_MIXTURE));
             experimentTypes.add(new ExperimentType("沥青混合料四点弯曲疲劳寿命试验", ExperimentType.TYPE_FOUR_POINT_BENDING, ExperimentType.CATEGORY_MIXTURE));
-            experimentTypes.add(new ExperimentType("沥青混合料单轴压缩试验(圆柱体法)", ExperimentType.TYPE_SINGLE_AXIS_COMPRESSION, ExperimentType.CATEGORY_MIXTURE));
+            experimentTypes.add(new ExperimentType("沥青混合料单轴压缩试验（圆柱体）", ExperimentType.TYPE_SINGLE_AXIS_COMPRESSION, ExperimentType.CATEGORY_MIXTURE));
             experimentTypes.add(new ExperimentType("沥青混合料劈裂试验", ExperimentType.TYPE_MIX_SPLITTING, ExperimentType.CATEGORY_MIXTURE));
-
-            try {
-                db.experimentTypeDao().insertAll(experimentTypes);
-                Log.d(TAG, "Successfully initialized experiment types");
-            } catch (Exception e) {
-                Log.e(TAG, "Error initializing experiment types", e);
-            }
+            
+            // 将实验类型列表插入数据库
+            db.experimentTypeDao().insertAll(experimentTypes);
+            
+            Log.d(TAG, "实验类型初始化完成");
         });
     }
 }

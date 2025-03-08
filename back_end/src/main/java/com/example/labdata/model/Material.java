@@ -38,7 +38,7 @@ public class Material extends UserDateAudit {
     
     // 添加同步相关字段
     private Long clientId; // 客户端生成的ID
+    private Long organizationId; // 限定仅用于用户所属单位的数据
     private boolean synced = false;
     private String syncStatus = "NEW"; // NEW, SYNCED, MODIFIED, CONFLICT
 }
-

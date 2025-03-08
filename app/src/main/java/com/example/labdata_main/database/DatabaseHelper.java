@@ -98,6 +98,22 @@ public abstract class DatabaseHelper extends RoomDatabase {
         databaseWriteExecutor.execute(() -> mixDesignDao().insert(mixDesign));
     }
 
+    /**
+     * 保存或更新材料属性
+     * @param property 材料属性对象
+     * @param subtype 子类型（如改性沥青的类型），可为null
+     */
+    public void saveOrUpdateMaterialProperty(MaterialProperty property, String subtype) {
+        databaseWriteExecutor.execute(() -> {
+            // 如果需要保存子类型信息，可以通过其他方式处理
+            // 例如：在数据库中添加一个单独的表来存储材料子类型信息
+            // 或者使用JSON字符串在code字段中存储额外信息
+            
+            // 保存基本属性信息
+            materialPropertyDao().insert(property);
+        });
+    }
+
     public List<Material> getMaterialsByCategory(String category) {
         return materialDao().getMaterialsByCategory(category);
     }

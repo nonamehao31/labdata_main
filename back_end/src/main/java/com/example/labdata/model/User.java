@@ -49,5 +49,6 @@ public class User extends DateAudit {
     // Additional fields from Android app's User model
     private String phone;
     private String organization;
+    private Long organizationId; 
     private boolean admin;
 }

@@ -14,26 +14,36 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.example.labdata_main.constants.EquipmentConstants;
+import com.example.labdata_main.service.SupportedDeviceService;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.Device;
 import com.example.labdata_main.model.Equipment;
+import com.example.labdata_main.viewmodel.DeviceSelectionViewModel;
 import com.example.labdata_main.viewmodel.EquipmentInitViewModel;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class EquipmentInitActivity extends AppCompatActivity {
+    private static final String TAG = "EquipmentInitActivity";
+    
     private LinearLayout mixingContainer;
     private LinearLayout formingContainer;
     private LinearLayout testingContainer;
     private Button btnFinish;
     private String companyId;
     private EquipmentInitViewModel viewModel;
+    private DeviceSelectionViewModel deviceSelectionViewModel;
+    
+    // 用于存储视图与设备选择ViewModel的映射关系
+    private Map<View, DeviceSelectionViewModel> viewModelMap = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +55,7 @@ public class EquipmentInitActivity extends AppCompatActivity {
 
         // 初始化 ViewModel
         viewModel = new ViewModelProvider(this).get(EquipmentInitViewModel.class);
+        deviceSelectionViewModel = new ViewModelProvider(this).get(DeviceSelectionViewModel.class);
 
         // 初始化视图
         initViews();
@@ -59,7 +70,7 @@ public class EquipmentInitActivity extends AppCompatActivity {
             return;
         }
 
-        Log.d("EquipmentInit", "Received companyId: " + companyId);
+        Log.d(TAG, "Received companyId: " + companyId);
     }
 
     private void initViews() {
@@ -71,11 +82,11 @@ public class EquipmentInitActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
         findViewById(R.id.btnAddMixing).setOnClickListener(v -> 
-            addEquipmentView(mixingContainer, EquipmentConstants.TYPE_MIXING));
+            addEquipmentView(mixingContainer, SupportedDeviceService.TYPE_MIXING));
         findViewById(R.id.btnAddForming).setOnClickListener(v -> 
-            addEquipmentView(formingContainer, EquipmentConstants.TYPE_FORMING));
+            addEquipmentView(formingContainer, SupportedDeviceService.TYPE_FORMING));
         findViewById(R.id.btnAddTesting).setOnClickListener(v -> 
-            addEquipmentView(testingContainer, EquipmentConstants.TYPE_TESTING));
+            addEquipmentView(testingContainer, SupportedDeviceService.TYPE_TESTING));
         
         btnFinish.setOnClickListener(v -> validateAndSaveEquipment());
     }
@@ -88,43 +99,92 @@ public class EquipmentInitActivity extends AppCompatActivity {
         EditText etPurchaseYear = equipmentView.findViewById(R.id.etPurchaseYear);
         Button btnDelete = equipmentView.findViewById(R.id.btnDelete);
 
+        // 创建每个设备视图专属的ViewModel实例
+        DeviceSelectionViewModel itemViewModel = new ViewModelProvider.AndroidViewModelFactory(getApplication())
+                .create(DeviceSelectionViewModel.class);
+        viewModelMap.put(equipmentView, itemViewModel);
+        
+        // 设置设备类型
+        itemViewModel.setSelectedType(type);
+        
         // 设置厂家下拉菜单
-        List<String> manufacturers = EquipmentConstants.getManufacturers(type);
-        if (manufacturers.isEmpty()) {
-            Toast.makeText(this, "暂无可用的厂家信息", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        itemViewModel.getManufacturers().observe(this, manufacturers -> {
+            if (manufacturers == null || manufacturers.isEmpty()) {
+                Toast.makeText(this, "暂无可用的厂家信息", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            ArrayAdapter<String> manufacturerAdapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item, manufacturers);
+            manufacturerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerManufacturer.setAdapter(manufacturerAdapter);
+            
+            // 如果之前选择过厂家，尝试恢复选择
+            String selectedManufacturer = itemViewModel.getSelectedManufacturer().getValue();
+            if (selectedManufacturer != null) {
+                int position = manufacturers.indexOf(selectedManufacturer);
+                if (position >= 0) {
+                    spinnerManufacturer.setSelection(position);
+                }
+            }
+        });
 
-        ArrayAdapter<String> manufacturerAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, manufacturers);
-        manufacturerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerManufacturer.setAdapter(manufacturerAdapter);
-
-        // 设置型号下拉菜单
+        // 设置型号下拉菜单更新逻辑
+        itemViewModel.getModels().observe(this, models -> {
+            if (models == null || models.isEmpty()) {
+                return;  // 不显示提示，因为用户可能还未选择厂家
+            }
+            
+            ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item, models);
+            modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerModel.setAdapter(modelAdapter);
+            
+            // 如果之前选择过型号，尝试恢复选择
+            String selectedModel = itemViewModel.getSelectedModel().getValue();
+            if (selectedModel != null) {
+                int position = models.indexOf(selectedModel);
+                if (position >= 0) {
+                    spinnerModel.setSelection(position);
+                }
+            }
+        });
+        
+        // 设置厂家选择监听器
         spinnerManufacturer.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedManufacturer = manufacturers.get(position);
-                List<String> models = EquipmentConstants.getModels(type, selectedManufacturer);
-                if (models.isEmpty()) {
-                    Toast.makeText(EquipmentInitActivity.this, 
-                        "该厂家暂无可用的型号信息", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(EquipmentInitActivity.this,
-                        android.R.layout.simple_spinner_item, models);
-                modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                spinnerModel.setAdapter(modelAdapter);
+                String selectedManufacturer = (String) parent.getItemAtPosition(position);
+                itemViewModel.setSelectedManufacturer(selectedManufacturer);
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
+                // 清除选择
+                itemViewModel.setSelectedManufacturer(null);
+            }
+        });
+        
+        // 设置型号选择监听器
+        spinnerModel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedModel = (String) parent.getItemAtPosition(position);
+                itemViewModel.setSelectedModel(selectedModel);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // 清除选择
+                itemViewModel.setSelectedModel(null);
             }
         });
 
         // 设置删除按钮
-        btnDelete.setOnClickListener(v -> container.removeView(equipmentView));
+        btnDelete.setOnClickListener(v -> {
+            viewModelMap.remove(equipmentView);  // 从映射中移除
+            container.removeView(equipmentView);
+        });
 
         // 设置年份输入限制
         etPurchaseYear.setText(String.valueOf(Calendar.getInstance().get(Calendar.YEAR)));
@@ -176,17 +236,17 @@ public class EquipmentInitActivity extends AppCompatActivity {
                         );
                         equipmentList.add(equipment);
                     }
-                    Log.d("EquipmentInit", "Created equipment list with " + equipmentList.size() + " items");
+                    Log.d(TAG, "Created equipment list with " + equipmentList.size() + " items");
                     
                     // 使用JSON序列化传递Equipment对象列表
                     String equipmentJson = Equipment.toJsonString(equipmentList);
                     intent.putExtra("equipment_json", equipmentJson);
                     
-                    Log.d("EquipmentInit", "Serialized equipment list to JSON");
+                    Log.d(TAG, "Serialized equipment list to JSON");
                     startActivity(intent);
                     finish();
                 } catch (Exception e) {
-                    Log.e("EquipmentInit", "Error preparing equipment data: " + e.getMessage(), e);
+                    Log.e(TAG, "Error preparing equipment data: " + e.getMessage(), e);
                     Toast.makeText(this, "设备信息处理失败", Toast.LENGTH_SHORT).show();
                 }
             } else {
@@ -229,5 +289,12 @@ public class EquipmentInitActivity extends AppCompatActivity {
             devices.add(device);
         }
         return true;
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 清理资源
+        viewModelMap.clear();
     }
 }

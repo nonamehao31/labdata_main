@@ -22,6 +22,18 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
     // 查找客户端ID对应的材料
     Optional<Material> findByClientId(Long clientId);
     
+    // 查找组织ID对应的材料信息，用于用户登录后获取组织内的数据
+    List<Material> findByOrganizationId(Long organizationId);
+    
+    // 查找指定类型和组织ID对应的材料
+    List<Material> findByTypeAndOrganizationId(String type, Long organizationId);
+    
+    // 检查客户端ID是否已经存在
+    boolean existsByClientId(Long clientId);
+    
+    // 查找指定名称和组织ID对应的材料
+    Optional<Material> findByNameAndOrganizationId(String name, Long organizationId);
+    
     // 查找最近更新的材料
     @Query("SELECT m FROM Material m WHERE m.updatedAt > :lastSyncTime")
     List<Material> findModifiedSince(@Param("lastSyncTime") java.time.Instant lastSyncTime);

@@ -287,12 +287,12 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         if (device != null) {
                             // 将 Device 转换为 DeviceInfo，确保设置所有必要字段
                             DeviceInfo deviceInfo = new DeviceInfo(
-                                device.getId(),          // deviceId
                                 device.getType(),        // type
                                 device.getManufacturer(), // manufacturer
                                 device.getModel(),        // model
                                 device.getPurchaseYear(), // purchaseYear
-                                device.getCompanyId()     // companyId
+                                device.getCompanyId(),    // name (used as companyId)
+                                device.getId()            // deviceId
                             );
                             
                             // 在主线程中更新UI

@@ -21,6 +21,14 @@ public class MixRatioService {
         return mixRatioRepository.findAll();
     }
     
+    public List<MixRatio> getMixRatiosByOrganization(Long organizationId) {
+        return mixRatioRepository.findByOrganizationId(organizationId);
+    }
+    
+    public List<MixRatio> getMixRatiosByProjectAndOrganization(Long projectId, Long organizationId) {
+        return mixRatioRepository.findByProjectIdAndOrganizationId(projectId, organizationId);
+    }
+    
     public MixRatio getMixRatioById(Long id) {
         return mixRatioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MixRatio", "id", id));
@@ -63,6 +71,14 @@ public class MixRatioService {
     
     public List<MixRatio> findModifiedSince(Instant lastSyncTime) {
         return mixRatioRepository.findModifiedSince(lastSyncTime);
+    }
+    
+    public List<MixRatio> findModifiedSince(Instant lastSyncTime, Long organizationId) {
+        // u6309u7ec4u7ec7IDu548cu6700u540eu540cu6b65u65f6u95f4u8fc7u6ee4u914du6bd4u6570u636e
+        List<MixRatio> modifiedMixRatios = mixRatioRepository.findModifiedSince(lastSyncTime);
+        return modifiedMixRatios.stream()
+                .filter(mixRatio -> mixRatio.getOrganizationId() == null || mixRatio.getOrganizationId().equals(organizationId))
+                .toList();
     }
     
     @Transactional

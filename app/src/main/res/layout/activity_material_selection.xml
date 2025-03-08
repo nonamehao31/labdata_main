@@ -163,6 +163,21 @@
         android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/material_info_card" />
+        
+    <!-- 添加材料按钮 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_add_material"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="添加沥青"
+        android:textSize="14sp"
+        app:icon="@drawable/ic_add"
+        app:iconGravity="textStart"
+        app:cornerRadius="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/material_info_card" />
 
     <!-- 级配选择 -->
     <HorizontalScrollView

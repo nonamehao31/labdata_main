@@ -6,6 +6,7 @@ import com.example.labdata_main.api.request.RegisterRequest;
 import com.example.labdata_main.api.response.ApiResponse;
 import com.example.labdata_main.api.response.DeviceResponse;
 import com.example.labdata_main.api.response.LoginResponse;
+import com.example.labdata_main.api.response.SupportedDeviceResponse;
 
 import java.util.List;
 
@@ -66,4 +67,38 @@ public interface ApiService {
      */
     @GET(ApiConfig.GET_USER_DEVICES_URL)
     Call<ApiResponse<List<DeviceResponse>>> getUserDevices();
+    
+    /**
+     * 获取所有支持的设备类型信息
+     * @return 支持设备响应列表
+     */
+    @GET(ApiConfig.GET_ALL_SUPPORTED_DEVICES_URL)
+    Call<ApiResponse<List<SupportedDeviceResponse>>> getAllSupportedDevices();
+    
+    /**
+     * 根据类型获取支持的设备
+     * @param type 设备类型
+     * @return 支持设备响应列表
+     */
+    @GET(ApiConfig.GET_SUPPORTED_DEVICES_BY_TYPE_URL)
+    Call<ApiResponse<List<SupportedDeviceResponse>>> getSupportedDevicesByType(@Path("type") String type);
+    
+    /**
+     * 获取特定类型的所有厂商
+     * @param type 设备类型
+     * @return 厂商名称列表
+     */
+    @GET(ApiConfig.GET_MANUFACTURERS_BY_TYPE_URL)
+    Call<ApiResponse<List<String>>> getManufacturersByType(@Path("type") String type);
+    
+    /**
+     * 获取特定类型和厂商的型号
+     * @param type 设备类型
+     * @param manufacturer 厂商名称
+     * @return 型号列表
+     */
+    @GET(ApiConfig.GET_MODELS_BY_TYPE_AND_MANUFACTURER_URL)
+    Call<ApiResponse<List<String>>> getModelsByTypeAndManufacturer(
+            @Path("type") String type,
+            @Path("manufacturer") String manufacturer);
 }

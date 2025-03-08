@@ -20,6 +20,18 @@ public interface MixRatioRepository extends JpaRepository<MixRatio, Long> {
     // 查找客户端ID对应的混合比例
     Optional<MixRatio> findByClientId(Long clientId);
     
+    // 根据组织ID获取配比信息，确保用户只能看到自己单位的数据
+    List<MixRatio> findByOrganizationId(Long organizationId);
+    
+    // 根据项目ID和组织ID获取配比信息
+    List<MixRatio> findByProjectIdAndOrganizationId(Long projectId, Long organizationId);
+    
+    // 检查客户端ID是否已存在
+    boolean existsByClientId(Long clientId);
+    
+    // 根据名称和组织ID查找配比
+    Optional<MixRatio> findByNameAndOrganizationId(String name, Long organizationId);
+    
     // 查找最近更新的混合比例
     @Query("SELECT mr FROM MixRatio mr WHERE mr.updatedAt > :lastSyncTime")
     List<MixRatio> findModifiedSince(@Param("lastSyncTime") java.time.Instant lastSyncTime);
