@@ -28,7 +28,8 @@ public class MixingMethodService {
     }
 
     public MixingMethod getMixingMethodByClientId(Long clientId) {
-        return mixingMethodRepository.findByClientId(clientId);
+        return mixingMethodRepository.findByClientId(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("MixingMethod", "clientId", clientId));
     }
 
     public MixingMethod createMixingMethod(MixingMethod mixingMethod) {

@@ -8,14 +8,18 @@ public class LoginResponse {
     private Long userId;
     private String username;
     private String tokenType = "Bearer";
+    private String companyId;  // 公司ID
+    private String companyName;  // 公司名称
     
     public LoginResponse() {
     }
     
-    public LoginResponse(String accessToken, Long userId, String username) {
+    public LoginResponse(String accessToken, Long userId, String username, String companyId, String companyName) {
         this.accessToken = accessToken;
         this.userId = userId;
         this.username = username;
+        this.companyId = companyId;
+        this.companyName = companyName;
     }
     
     public String getAccessToken() {
@@ -48,5 +52,21 @@ public class LoginResponse {
     
     public void setTokenType(String tokenType) {
         this.tokenType = tokenType;
+    }
+    
+    public String getCompanyId() {
+        return companyId;
+    }
+    
+    public void setCompanyId(String companyId) {
+        this.companyId = companyId;
+    }
+    
+    public String getCompanyName() {
+        return companyName;
+    }
+    
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
     }
 }

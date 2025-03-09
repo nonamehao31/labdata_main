@@ -2,6 +2,7 @@ package com.example.labdata_main;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -19,21 +20,34 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.api.ApiService;
+import com.example.labdata_main.api.response.ApiResponse;
+import com.example.labdata_main.api.service.SyncService;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.Project;
 import com.example.labdata_main.utils.SharedPrefsManager;
 import com.example.labdata_main.utils.TaskIdGenerator;
+import com.example.labdata_main.utils.TokenExpirationReceiver;
 import com.google.android.material.button.MaterialButton;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import retrofit2.Call;
+import retrofit2.Response;
 
 public class ExperimentTaskSetupActivity extends AppCompatActivity implements AddProjectBottomSheet.OnProjectAddedListener {
     private ViewPager2 viewPager;
@@ -42,6 +56,7 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
     private Project selectedProject;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private SharedPrefsManager sharedPrefsManager;
+    private TokenExpirationReceiver tokenExpirationReceiver;
 
     // 步骤导航视图
     private TextView[] stepCircles;
@@ -69,7 +84,12 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         // 初始化数据库和SharedPrefsManager
         AppDatabase database = AppDatabase.getInstance(this);
         sharedPrefsManager = new SharedPrefsManager(this);
-
+        
+        // 注册令牌过期广播接收器
+        tokenExpirationReceiver = new TokenExpirationReceiver(this);
+        IntentFilter intentFilter = new IntentFilter("com.example.labdata_main.TOKEN_EXPIRED");
+        registerReceiver(tokenExpirationReceiver, intentFilter);
+        
         initViews();
         setupViewPager();
         setupClickListeners();
@@ -82,6 +102,8 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
     protected void onDestroy() {
         super.onDestroy();
         executor.shutdown();
+        // 取消注册令牌过期广播接收器
+        unregisterReceiver(tokenExpirationReceiver);
     }
 
     private void initViews() {
@@ -184,14 +206,92 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
             task.setDeadline(0); // 如果转换失败，设置为0
         }
 
-        task.setSelectedMixRatios(mixRatioFragment.getSelectedMixRatios());
-        task.setMoldingMethod(moldingMethodFragment.getSelectedMoldingMethod());
+        // 设置选中的配比
+        List<MixRatio> selectedMixRatios = mixRatioFragment.getSelectedMixRatios();
+        task.setSelectedMixRatios(selectedMixRatios);
+        
+        // 如果选择了一种配比，则设置配比ID
+        if (selectedMixRatios != null && !selectedMixRatios.isEmpty()) {
+            // 选择第一个配比的ID
+            task.setMixRatioId(selectedMixRatios.get(0).getId());
+        }
+        
+        // 设置制件方法
+        String moldingMethod = moldingMethodFragment.getSelectedMoldingMethod();
+        task.setMoldingMethod(moldingMethod);
+        
+        // 如果有制件方法ID，则设置制件方法ID
+        List<Long> selectedMethodIds = moldingMethodFragment.getSelectedMethodIds();
+        if (selectedMethodIds != null && !selectedMethodIds.isEmpty()) {
+            task.setMixingMethodId(selectedMethodIds.get(0));
+        }
+        
+        // 设置材料ID列表
+        // 注意：需要从配比中获取材料ID
+        List<Long> materialIds = new ArrayList<>();
+        if (selectedMixRatios != null) {
+            for (MixRatio ratio : selectedMixRatios) {
+                // 获取配比中的材料ID
+                // 如果配比中没有材料ID，则跳过
+                if (ratio.getMaterialIds() != null) {
+                    materialIds.addAll(ratio.getMaterialIds());
+                }
+            }
+        }
+        // 去除重复的材料ID
+        Set<Long> uniqueMaterialIds = new HashSet<>(materialIds);
+        task.setMaterialIds(new ArrayList<>(uniqueMaterialIds));
+        
         task.setExperimentAssignments(assignmentFragment.getExperimentAssignments());
         task.setNotes(assignmentFragment.getNotes());
         task.setCreationTime(System.currentTimeMillis());
 
         executor.execute(() -> {
+            // 先将实验任务保存到本地数据库
             AppDatabase.getInstance(this).experimentTaskDao().insert(task);
+
+            // 使用新的SyncService将实验任务同步到服务器
+            try {
+                Log.d("ExperimentTask", "正在发送实验任务同步请求: " + task.getTaskName() + ", projectId: " + task.getProjectId());
+                Log.d("ExperimentTask", "mixRatioId: " + task.getMixRatioId() + ", mixingMethodId: " + task.getMixingMethodId());
+                if (task.getMaterialIds() != null) {
+                    StringBuilder sb = new StringBuilder();
+                    for (Long id : task.getMaterialIds()) {
+                        if (sb.length() > 0) sb.append(", ");
+                        sb.append(id);
+                    }
+                    Log.d("ExperimentTask", "materialIds: " + sb.toString());
+                }
+                
+                // 使用SyncService异步处理同步
+                SyncService.syncExperimentTask(task, new SyncService.SyncResultListener<ExperimentTask>() {
+                    @Override
+                    public void onSyncSuccess(ExperimentTask result) {
+                        Log.d("ExperimentTask", "实验任务同步到服务器成功");
+                        if (result != null) {
+                            Log.d("ExperimentTask", "服务器返回任务ID: " + result.getId());
+                        }
+                        // 成功后更新UI或进行其他操作
+                        runOnUiThread(() -> {
+                            Toast.makeText(ExperimentTaskSetupActivity.this, "任务已成功同步到服务器", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+
+                    @Override
+                    public void onSyncFailure(int code, String message) {
+                        Log.e("ExperimentTask", "实验任务同步到服务器失败: " + code);
+                        Log.e("ExperimentTask", "错误详情: " + message);
+                        // 失败后更新UI或进行其他操作
+                        runOnUiThread(() -> {
+                            Toast.makeText(ExperimentTaskSetupActivity.this, "任务同步失败: " + message, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+                
+            } catch (Exception e) {
+                Log.e("ExperimentTask", "实验任务同步到服务器异常", e);
+                Toast.makeText(this, "任务同步异常: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
 
             // 发送广播通知主页刷新
             Intent refreshIntent = new Intent("com.example.labdata_main.TASK_UPDATED");

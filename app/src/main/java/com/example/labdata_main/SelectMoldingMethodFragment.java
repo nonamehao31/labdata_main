@@ -54,6 +54,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private List<MoldingMethod> selectedMethods = new ArrayList<>();
     private AppDatabase database;
     private List<MixRatio> selectedMixRatios = new ArrayList<>();
+    private MoldingMethod selectedMoldingMethod;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -139,6 +140,14 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private void onMoldingMethodSelected(List<MoldingMethod> methods) {
         selectedMethods.clear();
         selectedMethods.addAll(methods);
+        
+        // 更新选中的单个制件方法（用于获取ID）
+        if (!methods.isEmpty()) {
+            selectedMoldingMethod = methods.get(0);
+        } else {
+            selectedMoldingMethod = null;
+        }
+        
         checkInputValidity();
     }
 
@@ -276,17 +285,25 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         // 这是一个空实现，因为实际的页面切换逻辑已经在 ViewPagerAdapter 中处理
     }
 
-    public List<MoldingMethod> getSelectedMethods() {
-        return new ArrayList<>(selectedMethods);
+    public String getSelectedMoldingMethod() {
+        return selectedMoldingMethod != null ? selectedMoldingMethod.getName() : "";
     }
 
-    public String getSelectedMoldingMethod() {
-        if (selectedMethods.isEmpty()) {
-            return "";
+    /**
+     * 获取选中的制件方法ID列表
+     * @return 制件方法ID列表
+     */
+    public List<Long> getSelectedMethodIds() {
+        List<Long> methodIds = new ArrayList<>();
+        // 如果存在选中的制件方法，则添加其ID
+        if (selectedMoldingMethod != null) {
+            methodIds.add(selectedMoldingMethod.getId());
         }
-        
-        // 使用 Gson 将所有选中的制件方法转换为 JSON 数组
-        Gson gson = new Gson();
-        return gson.toJson(selectedMethods);
+        return methodIds;
+    }
+
+    // 添加获取已选择制件方法列表的方法
+    public List<MoldingMethod> getSelectedMethods() {
+        return selectedMethods;
     }
 }

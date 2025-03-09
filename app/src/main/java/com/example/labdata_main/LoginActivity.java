@@ -18,6 +18,7 @@ import com.example.labdata_main.api.request.LoginRequest;
 import com.example.labdata_main.api.response.LoginResponse;
 import com.example.labdata_main.db.DatabaseHelper;
 import com.example.labdata_main.model.User;
+import com.example.labdata_main.utils.JwtUtils;
 import com.example.labdata_main.utils.SharedPrefsManager;
 
 import retrofit2.Call;
@@ -117,11 +118,14 @@ public class LoginActivity extends AppCompatActivity {
                     User user = databaseHelper.getUserByEmail(email);
                     if (user != null) {
                         // 保存登录状态和用户信息
+                        // 保存用户登录会话信息，包括用户ID、邮箱、用户名、公司ID、电话号码和用户类型
+                        // 如果API返回的公司ID不为空且非空字符串，则优先使用API返回的公司ID，否则使用本地数据库中的公司ID
                         sharedPrefsManager.saveUserLoginSession(
                             loginResponse.getUserId(),
                             email,
                             loginResponse.getUsername(),
-                            user.getCompany(),
+                            loginResponse.getCompanyId() != null && !loginResponse.getCompanyId().trim().isEmpty() ?
+                                loginResponse.getCompanyId() : user.getCompany(), // 优先使用API返回的公司ID
                             user.getPhone(),
                             user.getUserType()
                         );
@@ -131,6 +135,11 @@ public class LoginActivity extends AppCompatActivity {
                             loginResponse.getAccessToken(),
                             loginResponse.getTokenType()
                         );
+                        
+                        // 解析并保存JWT令牌信息用于测试
+                        String authToken = loginResponse.getTokenType() + " " + loginResponse.getAccessToken();
+                        Log.d(TAG, "登录成功后的令牌信息:");
+                        JwtUtils.decodeAndLogJwt(authToken);
                         
                         // 重置API客户端，确保新的认证令牌生效
                         ApiClient.resetClient();
@@ -149,13 +158,16 @@ public class LoginActivity extends AppCompatActivity {
                         long userId = databaseHelper.addUser(newUser);
                         if (userId > 0) {
                             // 保存登录状态和用户信息
+                            // 确保公司ID有效
+                            // 如果API返回的公司ID不为空且不为空白，则使用API返回的公司ID，否则使用默认值
                             sharedPrefsManager.saveUserLoginSession(
                                 loginResponse.getUserId(),
                                 email,
                                 loginResponse.getUsername(),
-                                "", // 公司信息为空
+                                loginResponse.getCompanyId() != null && !loginResponse.getCompanyId().trim().isEmpty() ? 
+                                    loginResponse.getCompanyId() : "default", // 使用API返回的公司ID或默认值
                                 "", // 电话信息为空
-                                0 // 默认用户类型
+                                0  // 默认用户类型
                             );
                             
                             // 保存token信息
@@ -163,6 +175,11 @@ public class LoginActivity extends AppCompatActivity {
                                 loginResponse.getAccessToken(),
                                 loginResponse.getTokenType()
                             );
+                            
+                            // 解析并保存JWT令牌信息用于测试
+                            String authToken = loginResponse.getTokenType() + " " + loginResponse.getAccessToken();
+                            Log.d(TAG, "登录成功后的令牌信息:");
+                            JwtUtils.decodeAndLogJwt(authToken);
                             
                             // 重置API客户端，确保新的认证令牌生效
                             ApiClient.resetClient();

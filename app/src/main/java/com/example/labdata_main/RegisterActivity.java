@@ -7,18 +7,21 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.inputmethod.InputMethodManager;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -471,61 +474,58 @@ public class RegisterActivity extends AppCompatActivity {
                     etEmail.setError("请输入有效的邮箱地址");
                 } else {
                     // 检查邮箱是否已被注册
-                    if (databaseHelper.checkEmail(email)) {
-                        etEmail.setError("该邮箱已被注册");
-                    } else {
-                        etEmail.setError(null);
-                    }
-                }
-                
-                // 验证并更新按钮状态
-                updateRegisterButtonState();
-                
-                Log.d(TAG, "邮箱输入后: 按钮可见性: " + 
-                    (btnRegister.getVisibility() == View.VISIBLE ? "VISIBLE" : "GONE/INVISIBLE"));
-                
-                // 强制设置按钮可见
-                btnRegister.setVisibility(View.VISIBLE);
-                
-                // 延迟记录按钮位置，确保布局更新
-                btnRegister.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.d(TAG, "邮箱输入后-post: 按钮强制可见后位置检查");
-                        logButtonPosition("邮箱输入后-post");
-                        
-                        // 检查按钮是否在屏幕可见区域内
-                        int[] btnLocation = new int[2];
-                        btnRegister.getLocationOnScreen(btnLocation);
-                        Rect visibleFrame = new Rect();
-                        getWindow().getDecorView().getWindowVisibleDisplayFrame(visibleFrame);
-                        
-                        boolean visible = btnLocation[1] + btnRegister.getHeight() <= visibleFrame.bottom &&
-                                         btnLocation[1] >= visibleFrame.top;
-                        
-                        Log.d(TAG, "按钮在当前可见区域中: " + visible + 
-                              ", 按钮底部位置: " + (btnLocation[1] + btnRegister.getHeight()) + 
-                              ", 可见区域底部: " + visibleFrame.bottom);
-                        
-                        // 如果不在可见区域内，尝试滚动到按钮位置
-                        if (!visible) {
-                            Log.d(TAG, "按钮不在可见区域，尝试滚动");
-                            int scrollDistance = (btnLocation[1] + btnRegister.getHeight()) - visibleFrame.bottom + 100; // 额外空间
-                            ScrollView scrollView = findViewById(R.id.root_scroll_view);
-                            if (scrollView != null) {
-                                scrollView.smoothScrollBy(0, scrollDistance);
-                            }
+                    // databaseHelper.checkEmail(email) 
+                    // showProgressDialog("正在检查...");
+                    
+                    // 验证并更新按钮状态
+                    updateRegisterButtonState();
+                    
+                    Log.d(TAG, "邮箱输入后: 按钮可见性: " + 
+                        (btnRegister.getVisibility() == View.VISIBLE ? "VISIBLE" : "GONE/INVISIBLE"));
+                    
+                    // 强制设置按钮可见
+                    btnRegister.setVisibility(View.VISIBLE);
+                    
+                    // 延迟记录按钮位置，确保布局更新
+                    btnRegister.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.d(TAG, "邮箱输入后-post: 按钮强制可见后位置检查");
+                            logButtonPosition("邮箱输入后-post");
                             
-                            // 再次记录滚动后的位置
-                            btnRegister.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    logButtonPosition("邮箱输入后-滚动调整后");
+                            // 检查按钮是否在屏幕可见区域内
+                            int[] btnLocation = new int[2];
+                            btnRegister.getLocationOnScreen(btnLocation);
+                            Rect visibleFrame = new Rect();
+                            getWindow().getDecorView().getWindowVisibleDisplayFrame(visibleFrame);
+                            
+                            boolean visible = btnLocation[1] + btnRegister.getHeight() <= visibleFrame.bottom &&
+                                             btnLocation[1] >= visibleFrame.top;
+                            
+                            Log.d(TAG, "按钮在当前可见区域中: " + visible + 
+                                  ", 按钮底部位置: " + (btnLocation[1] + btnRegister.getHeight()) + 
+                                  ", 可见区域底部: " + visibleFrame.bottom);
+                            
+                            // 如果不在可见区域内，尝试滚动到按钮位置
+                            if (!visible) {
+                                Log.d(TAG, "按钮不在可见区域，尝试滚动");
+                                int scrollDistance = (btnLocation[1] + btnRegister.getHeight()) - visibleFrame.bottom + 100; // 额外空间
+                                ScrollView scrollView = findViewById(R.id.root_scroll_view);
+                                if (scrollView != null) {
+                                    scrollView.smoothScrollBy(0, scrollDistance);
                                 }
-                            }, 300);
+                                
+                                // 再次记录滚动后的位置
+                                btnRegister.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        logButtonPosition("邮箱输入后-滚动调整后");
+                                    }
+                                }, 300);
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         });
 
@@ -593,8 +593,7 @@ public class RegisterActivity extends AppCompatActivity {
                 !TextUtils.isEmpty(phone) &&
                 ValidationUtils.isValidEmail(email) &&
                 ValidationUtils.isValidPassword(password) &&
-                password.equals(confirmPassword) &&
-                !databaseHelper.checkEmail(email);
+                password.equals(confirmPassword);
 
         Log.d(TAG, "更新按钮状态前: 按钮可见性: " + 
             (btnRegister.getVisibility() == View.VISIBLE ? "VISIBLE" : "GONE/INVISIBLE"));
@@ -653,7 +652,7 @@ public class RegisterActivity extends AppCompatActivity {
         btnRegister.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                attemptRegister();
+                handleRegister();
             }
         });
 
@@ -667,28 +666,25 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     /**
-     * 尝试注册
+     * 处理注册
      */
-    private void attemptRegister() {
-        // 获取输入的用户信息
-        String company = etCompany.getText().toString().trim();
-        String name = etName.getText().toString().trim();
-        String phone = etPhone.getText().toString().trim();
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-        String confirmPassword = etConfirmPassword.getText().toString().trim();
-
-        // 获取选择的用户类型
-        int userType = rgUserType.getCheckedRadioButtonId() == R.id.rbAdmin ? 1 : 0;
+    private void handleRegister() {
+        final String company = etCompany.getText().toString().trim();
+        final String name = etName.getText().toString().trim();
+        final String phone = etPhone.getText().toString().trim();
+        final String email = etEmail.getText().toString().trim();
+        final String password = etPassword.getText().toString();
+        final String confirmPassword = etConfirmPassword.getText().toString();
+        final int userType = rgUserType.getCheckedRadioButtonId() == R.id.rbAdmin ? 1 : 0;
 
         // 验证必填字段
-        if (TextUtils.isEmpty(company)) {
+        if (company.isEmpty()) {
             etCompany.setError("请输入单位名称");
             etCompany.requestFocus();
             return;
         }
 
-        if (TextUtils.isEmpty(name)) {
+        if (name.isEmpty()) {
             etName.setError("请输入姓名");
             etName.requestFocus();
             return;
@@ -709,13 +705,6 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // 检查邮箱是否已被注册
-        if (databaseHelper.checkEmail(email)) {
-            etEmail.setError("该邮箱已被注册");
-            etEmail.requestFocus();
-            return;
-        }
-
         // 验证密码
         String errorMessage = ValidationUtils.getPasswordStrengthMessage(password);
         if (errorMessage != null) {
@@ -731,36 +720,55 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // 创建用户对象并保存到本地数据库
-        User user = new User(company, name, phone, email, password, userType);
-        
-        // 保存用户信息到本地数据库
-        long id = databaseHelper.addUser(user);
-        if (id != -1) {
-            // 保存登录状态
-            sharedPrefsManager.saveUserLoginSession(
-                (int) id,
-                email,
-                name,
-                company,
-                phone,
-                userType
-            );
-            
-            // 同时将用户数据发送到后端API
-            submitToServer(name, email, phone, password, company);
-            
-            Toast.makeText(this, "注册成功", Toast.LENGTH_SHORT).show();
-            finish();
-        } else {
-            // 检查是否是邮箱重复导致的失败
-            if (databaseHelper.checkEmail(email)) {
-                etEmail.setError("该邮箱已被注册");
-                etEmail.requestFocus();
-            } else {
-                Toast.makeText(this, "注册失败，请稍后重试", Toast.LENGTH_SHORT).show();
+        // showProgressDialog("正在注册...");
+
+        // 使用新的检查邮箱是否存在
+        checkEmailExistsOnServer(email, new EmailCheckCallback() {
+            @Override
+            public void onCheckComplete(boolean emailExists) {
+                if (emailExists) {
+                    // dismissProgressDialog();
+                    runOnUiThread(() -> {
+                        etEmail.setError("该邮箱已被注册");
+                        etEmail.requestFocus();
+                    });
+                    return;
+                }
+                
+                // 邮箱不存在，继续注册流程
+                runOnUiThread(() -> showProgressDialog("正在注册..."));
+                
+                User user = new User(company, name, phone, email, password, userType);
+                
+                // 保存用户信息到本地数据库
+                long id = databaseHelper.addUser(user);
+                if (id != -1) {
+                    // 保存登录状态
+                    sharedPrefsManager.saveUserLoginSession(
+                        (int) id,
+                        email,
+                        name,
+                        company,
+                        phone,
+                        userType
+                    );
+                    
+                    // 同时将用户数据发送到后端API
+                    submitToServer(name, email, phone, password, company);
+                    
+                    dismissProgressDialog();
+                    runOnUiThread(() -> {
+                        Toast.makeText(RegisterActivity.this, "注册成功", Toast.LENGTH_SHORT).show();
+                        finish();  // 关闭注册页面
+                    });
+                } else {
+                    dismissProgressDialog();
+                    runOnUiThread(() -> {
+                        Toast.makeText(RegisterActivity.this, "注册失败，请稍后重试", Toast.LENGTH_SHORT).show();
+                    });
+                }
             }
-        }
+        });
     }
     
     /**
@@ -774,13 +782,13 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
         
-        // 生成符合规范的用户名（基于邮箱前缀，但确保符合用户名规范）
-        String username = generateValidUsername(email);
+        Log.d(TAG, "开始检查邮箱是否已被注册: " + email);
         
         // 创建API服务
         ApiService apiService = RetrofitClient.getInstance().createService(ApiService.class);
         
         // 创建注册请求
+        String username = generateValidUsername(email);
         RegisterRequest request = new RegisterRequest(name, username, email, password, phone, organization);
         
         // 关闭任何可能存在的进度对话框
@@ -818,6 +826,7 @@ public class RegisterActivity extends AppCompatActivity {
                         
                         // 进入登录页面
                         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                        intent.putExtra("email", email);
                         startActivity(intent);
                         finish();
                     } else {
@@ -859,6 +868,20 @@ public class RegisterActivity extends AppCompatActivity {
                 }
             }
         });
+        
+        // 超时处理
+        new Handler().postDelayed(() -> {
+            if (!call.isCanceled() && !responseHandled.get()) {
+                Log.w(TAG, "注册超时");
+                call.cancel();
+                if (!isFinishing() && !isDestroyed() && !responseHandled.getAndSet(true)) {
+                    dismissProgressDialog();
+                    runOnUiThread(() -> {
+                        Toast.makeText(RegisterActivity.this, "注册超时，请稍后重试", Toast.LENGTH_LONG).show();
+                    });
+                }
+            }
+        }, 30000); // 30秒超时
     }
 
     /**
@@ -987,5 +1010,94 @@ public class RegisterActivity extends AppCompatActivity {
         super.onDestroy();
         // 释放资源，防止内存泄漏
         dismissProgressDialog();
+    }
+
+    /**
+     * 显示进度对话框
+     * @param message 对话框显示的消息
+     */
+    private void showProgressDialog(String message) {
+        if (mProgressDialog == null) {
+            mProgressDialog = new ProgressDialog(this);
+            mProgressDialog.setMessage(message);
+            mProgressDialog.setCancelable(false);
+            mProgressDialog.show();
+        }
+    }
+
+    /**
+     * 检查邮箱是否已被注册
+     * @param email 邮箱地址
+     * @param callback 回调函数，返回检查结果
+     */
+    private void checkEmailExistsOnServer(String email, final EmailCheckCallback callback) {
+        // 检查网络连接
+        if (!NetworkUtils.isNetworkConnected(this)) {
+            Log.w(TAG, "检查邮箱: 无网络连接");
+            Toast.makeText(this, "无网络连接，请检查网络设置", Toast.LENGTH_LONG).show();
+            callback.onCheckComplete(false); // 网络错误，返回false
+            return;
+        }
+        
+        Log.d(TAG, "开始检查邮箱是否已被注册: " + email);
+        
+        // 创建API服务
+        ApiService apiService = RetrofitClient.getInstance().createService(ApiService.class);
+        
+        // 发送检查邮箱请求
+        Call<ApiResponse<Boolean>> call = apiService.checkEmailExists(email);
+        call.enqueue(new Callback<ApiResponse<Boolean>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Boolean exists = response.body().getData();
+                    Log.d(TAG, "邮箱检查结果: " + (exists != null && exists));
+                    callback.onCheckComplete(exists != null && exists);
+                } else {
+                    // 检查邮箱失败，显示错误信息
+                    String errorMsg = "";
+                    if (response.body() != null) {
+                        errorMsg = response.body().getMessage();
+                    } else if (response.errorBody() != null) {
+                        try {
+                            errorMsg = response.errorBody().string();
+                        } catch (Exception e) {
+                            errorMsg = "无法解析错误响应体";
+                        }
+                    }
+                    Log.e(TAG, "检查邮箱失败: " + errorMsg + ", code: " + response.code());
+                    
+                    Toast.makeText(RegisterActivity.this, "检查邮箱失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                    callback.onCheckComplete(false);  // 检查失败，返回false
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                // 检查邮箱失败，显示错误信息
+                Log.e(TAG, "检查邮箱失败: " + t.getMessage(), t);
+                Toast.makeText(RegisterActivity.this, "检查邮箱失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                callback.onCheckComplete(false);  // 检查失败，返回false
+            }
+        });
+        
+        // 超时处理
+        new Handler().postDelayed(() -> {
+            if (!call.isCanceled() && !call.isExecuted()) {
+                Log.w(TAG, "检查邮箱超时");
+                call.cancel();
+                runOnUiThread(() -> {
+                    Toast.makeText(RegisterActivity.this, "检查邮箱超时", Toast.LENGTH_SHORT).show();
+                    callback.onCheckComplete(false);  // 超时，返回false
+                });
+            }
+        }, 10000);  // 10秒超时
+    }
+
+    /**
+     * 邮箱检查回调函数
+     */
+    public interface EmailCheckCallback {
+        void onCheckComplete(boolean emailExists);
     }
 }

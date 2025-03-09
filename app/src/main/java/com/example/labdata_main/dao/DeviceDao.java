@@ -25,6 +25,9 @@ public interface DeviceDao {
     @Query("SELECT * FROM devices WHERE company_id = :companyId")
     List<Device> getDevicesByCompanyId(String companyId);
 
+    @Query("DELETE FROM devices WHERE company_id = :companyId")
+    void deleteDevicesByCompanyId(String companyId);
+
     @Query("SELECT * FROM devices WHERE id = :deviceCode")
     Device getDeviceByCode(String deviceCode);
 

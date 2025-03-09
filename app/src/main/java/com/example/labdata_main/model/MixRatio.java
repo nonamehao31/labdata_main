@@ -7,6 +7,7 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.TypeConverters;
 import com.example.labdata_main.database.Converters;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity(tableName = "mix_ratios")
@@ -131,5 +132,19 @@ public class MixRatio implements Parcelable {
 
     public void setTotalAmount(String totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    /**
+     * 获取该配比中所有材料的ID列表
+     * @return 材料ID列表
+     */
+    public List<Long> getMaterialIds() {
+        List<Long> ids = new ArrayList<>();
+        if (materials != null) {
+            for (MaterialItem material : materials) {
+                ids.add(material.getId());
+            }
+        }
+        return ids;
     }
 }

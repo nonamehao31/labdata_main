@@ -54,8 +54,44 @@ public class ExperimentTask extends UserDateAudit {
     private boolean synced = false;
     private String syncStatus = "NEW";
     
+    // 添加关联字段
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "project_id")
+    private Project project;
+    
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "mixing_method_id")
+    private MixingMethod mixingMethod;
+    
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "mix_ratio_id")
+    private MixRatio mixRatio;
+    
+    // 可能需要一个多对多关系来表示多个材料
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "experiment_task_materials",
+        joinColumns = @JoinColumn(name = "experiment_task_id"),
+        inverseJoinColumns = @JoinColumn(name = "material_id")
+    )
+    private List<Material> materials = new ArrayList<>();
+    
+    private Long organizationId; // 确保组织隔离
+    
+    // 新增字段
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
+    private ExperimentCategory category; // MIXTURE, ASPHALT
+
+    @OneToMany(mappedBy = "experimentTask", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AsphaltInfo> asphaltInfos = new ArrayList<>();
+
     public enum TaskStatus {
         SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
     }
-}
 
+    // 添加实验类别枚举
+    public enum ExperimentCategory {
+        MIXTURE, ASPHALT
+    }
+}

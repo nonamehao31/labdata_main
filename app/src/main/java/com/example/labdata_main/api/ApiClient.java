@@ -2,12 +2,16 @@ package com.example.labdata_main.api;
 
 import android.content.Context;
 
+import com.example.labdata_main.api.response.ApiResponse;
+import com.example.labdata_main.api.response.DeviceResponse;
 import com.example.labdata_main.utils.SharedPrefsManager;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -17,6 +21,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class ApiClient {
     private static Retrofit retrofit = null;
     private static Context appContext = null;
+    private static ApiService apiService = null;
+    private static final String TAG = "ApiClient";
     
     /**
      * 初始化ApiClient的应用上下文
@@ -34,6 +40,7 @@ public class ApiClient {
      */
     public static void resetClient() {
         retrofit = null;
+        apiService = null;
     }
     
     public static Retrofit getClient() {
@@ -48,7 +55,7 @@ public class ApiClient {
             
             // 创建认证拦截器
             SharedPrefsManager sharedPrefsManager = new SharedPrefsManager(appContext);
-            AuthInterceptor authInterceptor = new AuthInterceptor(sharedPrefsManager);
+            AuthInterceptor authInterceptor = new AuthInterceptor(sharedPrefsManager, appContext);
             
             // 创建OkHttp客户端
             OkHttpClient okHttpClient = new OkHttpClient.Builder()
@@ -74,6 +81,43 @@ public class ApiClient {
      * @return ApiService实例
      */
     public static ApiService getApiService() {
-        return getClient().create(ApiService.class);
+        if (apiService == null) {
+            apiService = getClient().create(ApiService.class);
+        }
+        return apiService;
+    }
+    
+    /**
+     * 获取单例API客户端实例
+     * @return ApiClient实例
+     */
+    public static ApiService getInstance() {
+        return getApiService();
+    }
+    
+    /**
+     * 检查公司设备是否已初始化
+     * 如果公司ID为空或无效，将抛出异常
+     * @param companyId 公司ID
+     * @return 请求对象
+     */
+    public Call<ApiResponse<Boolean>> checkCompanyEquipmentInitialized(String companyId) {
+        if (companyId == null || companyId.trim().isEmpty()) {
+            throw new IllegalArgumentException("检查设备初始化状态需要有效的公司ID");
+        }
+        return getApiService().checkCompanyEquipmentInitialized(companyId);
+    }
+    
+    /**
+     * 获取公司设备列表
+     * 如果公司ID为空或无效，将抛出异常
+     * @param companyId 公司ID
+     * @return 请求对象
+     */
+    public Call<ApiResponse<List<DeviceResponse>>> getCompanyEquipment(String companyId) {
+        if (companyId == null || companyId.trim().isEmpty()) {
+            throw new IllegalArgumentException("获取公司设备列表需要有效的公司ID");
+        }
+        return getApiService().getCompanyEquipment(companyId);
     }
 }

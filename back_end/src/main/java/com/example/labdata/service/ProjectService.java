@@ -28,7 +28,8 @@ public class ProjectService {
     }
 
     public Project getProjectByClientId(Long clientId) {
-        return projectRepository.findByClientId(clientId);
+        return projectRepository.findByClientId(clientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", "clientId", clientId));
     }
 
     public Project createProject(Project project) {

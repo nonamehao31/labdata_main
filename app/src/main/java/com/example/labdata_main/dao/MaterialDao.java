@@ -27,6 +27,12 @@ public interface MaterialDao {
 
     @Query("SELECT * FROM materials WHERE category = :category")
     List<Material> getMaterialsByCategory(String category);
+    
+    @Query("SELECT * FROM materials WHERE id = :materialId")
+    Material getMaterialById(String materialId);
+    
+    @Query("SELECT * FROM materials WHERE name = :materialName LIMIT 1")
+    Material getMaterialByName(String materialName);
 
     // MixDesign 相关方法
     @Insert

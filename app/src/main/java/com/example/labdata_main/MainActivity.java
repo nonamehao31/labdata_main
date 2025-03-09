@@ -2,6 +2,7 @@ package com.example.labdata_main;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -20,15 +21,23 @@ import com.example.labdata_main.model.ProjectStatus;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.utils.SharedPrefsManager;
 import com.example.labdata_main.model.Device;
+import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.api.response.ApiResponse;
+import com.example.labdata_main.api.response.DeviceResponse;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.example.labdata_main.utils.ExperimentTypeInitializer;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import android.database.Cursor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -87,28 +96,132 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkEquipmentInitialization() {
         String companyId = sharedPrefsManager.getUserCompany();
-        if (companyId != null) {
-            executorService.execute(() -> {
-                List<Device> devices = database.deviceDao().getDevicesByCompanyId(companyId);
-                runOnUiThread(() -> {
-                    if (devices.isEmpty()) {
-                        // 如果没有设备记录，先跳转到设备初始化引导界面
-                        Log.d("MainActivity", "No equipment found for company: " + companyId + ", starting guide");
-                        Intent intent = new Intent(this, EquipmentGuideActivity.class);
-                        intent.putExtra("company_id", companyId);
-                        startActivity(intent);
-                        finish();
-                    } else {
-                        // 如果有设备记录，继续正常的 UI 初始化
-                        initializeUI();
-                    }
-                });
-            });
+        if (companyId != null && !companyId.isEmpty()) {
+            // 检查服务器上该公司是否已完成设备初始化
+            checkCompanyInitializationOnServer(companyId);
         } else {
-            initializeUI();
+            // 没有有效的公司ID，提示用户并退出到登录页面
+            Log.e("MainActivity", "No valid company ID found for user");
+            Toast.makeText(this, "未找到有效的公司信息，请重新登录", Toast.LENGTH_LONG).show();
+            // 跳转到登录页面
+            Intent intent = new Intent(this, LoginActivity.class);
+            startActivity(intent);
+            finish();
         }
     }
-
+    
+    /**
+     * 检查公司在服务器上是否已完成设备初始化
+     * @param companyId 公司ID
+     */
+    private void checkCompanyInitializationOnServer(String companyId) {
+        // 使用内联进度指示器而不是对话框
+        View loadingContainer = findViewById(R.id.loadingContainer);
+        View loadingIndicator = findViewById(R.id.loadingIndicator);
+        TextView statusMessageView = findViewById(R.id.statusMessage);
+        
+        // 显示加载指示器和状态消息
+        if (loadingContainer != null) {
+            loadingContainer.setVisibility(View.VISIBLE);
+            if (statusMessageView != null) {
+                statusMessageView.setText("正在检查设备初始化状态...");
+            }
+        }
+        
+        // 调用API检查该公司是否已在服务器上初始化设备
+        ApiClient.getInstance().checkCompanyEquipmentInitialized(companyId).enqueue(new Callback<ApiResponse<Boolean>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                // 隐藏加载指示器
+                if (loadingContainer != null) {
+                    loadingContainer.setVisibility(View.GONE);
+                }
+                
+                if (response.code() == 401) {
+                    // 如果是401认证错误，跳转到登录页面并提示用户重新登录
+                    Log.e("MainActivity", "Authentication failed when checking initialization. Response code: " + response.code());
+                    Toast.makeText(MainActivity.this, "登录已过期，请重新登录", Toast.LENGTH_LONG).show();
+                    
+                    // 跳转到登录页面
+                    Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                    startActivity(intent);
+                    finish();
+                    return;
+                }
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    boolean isInitializedOnServer = response.body().getData() != null && response.body().getData();
+                    
+                    if (isInitializedOnServer) {
+                        Log.d("MainActivity", "Company " + companyId + " already initialized equipment on server");
+                        // 公司已在服务器上初始化设备，直接初始化UI进入主页
+                        initializeUI();
+                    } else {
+                        Log.d("MainActivity", "Company " + companyId + " has not initialized equipment on server");
+                        // 公司在服务器上未初始化设备，启动设备初始化引导
+                        startEquipmentGuide();
+                    }
+                } else {
+                    // 处理服务器错误
+                    String errorMessage = "检查设备初始化状态失败";
+                    if (response.errorBody() != null) {
+                        try {
+                            errorMessage = response.errorBody().string();
+                        } catch (IOException e) {
+                            Log.e("MainActivity", "Error parsing error body", e);
+                        }
+                    }
+                    Log.e("MainActivity", "Failed to check equipment initialization: " + errorMessage);
+                    Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_LONG).show();
+                    
+                    // 如果检查失败，默认尝试启动设备初始化引导
+                    startEquipmentGuide();
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                // 隐藏加载指示器
+                if (loadingContainer != null) {
+                    loadingContainer.setVisibility(View.GONE);
+                }
+                
+                // 处理网络错误
+                Log.e("MainActivity", "Network error when checking equipment initialization", t);
+                Toast.makeText(MainActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                
+                // 如果检查失败，默认尝试启动设备初始化引导
+                startEquipmentGuide();
+            }
+        });
+        
+        // 设置10秒超时机制
+        new Handler().postDelayed(() -> {
+            // 检查请求是否已经完成
+            if (loadingContainer != null && loadingContainer.getVisibility() == View.VISIBLE) {
+                loadingContainer.setVisibility(View.GONE);
+                
+                Log.w("MainActivity", "Equipment initialization check timed out");
+                Toast.makeText(MainActivity.this, "检查设备初始化状态超时，将尝试初始化设备", Toast.LENGTH_LONG).show();
+                
+                // 超时后默认尝试启动设备初始化引导
+                startEquipmentGuide();
+            }
+        }, 10000); // 10秒超时
+    }
+    
+    /**
+     * 从服务器同步设备列表到本地数据库
+     * @param companyId 公司ID
+     */
+    private void syncEquipmentFromServer(String companyId) {
+        // u5728u65b0u7684u6d41u7a0bu4e2duff0cu4e0du9700u8981u8be5u65b9u6cd5
+        initializeUI();
+    }
+    
+    /**
+     * u521du59cbu5316u4e3bu754cu9762UI
+     */
     private void initializeUI() {
         setContentView(R.layout.activity_main);
 
@@ -257,5 +370,19 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         executorService.shutdown();
+    }
+
+    /**
+     * 启动设备初始化引导
+     */
+    private void startEquipmentGuide() {
+        String companyId = sharedPrefsManager.getUserCompany();
+        Log.d("MainActivity", "Starting equipment guide for company: " + companyId);
+        Intent intent = new Intent(this, EquipmentGuideActivity.class);
+        if (companyId != null) {
+            intent.putExtra("company_id", companyId);
+        }
+        startActivity(intent);
+        finish();
     }
 }

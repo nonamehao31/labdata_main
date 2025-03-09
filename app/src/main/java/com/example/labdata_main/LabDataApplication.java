@@ -1,6 +1,7 @@
 package com.example.labdata_main;
 
 import android.app.Application;
+import android.content.Context;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import com.example.labdata_main.database.AppDatabase;
@@ -9,10 +10,14 @@ import com.example.labdata_main.api.ApiClient;
 
 public class LabDataApplication extends Application {
     private ExecutorService executorService;
+    private static Context appContext;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        // 保存应用上下文的静态引用
+        appContext = getApplicationContext();
+        
         // 初始化数据库实例
         AppDatabase.getInstance(this);
         
@@ -35,5 +40,13 @@ public class LabDataApplication extends Application {
         if (executorService != null) {
             executorService.shutdown();
         }
+    }
+    
+    /**
+     * 获取应用上下文
+     * @return 应用上下文
+     */
+    public static Context getAppContext() {
+        return appContext;
     }
 }

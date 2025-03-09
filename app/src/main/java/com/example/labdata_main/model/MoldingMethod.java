@@ -132,6 +132,11 @@ public class MoldingMethod {
     public String getMethodGroup() { return methodGroup; }
     public void setMethodGroup(String methodGroup) { this.methodGroup = methodGroup; }
 
+    // 添加获取制件方法名称的方法
+    public String getName() {
+        return toString();
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

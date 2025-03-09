@@ -100,4 +100,21 @@ public class DeviceController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(new ApiResponse<>(true, "User devices retrieved successfully", responses));
     }
+
+    /**
+     * u68c0u67e5u516cu53f8u662fu5426u5df2u5b8cu6210u8bbeu5907u521du59cbu5316
+     * @param companyId u516cu53f8ID
+     * @return u5982u679cu5df2u521du59cbu5316u8fd4u56detrueuff0cu5426u5219u8fd4u56defalse
+     */
+    @GetMapping("/company/{companyId}/initialized")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> isCompanyEquipmentInitialized(@PathVariable String companyId) {
+        // u67e5u8be2u516cu53f8u7684u8bbeu5907u6570u91cf
+        List<Device> devices = deviceRepository.findByCompanyId(companyId);
+        boolean isInitialized = !devices.isEmpty();
+        
+        return ResponseEntity.ok(new ApiResponse<>(true, 
+                isInitialized ? "Company has initialized equipment" : "Company has not initialized equipment", 
+                isInitialized));
+    }
 }

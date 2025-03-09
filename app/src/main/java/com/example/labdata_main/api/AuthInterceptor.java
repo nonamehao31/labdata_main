@@ -1,10 +1,17 @@
 package com.example.labdata_main.api;
 
+import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 
 import com.example.labdata_main.utils.SharedPrefsManager;
+import com.example.labdata_main.utils.JwtUtils;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -17,47 +24,58 @@ public class AuthInterceptor implements Interceptor {
     
     private static final String TAG = "AuthInterceptor";
     private final SharedPrefsManager sharedPrefsManager;
+    private final Context appContext;
     
-    public AuthInterceptor(SharedPrefsManager sharedPrefsManager) {
+    public AuthInterceptor(SharedPrefsManager sharedPrefsManager, Context appContext) {
         this.sharedPrefsManager = sharedPrefsManager;
+        this.appContext = appContext;
     }
     
     @Override
     public Response intercept(Chain chain) throws IOException {
-        Request originalRequest = chain.request();
+        // 获取请求
+        Request request = chain.request();
+        Log.d(TAG, "发送请求到: " + request.url());
         
-        // 获取授权头信息
-        String authHeader = sharedPrefsManager.getAuthHeader();
+        // 从SharedPreferences中获取认证令牌
+        String authToken = sharedPrefsManager.getAuthHeader();
         
-        // 日志记录请求URL、认证状态
-        String url = originalRequest.url().toString();
-        Log.d(TAG, "发送请求到: " + url);
-        Log.d(TAG, "认证状态: " + (authHeader != null ? "有令牌" : "无令牌"));
-        
-        // 如果授权头存在，添加到请求中
-        if (authHeader != null) {
-            Request.Builder builder = originalRequest.newBuilder()
-                    .header("Authorization", authHeader);
+        if (authToken != null && !authToken.isEmpty()) {
+            Log.d(TAG, "认证状态: 有令牌");
+            Log.d(TAG, "已添加认证头: " + authToken);
             
-            Request newRequest = builder.build();
+            // 解析并记录JWT令牌的详细信息
+            JwtUtils.decodeAndLogJwt(authToken);
             
-            // 日志记录新请求的头部信息
-            Log.d(TAG, "已添加认证头: " + authHeader.substring(0, Math.min(10, authHeader.length())) + "...");
-            
-            Response response = chain.proceed(newRequest);
-            
-            // 日志记录响应状态码
-            Log.d(TAG, "响应状态码: " + response.code());
-            
-            if (response.code() == 401) {
-                Log.e(TAG, "认证失败: 令牌可能过期或无效");
-            }
-            
-            return response;
+            // 添加认证头
+            request = request.newBuilder()
+                    .header("Authorization", authToken)
+                    .build();
+        } else {
+            Log.d(TAG, "认证状态: 无令牌");
         }
         
-        // 如果没有授权头，直接发送原始请求
-        Log.d(TAG, "无认证令牌，发送原始请求");
-        return chain.proceed(originalRequest);
+        // 发送请求并获取响应
+        Response response = chain.proceed(request);
+        
+        // 记录当前时间和时区信息用于调试
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.getDefault());
+        Date now = new Date();
+        Log.d(TAG, "当前设备时间: " + sdf.format(now) + " (" + now.getTime() + ")");
+        Log.d(TAG, "设备默认时区: " + TimeZone.getDefault().getID() + ", 偏移: " + TimeZone.getDefault().getRawOffset()/3600000 + "小时");
+        
+        // 记录响应状态码
+        int statusCode = response.code();
+        Log.d(TAG, "响应状态码: " + statusCode);
+        
+        // 如果状态码是401（未授权），可能是令牌已过期
+        if (response.code() == 401) {
+            Log.e(TAG, "认证失败: 令牌可能过期或无效");
+            Intent tokenExpiredIntent = new Intent("com.example.labdata_main.TOKEN_EXPIRED");
+            appContext.sendBroadcast(tokenExpiredIntent);
+            Log.d(TAG, "已发送令牌过期广播");
+        }
+        
+        return response;
     }
 }

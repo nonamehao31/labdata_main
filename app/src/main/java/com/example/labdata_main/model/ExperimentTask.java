@@ -57,12 +57,19 @@ public class ExperimentTask implements Parcelable {
     private List<String> selectedFormingDevices;  // 选择的成型设备
     private String notes;
     private String experimentType; // 新增实验类型字段：MIXTURE 或 ASPHALT
+    
+    // 添加用于后端同步的字段
+    private Long mixingMethodId; // 制件方法ID
+    private Long mixRatioId;     // 配比ID
+    @TypeConverters(Converters.class)
+    private List<Long> materialIds; // 原料ID列表
 
     public ExperimentTask() {
         selectedMixRatios = new ArrayList<>();
         experimentAssignments = new HashMap<>();
         selectedMixingDevices = new ArrayList<>();
         selectedFormingDevices = new ArrayList<>();
+        materialIds = new ArrayList<>();
         // 为taskId设置一个默认值
         SimpleDateFormat taskIdFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
         taskId = "TASK_" + taskIdFormat.format(new Date()) + "_0";
@@ -107,6 +114,13 @@ public class ExperimentTask implements Parcelable {
         String formingDevicesJson = in.readString();
         Type formingDevicesType = new TypeToken<List<String>>(){}.getType();
         selectedFormingDevices = gson.fromJson(formingDevicesJson, formingDevicesType);
+
+        // 读取同步字段
+        mixingMethodId = in.readLong();
+        mixRatioId = in.readLong();
+        String materialIdsJson = in.readString();
+        Type materialIdsType = new TypeToken<List<Long>>(){}.getType();
+        materialIds = gson.fromJson(materialIdsJson, materialIdsType);
     }
 
     @Override
@@ -134,6 +148,11 @@ public class ExperimentTask implements Parcelable {
         dest.writeString(gson.toJson(experimentAssignments));
         dest.writeString(gson.toJson(selectedMixingDevices));
         dest.writeString(gson.toJson(selectedFormingDevices));
+
+        // 写入同步字段
+        dest.writeLong(mixingMethodId != null ? mixingMethodId : 0L);
+        dest.writeLong(mixRatioId != null ? mixRatioId : 0L);
+        dest.writeString(gson.toJson(materialIds));
     }
 
     @Override
@@ -312,5 +331,29 @@ public class ExperimentTask implements Parcelable {
 
     public void setExperimentType(String experimentType) {
         this.experimentType = experimentType;
+    }
+
+    public Long getMixingMethodId() {
+        return mixingMethodId;
+    }
+
+    public void setMixingMethodId(Long mixingMethodId) {
+        this.mixingMethodId = mixingMethodId;
+    }
+
+    public Long getMixRatioId() {
+        return mixRatioId;
+    }
+
+    public void setMixRatioId(Long mixRatioId) {
+        this.mixRatioId = mixRatioId;
+    }
+
+    public List<Long> getMaterialIds() {
+        return materialIds != null ? materialIds : new ArrayList<>();
+    }
+
+    public void setMaterialIds(List<Long> materialIds) {
+        this.materialIds = materialIds;
     }
 }

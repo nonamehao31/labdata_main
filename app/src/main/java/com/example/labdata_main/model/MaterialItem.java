@@ -84,6 +84,13 @@ public class MaterialItem implements Parcelable {
         this.amount = amount;
     }
 
+    // 添加getId()方法用于获取材料ID
+    public long getId() {
+        // 由于MaterialItem没有ID字段，这里返回一个基于名称的哈希码作为临时ID
+        // 实际生产环境中，应当添加一个真实的ID字段
+        return getName() != null ? getName().hashCode() : 0;
+    }
+
     @Override
     public int describeContents() {
         return 0;

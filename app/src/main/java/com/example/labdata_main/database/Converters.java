@@ -100,6 +100,23 @@ public class Converters {
     }
 
     @TypeConverter
+    public static String fromLongList(List<Long> list) {
+        if (list == null) {
+            return null;
+        }
+        return gson.toJson(list);
+    }
+
+    @TypeConverter
+    public static List<Long> toLongList(String json) {
+        if (json == null) {
+            return null;
+        }
+        Type listType = new TypeToken<List<Long>>() {}.getType();
+        return gson.fromJson(json, listType);
+    }
+
+    @TypeConverter
     public static String mapToString(Map<String, String> map) {
         if (map == null) {
             return null;
