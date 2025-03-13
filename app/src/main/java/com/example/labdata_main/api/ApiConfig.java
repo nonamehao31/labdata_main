@@ -1,16 +1,30 @@
 package com.example.labdata_main.api;
 
+import okhttp3.MediaType;
+
 /**
- * API配置类，包含所有API端点URL
+ * API配置类，包含了API的基本配置信息和端点URL
  */
 public class ApiConfig {
-    // API基础路径
+    /**
+     * API基础URL
+     */
     public static final String BASE_URL = "http://10.11.232.216:8080/";
     
-    // 认证相关
+    /**
+     * 超时设置（秒）
+     */
+    public static final int CONNECT_TIMEOUT = 60;
+    public static final int READ_TIMEOUT = 60;
+    public static final int WRITE_TIMEOUT = 60;
+    
+    /**
+     * API端点URL
+     */
+    // 登录注册相关
     public static final String LOGIN_URL = "auth/login";
     public static final String REGISTER_URL = "auth/register";
-    public static final String CHECK_EMAIL_EXISTS_URL = "auth/check-email"; // 新增
+    public static final String CHECK_EMAIL_EXISTS_URL = "auth/check-email";
     
     // 设备相关
     public static final String SAVE_DEVICE_URL = "devices/save";
@@ -18,10 +32,11 @@ public class ApiConfig {
     public static final String GET_DEVICES_BY_COMPANY_URL = "devices/company/{companyId}";
     public static final String GET_USER_DEVICES_URL = "devices/user";
     
-    // 获取设备的初始化状态
+    // 公司设备相关
     public static final String CHECK_COMPANY_EQUIPMENT_INITIALIZED = "devices/company/{companyId}/initialized";
+    public static final String GET_COMPANY_EQUIPMENT_URL = "devices/company/{companyId}/equipment";
     
-    // 支持设备相关
+    // 支持的设备相关
     public static final String GET_ALL_SUPPORTED_DEVICES_URL = "supported-devices";
     public static final String GET_SUPPORTED_DEVICES_BY_TYPE_URL = "supported-devices/type/{type}";
     public static final String GET_MANUFACTURERS_BY_TYPE_URL = "supported-devices/type/{type}/manufacturers";
@@ -35,14 +50,12 @@ public class ApiConfig {
     public static final String SYNC_EXPERIMENT_TASK_URL = "api/experiment-tasks/sync";
     public static final String SYNC_EXPERIMENT_TASKS_URL = "experiment-tasks/sync";
     
-    // 沥青实验相关
-    public static final String CREATE_ASPHALT_TASK_URL = "api/asphalt/tasks";
-    public static final String GET_ASPHALT_TASKS_URL = "api/asphalt/tasks";
-    public static final String GET_ASPHALT_TASK_BY_ID_URL = "api/asphalt/tasks/{id}";
-    public static final String UPDATE_ASPHALT_TASK_URL = "api/asphalt/tasks/{id}";
-    
-    // 超时设置（单位：秒）
-    public static final int CONNECT_TIMEOUT = 60; 
-    public static final int READ_TIMEOUT = 60;
-    public static final int WRITE_TIMEOUT = 60;
+    // 项目相关
+    public static final String PROJECT_URL = "api/projects";
+    public static final String PROJECT_BY_ID_URL = "api/projects/{id}";
+
+    /**
+     * JSON媒体类型
+     */
+    public static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 }

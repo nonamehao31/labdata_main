@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 20,
-    "identityHash": "c449ee7d133c062e524a7480619ff8da",
+    "identityHash": "05c7ba12e2ad44e934ee0a5e1f785572",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -386,7 +386,7 @@
       },
       {
         "tableName": "experiment_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT NOT NULL, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT, `mixingMethodId` INTEGER, `mixRatioId` INTEGER, `materialIds` TEXT, `description` TEXT, `category` TEXT, `remote_id` INTEGER, `synced` INTEGER NOT NULL, `sync_status` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT NOT NULL, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT, `mixingMethodId` INTEGER, `mixRatioId` INTEGER, `materialIds` TEXT, `asphaltMaterial` TEXT, `rockMaterial` TEXT, `sandMaterial` TEXT, `mixingTemperature` REAL, `mixingSpeed` REAL, `mixingTime` INTEGER, `compactionMethod` TEXT, `rockGradation` TEXT, `sandGradation` TEXT, `synced` INTEGER NOT NULL, `syncStatus` TEXT, `clientId` INTEGER, `organizationId` TEXT, `assignedExperiments` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -527,21 +527,57 @@
             "notNull": false
           },
           {
-            "fieldPath": "description",
-            "columnName": "description",
+            "fieldPath": "asphaltMaterial",
+            "columnName": "asphaltMaterial",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "category",
-            "columnName": "category",
+            "fieldPath": "rockMaterial",
+            "columnName": "rockMaterial",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "remoteId",
-            "columnName": "remote_id",
+            "fieldPath": "sandMaterial",
+            "columnName": "sandMaterial",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "mixingTemperature",
+            "columnName": "mixingTemperature",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "mixingSpeed",
+            "columnName": "mixingSpeed",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "mixingTime",
+            "columnName": "mixingTime",
             "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "compactionMethod",
+            "columnName": "compactionMethod",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rockGradation",
+            "columnName": "rockGradation",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "sandGradation",
+            "columnName": "sandGradation",
+            "affinity": "TEXT",
             "notNull": false
           },
           {
@@ -552,7 +588,25 @@
           },
           {
             "fieldPath": "syncStatus",
-            "columnName": "sync_status",
+            "columnName": "syncStatus",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "clientId",
+            "columnName": "clientId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "organizationId",
+            "columnName": "organizationId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "assignedExperiments",
+            "columnName": "assignedExperiments",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -973,192 +1027,12 @@
         },
         "indices": [],
         "foreignKeys": []
-      },
-      {
-        "tableName": "asphalt_materials",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `grade` TEXT, `type` TEXT, `supplier` TEXT, `expiry_date` INTEGER, `remote_id` INTEGER, `synced` INTEGER NOT NULL, `sync_status` TEXT)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "grade",
-            "columnName": "grade",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "type",
-            "columnName": "type",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "supplier",
-            "columnName": "supplier",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "expiryDate",
-            "columnName": "expiry_date",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "remoteId",
-            "columnName": "remote_id",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "synced",
-            "columnName": "synced",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "syncStatus",
-            "columnName": "sync_status",
-            "affinity": "TEXT",
-            "notNull": false
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "asphalt_experiment_assignments",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `asphalt_material_id` INTEGER, `experiment_type_id` INTEGER, `experiment_task_id` INTEGER, `remote_id` INTEGER, `synced` INTEGER NOT NULL, `sync_status` TEXT, FOREIGN KEY(`asphalt_material_id`) REFERENCES `asphalt_materials`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`experiment_type_id`) REFERENCES `experiment_types`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`experiment_task_id`) REFERENCES `experiment_tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "asphaltMaterialId",
-            "columnName": "asphalt_material_id",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "experimentTypeId",
-            "columnName": "experiment_type_id",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "experimentTaskId",
-            "columnName": "experiment_task_id",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "remoteId",
-            "columnName": "remote_id",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "synced",
-            "columnName": "synced",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "syncStatus",
-            "columnName": "sync_status",
-            "affinity": "TEXT",
-            "notNull": false
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_asphalt_experiment_assignments_asphalt_material_id",
-            "unique": false,
-            "columnNames": [
-              "asphalt_material_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_asphalt_experiment_assignments_asphalt_material_id` ON `${TABLE_NAME}` (`asphalt_material_id`)"
-          },
-          {
-            "name": "index_asphalt_experiment_assignments_experiment_type_id",
-            "unique": false,
-            "columnNames": [
-              "experiment_type_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_asphalt_experiment_assignments_experiment_type_id` ON `${TABLE_NAME}` (`experiment_type_id`)"
-          },
-          {
-            "name": "index_asphalt_experiment_assignments_experiment_task_id",
-            "unique": false,
-            "columnNames": [
-              "experiment_task_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_asphalt_experiment_assignments_experiment_task_id` ON `${TABLE_NAME}` (`experiment_task_id`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "asphalt_materials",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "asphalt_material_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "experiment_types",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "experiment_type_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "experiment_tasks",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "experiment_task_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c449ee7d133c062e524a7480619ff8da')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '05c7ba12e2ad44e934ee0a5e1f785572')"
     ]
   }
 }

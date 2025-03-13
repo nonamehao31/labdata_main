@@ -62,7 +62,7 @@
                     android:id="@+id/step1Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="任务名称"
+                    android:text="选择沥青"
                     android:textColor="@color/step_text_active"
                     android:textSize="12sp"
                     android:layout_marginTop="4dp"/>
@@ -76,7 +76,7 @@
                 android:background="@color/step_line_inactive"
                 android:layout_gravity="center_vertical"/>
 
-            <!-- 步骤2：任务名称 -->
+            <!-- 步骤2：分配实验 -->
             <LinearLayout
                 android:id="@+id/step2Layout"
                 android:layout_width="0dp"
@@ -99,46 +99,11 @@
                     android:id="@+id/step2Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="选择沥青"
-                    android:textColor="@color/step_text_inactive"
-                    android:textSize="12sp"
-                    android:layout_marginTop="4dp"/>
-            </LinearLayout>
-
-            <View
-                android:id="@+id/step2Line"
-                android:layout_width="24dp"
-                android:layout_height="1dp"
-                android:background="@color/step_line_inactive"
-                android:layout_gravity="center_vertical"/>
-
-            <!-- 步骤3：分配实验 -->
-            <LinearLayout
-                android:id="@+id/step3Layout"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
-
-                <TextView
-                    android:id="@+id/step3Circle"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/step_circle_inactive"
-                    android:gravity="center"
-                    android:text="3"
-                    android:textColor="@color/step_text_inactive"
-                    android:textSize="12sp"/>
-
-                <TextView
-                    android:id="@+id/step3Text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
                     android:text="分配实验"
                     android:textColor="@color/step_text_inactive"
                     android:textSize="12sp"
                     android:layout_marginTop="4dp"/>
+
             </LinearLayout>
 
         </LinearLayout>

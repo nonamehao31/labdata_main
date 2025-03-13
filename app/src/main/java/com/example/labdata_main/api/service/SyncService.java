@@ -7,6 +7,7 @@ import com.example.labdata_main.LabDataApplication;
 import com.example.labdata_main.api.ApiClient;
 import com.example.labdata_main.api.ApiConfig;
 import com.example.labdata_main.api.dto.SyncExperimentTaskRequest;
+import com.example.labdata_main.api.response.ApiResponse;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.utils.SharedPrefsManager;
 
@@ -73,13 +74,14 @@ public class SyncService {
         }
 
         // 使用ApiClient发送同步请求
-        ApiClient.getInstance().syncExperimentTask(request).enqueue(new Callback<ExperimentTask>() {
+        ApiClient.getInstance().syncExperimentTask(request).enqueue(new Callback<ApiResponse<ExperimentTask>>() {
             @Override
-            public void onResponse(Call<ExperimentTask> call, Response<ExperimentTask> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    Log.d(TAG, "实验任务同步成功, 服务器ID: " + response.body().getId());
-                    if (listener != null) {
-                        listener.onSyncSuccess(response.body());
+            public void onResponse(Call<ApiResponse<ExperimentTask>> call, Response<ApiResponse<ExperimentTask>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    ExperimentTask task = response.body().getData();
+                    Log.d(TAG, "实验任务同步成功, 服务器ID: " + (task != null ? task.getId() : "null"));
+                    if (listener != null && task != null) {
+                        listener.onSyncSuccess(task);
                     }
                 } else {
                     String errorMsg = "服务器返回错误: " + response.code();
@@ -98,7 +100,7 @@ public class SyncService {
             }
 
             @Override
-            public void onFailure(Call<ExperimentTask> call, Throwable t) {
+            public void onFailure(Call<ApiResponse<ExperimentTask>> call, Throwable t) {
                 String errorMsg = "请求失败: " + t.getMessage();
                 Log.e(TAG, errorMsg, t);
                 if (listener != null) {

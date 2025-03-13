@@ -89,10 +89,48 @@ public class ApiClient {
     
     /**
      * 获取单例API客户端实例
-     * @return ApiClient实例
+     * @return ApiService实例
      */
     public static ApiService getInstance() {
         return getApiService();
+    }
+    
+    /**
+     * 使用自定义Token创建API服务实例
+     * @param serviceClass 服务类
+     * @param token 认证令牌
+     * @param <T> 服务类型
+     * @return 服务实例
+     */
+    public static <T> T createService(Class<T> serviceClass, String token) {
+        if (appContext == null) {
+            throw new IllegalStateException("ApiClient未初始化，请先调用init方法");
+        }
+        
+        // 创建OkHttp日志拦截器
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        
+        // 创建自定义Token的认证拦截器
+        CustomAuthInterceptor authInterceptor = new CustomAuthInterceptor(token);
+        
+        // 创建OkHttp客户端
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(ApiConfig.CONNECT_TIMEOUT, TimeUnit.SECONDS)
+                .readTimeout(ApiConfig.READ_TIMEOUT, TimeUnit.SECONDS)
+                .writeTimeout(ApiConfig.WRITE_TIMEOUT, TimeUnit.SECONDS)
+                .addInterceptor(authInterceptor) // 添加认证拦截器
+                .addInterceptor(loggingInterceptor)
+                .build();
+        
+        // 创建Retrofit实例
+        Retrofit customRetrofit = new Retrofit.Builder()
+                .baseUrl(ApiConfig.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(okHttpClient)
+                .build();
+        
+        return customRetrofit.create(serviceClass);
     }
     
     /**

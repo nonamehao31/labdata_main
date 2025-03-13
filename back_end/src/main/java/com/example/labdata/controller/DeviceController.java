@@ -80,6 +80,18 @@ public class DeviceController {
         
         return ResponseEntity.ok(new ApiResponse<>(true, "Devices saved successfully", responses));
     }
+    
+    /**
+     * 批量保存设备信息 (与前端API路径匹配)
+     */
+    @PostMapping("/save-batch")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<?> saveDevicesBatch(
+            @CurrentUser UserPrincipal currentUser,
+            @Valid @RequestBody List<DeviceRequest> deviceRequests) {
+        // 调用现有方法以避免代码重复
+        return saveDevices(currentUser, deviceRequests);
+    }
 
     @GetMapping("/company/{companyId}")
     @PreAuthorize("hasRole('USER')")

@@ -40,10 +40,32 @@ public class SupportedDeviceController {
     /**
      * u83b7u53d6u7279u5b9au7c7bu578bu7684u6240u6709u5382u5546
      */
-    @GetMapping("/manufacturers/{type}")
+    @GetMapping("/type/{type}/manufacturers")
     public ResponseEntity<?> getManufacturersByType(@PathVariable String type) {
         List<String> manufacturers = supportedDeviceRepository.findDistinctManufacturerByType(type);
         return ResponseEntity.ok(new ApiResponse<>(true, "Manufacturers by type retrieved successfully", manufacturers));
+    }
+
+    /**
+     * u83b7u53d6u7279u5b9au7c7bu578bu7684u6240u6709u5382u5546
+     */
+    @GetMapping("/manufacturers/{type}")
+    public ResponseEntity<?> getManufacturersByTypeOld(@PathVariable String type) {
+        return getManufacturersByType(type);
+    }
+
+    /**
+     * u83b7u53d6u7279u5b9au7c7bu578bu548cu5382u5546u7684u578bu53f7
+     */
+    @GetMapping("/type/{type}/manufacturer/{manufacturer}/models")
+    public ResponseEntity<?> getModelsByTypeAndManufacturerNew(
+            @PathVariable String type,
+            @PathVariable String manufacturer) {
+        List<SupportedDevice> devices = supportedDeviceRepository.findByTypeAndManufacturer(type, manufacturer);
+        List<String> models = devices.stream()
+                .map(SupportedDevice::getModel)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Models retrieved successfully", models));
     }
 
     /**

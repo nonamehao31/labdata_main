@@ -917,4 +917,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.endTransaction();
         }
     }
+
+    /**
+     * 清空项目表中的所有项目
+     * 用于与后端同步时先清空本地数据
+     * @return 影响的行数
+     */
+    public int clearProjects() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        int result = db.delete(TABLE_PROJECTS, null, null);
+        db.close();
+        return result;
+    }
 }

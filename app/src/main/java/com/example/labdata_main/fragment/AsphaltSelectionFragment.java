@@ -15,7 +15,6 @@ import com.example.labdata_main.R;
 import com.example.labdata_main.adapter.AsphaltAdapter;
 import com.example.labdata_main.dialog.AddAsphaltBottomSheetDialog;
 import com.example.labdata_main.model.AsphaltInfo;
-import com.example.labdata_main.service.AsphaltExperimentService;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import java.util.ArrayList;
@@ -31,7 +30,6 @@ public class AsphaltSelectionFragment extends Fragment implements AddAsphaltBott
     private MaterialButton btnNext;
     private ViewPager2 viewPager;
     private List<AsphaltInfo> asphaltList = new ArrayList<>();
-    private AsphaltExperimentService asphaltService;
 
     public static AsphaltSelectionFragment newInstance(String taskName) {
         AsphaltSelectionFragment fragment = new AsphaltSelectionFragment();
@@ -47,8 +45,6 @@ public class AsphaltSelectionFragment extends Fragment implements AddAsphaltBott
         if (getArguments() != null) {
             taskName = getArguments().getString(ARG_TASK_NAME);
         }
-        // 初始化沥青实验服务
-        asphaltService = new AsphaltExperimentService(requireContext());
     }
 
     @Nullable
