@@ -16,10 +16,14 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.labdata_main.api.service.MaterialApiService;
+import com.example.labdata_main.api.response.AsphaltMaterialResponse;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.database.DatabaseHelper;
 import com.example.labdata_main.model.Material;
+import com.example.labdata_main.model.MaterialItem;
 import com.example.labdata_main.model.MaterialProperty;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.UUID;
@@ -45,6 +49,8 @@ public class AddAsphaltActivity extends AppCompatActivity {
     private ExecutorService executorService;
     private AppDatabase database;
     private DatabaseHelper databaseHelper;
+    private MaterialApiService materialApiService;
+    private SharedPrefsManager sharedPrefsManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +60,8 @@ public class AddAsphaltActivity extends AppCompatActivity {
         executorService = Executors.newSingleThreadExecutor();
         database = AppDatabase.getInstance(this);
         databaseHelper = DatabaseHelper.getInstance(this);
+        materialApiService = new MaterialApiService();
+        sharedPrefsManager = new SharedPrefsManager(this);
 
         initViews();
         setupListeners();
@@ -108,6 +116,9 @@ public class AddAsphaltActivity extends AppCompatActivity {
                 "asphalt"
         );
 
+        // 先同步到后端，不管成功与否都保存到本地数据库
+        syncAsphaltToBackend(name, grade, isModified ? "modified" : "normal");
+
         // 保存到数据库
         executorService.execute(() -> {
             try {
@@ -123,7 +134,7 @@ public class AddAsphaltActivity extends AppCompatActivity {
                 property.setCode(grade);
                 
                 // 使用 databaseHelper 保存材料属性
-                databaseHelper.saveOrUpdateMaterialProperty(property, isModified ? "modified" : "normal");
+                databaseHelper.saveOrUpdateMaterialProperty(property, isModified ? "MODIFIED" : "NORMAL");
 
                 runOnUiThread(() -> {
                     Toast.makeText(AddAsphaltActivity.this, "沥青添加成功", Toast.LENGTH_SHORT).show();
@@ -137,6 +148,55 @@ public class AddAsphaltActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    /**
+     * 同步沥青材料到后端
+     * @param name 沥青名称
+     * @param grade 沥青标号
+     * @param character 沥青性质
+     */
+    private void syncAsphaltToBackend(String name, String grade, String character) {
+        try {
+            Log.d(TAG, "开始同步沥青材料到后端: name=" + name + ", grade=" + grade + ", character=" + character);
+            
+            // 将沥青性质映射为API需要的格式（大写）
+            String apiCharacter = "NORMAL";
+            if (character.equalsIgnoreCase("modified")) {
+                apiCharacter = "MODIFIED";
+            }
+            
+            // 获取用户的公司ID
+            String companyId = sharedPrefsManager.getUserCompany();
+            if (TextUtils.isEmpty(companyId)) {
+                Log.w(TAG, "用户公司ID为空，将使用默认值");
+                companyId = "unknown";
+            }
+            
+            Log.d(TAG, "转换后的沥青性质: " + apiCharacter + ", 公司ID: " + companyId);
+            
+            if (materialApiService == null) {
+                Log.e(TAG, "MaterialApiService未初始化!");
+                materialApiService = new MaterialApiService();
+            }
+            
+            materialApiService.saveAsphaltMaterial(name, grade, apiCharacter, companyId, new MaterialApiService.ApiCallback<AsphaltMaterialResponse>() {
+                @Override
+                public void onSuccess(AsphaltMaterialResponse data) {
+                    Log.d(TAG, "沥青材料同步成功: id=" + (data != null ? data.getId() : "null") + ", name=" + (data != null ? data.getName() : "null"));
+                }
+
+                @Override
+                public void onFailure(String errorMessage) {
+                    Log.e(TAG, "沥青材料同步失败: " + errorMessage);
+                    // 同步失败不影响本地保存，所以这里只记录日志
+                }
+            });
+            
+            Log.d(TAG, "沥青材料同步请求已发送");
+        } catch (Exception e) {
+            Log.e(TAG, "调用同步沥青材料API失败", e);
+        }
     }
 
     @Override

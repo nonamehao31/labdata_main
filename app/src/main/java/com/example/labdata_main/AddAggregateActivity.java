@@ -11,10 +11,14 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.labdata_main.api.response.SandMaterialResponse;
+import com.example.labdata_main.api.response.StoneMaterialResponse;
+import com.example.labdata_main.api.service.MaterialApiService;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.database.DatabaseHelper;
 import com.example.labdata_main.model.Material;
 import com.example.labdata_main.model.MaterialProperty;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.UUID;
@@ -37,6 +41,8 @@ public class AddAggregateActivity extends AppCompatActivity {
     private ExecutorService executorService;
     private AppDatabase database;
     private DatabaseHelper databaseHelper;
+    private MaterialApiService materialApiService;
+    private SharedPrefsManager sharedPrefsManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +52,8 @@ public class AddAggregateActivity extends AppCompatActivity {
         executorService = Executors.newSingleThreadExecutor();
         database = AppDatabase.getInstance(this);
         databaseHelper = DatabaseHelper.getInstance(this);
+        materialApiService = new MaterialApiService();
+        sharedPrefsManager = new SharedPrefsManager(this);
 
         // 获取材料类型
         materialType = getIntent().getStringExtra("materialType");
@@ -111,6 +119,9 @@ public class AddAggregateActivity extends AppCompatActivity {
                 // 使用 databaseHelper 保存材料属性
                 databaseHelper.saveOrUpdateMaterialProperty(property, null);
                 
+                // 同步到后端服务器
+                syncAggregateToBackend(name);
+                
                 runOnUiThread(() -> {
                     Toast.makeText(AddAggregateActivity.this, (materialType.equals("sand") ? "沙子" : "石子") + "添加成功", Toast.LENGTH_SHORT).show();
                     setResult(RESULT_OK);
@@ -123,6 +134,64 @@ public class AddAggregateActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+    
+    /**
+     * 同步集料(沙子或石子)材料到后端
+     * @param name 材料名称
+     */
+    private void syncAggregateToBackend(String name) {
+        try {
+            Log.d(TAG, "开始同步" + (materialType.equals("sand") ? "沙子" : "石子") + "材料到后端: name=" + name);
+            
+            // 获取用户的公司ID
+            String companyId = sharedPrefsManager.getUserCompany();
+            if (TextUtils.isEmpty(companyId)) {
+                Log.w(TAG, "用户公司ID为空，将使用默认值");
+                companyId = "unknown";
+            }
+            
+            if (materialApiService == null) {
+                Log.e(TAG, "MaterialApiService未初始化!");
+                materialApiService = new MaterialApiService();
+            }
+            
+            final String finalCompanyId = companyId;
+            
+            if (materialType.equals("sand")) {
+                // 保存沙子材料到后端
+                materialApiService.saveSandMaterial(name, finalCompanyId, new MaterialApiService.ApiCallback<SandMaterialResponse>() {
+                    @Override
+                    public void onSuccess(SandMaterialResponse data) {
+                        Log.d(TAG, "沙子材料同步成功: id=" + (data != null ? data.getId() : "null") + ", name=" + (data != null ? data.getName() : "null"));
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Log.e(TAG, "沙子材料同步失败: " + errorMessage);
+                        // 同步失败不影响本地保存，所以这里只记录日志
+                    }
+                });
+            } else {
+                // 保存石子材料到后端
+                materialApiService.saveStoneMaterial(name, finalCompanyId, new MaterialApiService.ApiCallback<StoneMaterialResponse>() {
+                    @Override
+                    public void onSuccess(StoneMaterialResponse data) {
+                        Log.d(TAG, "石子材料同步成功: id=" + (data != null ? data.getId() : "null") + ", name=" + (data != null ? data.getName() : "null"));
+                    }
+
+                    @Override
+                    public void onFailure(String errorMessage) {
+                        Log.e(TAG, "石子材料同步失败: " + errorMessage);
+                        // 同步失败不影响本地保存，所以这里只记录日志
+                    }
+                });
+            }
+            
+            Log.d(TAG, (materialType.equals("sand") ? "沙子" : "石子") + "材料同步请求已发送");
+        } catch (Exception e) {
+            Log.e(TAG, "调用同步" + (materialType.equals("sand") ? "沙子" : "石子") + "材料API失败", e);
+        }
     }
 
     @Override

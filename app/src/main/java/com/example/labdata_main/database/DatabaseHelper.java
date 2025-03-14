@@ -113,6 +113,29 @@ public abstract class DatabaseHelper extends RoomDatabase {
             materialPropertyDao().insert(property);
         });
     }
+    
+    /**
+     * 批量保存或更新材料属性
+     * @param properties 材料属性对象列表
+     */
+    public void saveOrUpdateMaterialProperties(List<MaterialProperty> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return;
+        }
+        
+        databaseWriteExecutor.execute(() -> {
+            // 获取第一个属性的类型，用于判断需要清理哪种类型的旧数据
+            String type = properties.get(0).getType();
+            
+            // 先删除该类型的所有旧属性
+            materialPropertyDao().deletePropertiesByType(type);
+            
+            // 批量插入新属性
+            for (MaterialProperty property : properties) {
+                materialPropertyDao().insert(property);
+            }
+        });
+    }
 
     public List<Material> getMaterialsByCategory(String category) {
         return materialDao().getMaterialsByCategory(category);

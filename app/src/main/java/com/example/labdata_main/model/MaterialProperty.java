@@ -11,6 +11,8 @@ public class MaterialProperty {
     public String name;
     public String unit;
     public String code;
+    public String grade;
+    public String character;
 
     public int getId() {
         return id;
@@ -50,5 +52,21 @@ public class MaterialProperty {
 
     public void setCode(String code) {
         this.code = code;
+    }
+    
+    public String getGrade() {
+        return grade;
+    }
+
+    public void setGrade(String grade) {
+        this.grade = grade;
+    }
+
+    public String getCharacter() {
+        return character;
+    }
+
+    public void setCharacter(String character) {
+        this.character = character;
     }
 }

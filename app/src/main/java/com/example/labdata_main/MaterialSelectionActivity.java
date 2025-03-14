@@ -14,9 +14,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.dao.MaterialDao;
+import com.example.labdata_main.api.service.MaterialSyncManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -34,6 +36,7 @@ import java.util.concurrent.Executors;
 public class MaterialSelectionActivity extends AppCompatActivity {
     private static final int REQUEST_ADD_ASPHALT = 1001;
     private static final int REQUEST_ADD_AGGREGATE = 1002;
+    private static final long AUTO_REFRESH_INTERVAL = 25000; // 自动刷新间隔，秒
     
     private TabLayout materialTypeTabs;
     private TextView materialName;
@@ -43,6 +46,7 @@ public class MaterialSelectionActivity extends AppCompatActivity {
     private TextView percentageText;
     private float maxAvailablePercentage = 100f;
     private MaterialButton btnAddMaterial;
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     private LinearLayout materialPropertyContainer;
     private CardView propertyCard1, propertyCard2;
@@ -57,6 +61,10 @@ public class MaterialSelectionActivity extends AppCompatActivity {
     private ExecutorService executorService = Executors.newSingleThreadExecutor();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private DatabaseHelper databaseHelper;
+    private MaterialSyncManager materialSyncManager;
+    private Handler autoRefreshHandler = new Handler(Looper.getMainLooper());
+    private Runnable autoRefreshRunnable;
+    private boolean isRefreshing = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +73,10 @@ public class MaterialSelectionActivity extends AppCompatActivity {
 
         // 初始化数据库
         materialDao = AppDatabase.getInstance(this).materialDao();
+        databaseHelper = DatabaseHelper.getInstance(this);
+        
+        // 初始化材料同步管理器
+        materialSyncManager = new MaterialSyncManager(this);
 
         // 获取可用百分比
         maxAvailablePercentage = getIntent().getFloatExtra("maxPercentage", 100f);
@@ -73,10 +85,15 @@ public class MaterialSelectionActivity extends AppCompatActivity {
         setupTabs();
         setupGradationChips();
         setupPercentageSlider();
+        setupRefreshLayout();
         setupListeners();
+        setupAutoRefresh();
 
         // 默认选择第一个标签
         updateMaterialInfo(0);
+        
+        // 首次进入页面，自动刷新材料列表
+        refreshMaterialList(true);
     }
 
     private void initViews() {
@@ -87,6 +104,7 @@ public class MaterialSelectionActivity extends AppCompatActivity {
         percentageSlider = findViewById(R.id.percentage_slider);
         percentageText = findViewById(R.id.percentage_text);
         btnAddMaterial = findViewById(R.id.btn_add_material);
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
         
         materialPropertyContainer = findViewById(R.id.material_property_container);
         propertyCard1 = findViewById(R.id.property_card_1);
@@ -140,12 +158,44 @@ public class MaterialSelectionActivity extends AppCompatActivity {
         
         percentageSlider.setValue(0);
     }
+    
+    private void setupRefreshLayout() {
+        // 设置刷新颜色
+        swipeRefreshLayout.setColorSchemeResources(
+                R.color.blue,
+                R.color.step_completed,
+                R.color.red);
+                
+        // 设置下拉刷新监听器
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            // 手动刷新事件
+            refreshMaterialList(false);
+        });
+    }
+    
+    private void setupAutoRefresh() {
+        autoRefreshRunnable = () -> {
+            // 自动刷新
+            if (!isRefreshing) {
+                refreshMaterialList(true);
+            }
+            // 安排下一次自动刷新
+            autoRefreshHandler.postDelayed(autoRefreshRunnable, AUTO_REFRESH_INTERVAL);
+        };
+    }
 
     private void setupListeners() {
         materialTypeTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                updateMaterialInfo(tab.getPosition());
+                int position = tab.getPosition();
+                updateMaterialInfo(position);
+                
+                // 当切换到沙子或石子标签时，立即刷新材料列表
+                String materialType = getMaterialTypeFromPosition(position);
+                if ("sand".equals(materialType) || "stone".equals(materialType)) {
+                    refreshMaterialList(true);
+                }
             }
 
             @Override
@@ -199,90 +249,136 @@ public class MaterialSelectionActivity extends AppCompatActivity {
         }
     }
     
+    /**
+     * 刷新材料列表
+     * @param isSilent 是否静默刷新（不显示加载动画）
+     */
+    private void refreshMaterialList(boolean isSilent) {
+        if (isRefreshing) {
+            return;
+        }
+        
+        isRefreshing = true;
+        
+        if (!isSilent) {
+            swipeRefreshLayout.setRefreshing(true);
+        }
+        
+        // 获取当前选中的材料类型
+        final String materialType = getMaterialTypeFromPosition(materialTypeTabs.getSelectedTabPosition());
+        
+        // 刷新指定类型的材料
+        materialSyncManager.syncMaterialsByType(materialType, new MaterialSyncManager.SyncCallback() {
+            @Override
+            public void onSyncComplete(boolean success, String message) {
+                mainHandler.post(() -> {
+                    isRefreshing = false;
+                    
+                    if (!isSilent) {
+                        swipeRefreshLayout.setRefreshing(false);
+                    }
+                    
+                    if (success) {
+                        // 添加短暂延迟，确保数据库操作完成
+                        mainHandler.postDelayed(() -> {
+                            // 刷新成功，重新加载材料列表
+                            loadMaterialProperties(materialType);
+                            
+                            if (!isSilent) {
+                                // 只有手动刷新才显示提示
+                                Toast.makeText(MaterialSelectionActivity.this, 
+                                        getMaterialTypeName(materialType) + "材料列表已更新", Toast.LENGTH_SHORT).show();
+                            }
+                        }, 300); // 添加300毫秒延迟，确保数据库操作已完成
+                    } else {
+                        // 刷新失败
+                        Toast.makeText(MaterialSelectionActivity.this, 
+                                "刷新失败: " + message, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         
         if (resultCode == RESULT_OK) {
-            if (requestCode == REQUEST_ADD_ASPHALT || requestCode == REQUEST_ADD_AGGREGATE) {
-                // 添加成功后刷新材料列表
+            // 添加材料后刷新列表，添加延迟确保数据库操作完成
+            mainHandler.postDelayed(() -> {
                 int position = materialTypeTabs.getSelectedTabPosition();
-                // 强制重新从数据库加载数据
-                executorService.execute(() -> {
-                    // 等待一下确保数据已写入
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    mainHandler.post(() -> updateMaterialInfo(position));
-                });
-                Toast.makeText(this, "材料添加成功", Toast.LENGTH_SHORT).show();
-            }
+                updateMaterialInfo(position);
+            }, 300);
         }
     }
 
     private boolean validateSelection() {
         if (selectedProperty == null) {
-            Toast.makeText(this, "请选择材料属性", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "请选择材料", Toast.LENGTH_SHORT).show();
             return false;
         }
-
-        if (selectedMaterialType.equals("asphalt")) {
-            selectedGradation = "";
-        } else if (selectedGradation == null) {
-            Toast.makeText(this, "请选择级配", Toast.LENGTH_SHORT).show();
-            return false;
+        
+        if ("sand".equals(selectedMaterialType) || "stone".equals(selectedMaterialType)) {
+            if (selectedGradation == null) {
+                Toast.makeText(this, "请选择级配", Toast.LENGTH_SHORT).show();
+                return false;
+            }
         }
-
-        if (percentageSlider.getValue() == 0) {
+        
+        if (percentageSlider.getValue() <= 0) {
             Toast.makeText(this, "请设置配比百分比", Toast.LENGTH_SHORT).show();
             return false;
         }
-
+        
         return true;
     }
 
     private void updateMaterialInfo(int position) {
-        // 清除之前的选择状态
+        // 清空选择
         clearPropertySelection();
-        materialName.setText("");
-        materialBatch.setText("");
-        selectedProperty = null;
-        selectedGradation = null;
         
-        switch (position) {
-            case 0:
-                selectedMaterialType = "asphalt";
-                materialBatch.setText("请选择沥青类型");
-                updateGradationVisibility(false);
-                btnAddMaterial.setText("添加沥青");
-                break;
-            case 1:
-                selectedMaterialType = "sand";
-                materialBatch.setText("请选择沙子类型");
-                updateGradationVisibility(true);
-                btnAddMaterial.setText("添加沙子");
-                break;
-            case 2:
-                selectedMaterialType = "stone";
-                materialBatch.setText("请选择石子类型");
-                updateGradationVisibility(true);
-                btnAddMaterial.setText("添加石子");
-                break;
-        }
+        // 更新选中的材料类型
+        selectedMaterialType = getMaterialTypeFromPosition(position);
         
-        // 加载该类型的材料列表
+        // 更新添加按钮的文本
+        btnAddMaterial.setText("添加" + getMaterialTypeName(selectedMaterialType));
+        
+        // 更新级配选择的可见性（只有沙子和石子需要选择级配）
+        updateGradationVisibility("sand".equals(selectedMaterialType) || "stone".equals(selectedMaterialType));
+        
+        // 加载该类型的材料属性
         loadMaterialProperties(selectedMaterialType);
     }
 
+    private String getMaterialTypeFromPosition(int position) {
+        switch (position) {
+            case 0:
+                return "asphalt";
+            case 1:
+                return "sand";
+            case 2:
+                return "stone";
+            default:
+                return "";
+        }
+    }
+
     private void updateGradationVisibility(boolean show) {
-        findViewById(R.id.gradation_title).setVisibility(show ? View.VISIBLE : View.GONE);
-        findViewById(R.id.gradation_scroll).setVisibility(show ? View.VISIBLE : View.GONE);
+        View gradationTitle = findViewById(R.id.gradation_title);
+        View gradationScroll = findViewById(R.id.gradation_scroll);
+        
+        if (show) {
+            gradationTitle.setVisibility(View.VISIBLE);
+            gradationScroll.setVisibility(View.VISIBLE);
+        } else {
+            gradationTitle.setVisibility(View.GONE);
+            gradationScroll.setVisibility(View.GONE);
+        }
     }
 
     private void clearPropertySelection() {
-        materialPropertyContainer.setVisibility(View.VISIBLE);
+        selectedProperty = null;
         propertyCheck1.setVisibility(View.GONE);
         propertyCheck2.setVisibility(View.GONE);
         propertyCard1.setCardElevation(2f);
@@ -291,11 +387,6 @@ public class MaterialSelectionActivity extends AppCompatActivity {
 
     private void loadMaterialProperties(String materialType) {
         executorService.execute(() -> {
-            if (databaseHelper == null) {
-                databaseHelper = DatabaseHelper.getInstance(this);
-            }
-            
-            // 获取指定类型的材料属性
             final List<MaterialProperty> properties = databaseHelper.getMaterialPropertiesByType(materialType);
             
             mainHandler.post(() -> {
@@ -428,16 +519,38 @@ public class MaterialSelectionActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 每次恢复活动时刷新当前材料列表
+        
+        // 恢复自动刷新
+        autoRefreshHandler.postDelayed(autoRefreshRunnable, AUTO_REFRESH_INTERVAL);
+        
+        // 加载当前选中的材料类型
         int position = materialTypeTabs.getSelectedTabPosition();
         updateMaterialInfo(position);
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        
+        // 暂停自动刷新
+        autoRefreshHandler.removeCallbacks(autoRefreshRunnable);
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (executorService != null) {
+        
+        // 取消所有延迟执行的任务
+        autoRefreshHandler.removeCallbacksAndMessages(null);
+        
+        // 关闭线程池
+        if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
+        }
+        
+        // 关闭同步管理器
+        if (materialSyncManager != null) {
+            materialSyncManager.shutdown();
         }
     }
 }

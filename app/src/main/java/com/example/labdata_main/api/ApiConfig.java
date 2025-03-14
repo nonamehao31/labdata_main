@@ -53,6 +53,14 @@ public class ApiConfig {
     // 项目相关
     public static final String PROJECT_URL = "api/projects";
     public static final String PROJECT_BY_ID_URL = "api/projects/{id}";
+    
+    // 材料相关
+    public static final String ASPHALT_MATERIAL_URL = "api/materials/asphalt";
+    public static final String ASPHALT_MATERIAL_BY_ID_URL = "api/materials/asphalt/{id}";
+    public static final String SAND_MATERIAL_URL = "api/materials/sand";
+    public static final String SAND_MATERIAL_BY_ID_URL = "api/materials/sand/{id}";
+    public static final String STONE_MATERIAL_URL = "api/materials/stone";
+    public static final String STONE_MATERIAL_BY_ID_URL = "api/materials/stone/{id}";
 
     /**
      * JSON媒体类型

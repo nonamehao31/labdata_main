@@ -3,6 +3,7 @@ package com.example.labdata_main;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -11,13 +12,16 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import com.example.labdata_main.api.service.MaterialSyncService;
 import com.example.labdata_main.model.MaterialItem;
 
 public class AddMaterialActivity extends AppCompatActivity {
+    private static final String TAG = "AddMaterialActivity";
     private EditText etMaterialName;
     private EditText etPercentage;
     private Spinner spMaterialType;
     private Button btnConfirm;
+    private MaterialSyncService materialSyncService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,6 +31,7 @@ public class AddMaterialActivity extends AppCompatActivity {
         initViews();
         setupSpinner();
         setupListeners();
+        materialSyncService = new MaterialSyncService(this);
     }
 
     private void initViews() {
@@ -77,11 +82,44 @@ public class AddMaterialActivity extends AppCompatActivity {
                 return;
             }
 
+            // 创建MaterialItem对象
             MaterialItem material = new MaterialItem(name, percentage, type);
+            
+            // 将材料数据传回调用活动
             Intent resultIntent = new Intent();
             resultIntent.putExtra("material", material);
             setResult(RESULT_OK, resultIntent);
+            
+            // 同步材料数据到后端
+            syncMaterialToBackend(material);
+            
             finish();
+        });
+    }
+    
+    /**
+     * 同步材料数据到后端
+     * @param material 材料项
+     */
+    private void syncMaterialToBackend(MaterialItem material) {
+        if (material == null) {
+            return;
+        }
+        
+        // 使用MaterialSyncService自动识别材料类型并同步到后端
+        materialSyncService.autoSyncMaterial(material, new MaterialSyncService.SyncResultListener() {
+            @Override
+            public void onSyncSuccess(MaterialItem material, Long remoteId) {
+                Log.d(TAG, "材料同步成功: " + material.getName() + ", 远程ID: " + remoteId);
+                // 同步成功后的操作，由于已经结束活动，这里不做UI更新
+            }
+            
+            @Override
+            public void onSyncFailed(String errorMessage) {
+                Log.e(TAG, "材料同步失败: " + errorMessage);
+                // 同步失败的处理，由于已经结束活动，这里仅记录日志不做UI提示
+                // 在实际应用中，可能需要更完善的错误处理机制
+            }
         });
     }
 

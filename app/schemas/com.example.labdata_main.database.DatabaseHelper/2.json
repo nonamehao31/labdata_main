@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "e6077a4c30ed50158014b6ce3b04fda1",
+    "identityHash": "5d6bbcc44418581af286bd217297f159",
     "entities": [
       {
         "tableName": "projects",
@@ -150,7 +150,7 @@
       },
       {
         "tableName": "material_properties",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT, `name` TEXT, `unit` TEXT, `code` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT, `name` TEXT, `unit` TEXT, `code` TEXT, `grade` TEXT, `character` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -179,6 +179,18 @@
           {
             "fieldPath": "code",
             "columnName": "code",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "grade",
+            "columnName": "grade",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "character",
+            "columnName": "character",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -416,7 +428,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e6077a4c30ed50158014b6ce3b04fda1')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5d6bbcc44418581af286bd217297f159')"
     ]
   }
 }

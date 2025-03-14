@@ -1,14 +1,20 @@
 package com.example.labdata_main.api;
 
 import com.example.labdata_main.api.dto.SyncExperimentTaskRequest;
+import com.example.labdata_main.api.request.AsphaltMaterialRequest;
 import com.example.labdata_main.api.request.DeviceRequest;
 import com.example.labdata_main.api.request.LoginRequest;
 import com.example.labdata_main.api.request.ProjectRequest;
 import com.example.labdata_main.api.request.RegisterRequest;
+import com.example.labdata_main.api.request.SandMaterialRequest;
+import com.example.labdata_main.api.request.StoneMaterialRequest;
 import com.example.labdata_main.api.response.ApiResponse;
+import com.example.labdata_main.api.response.AsphaltMaterialResponse;
 import com.example.labdata_main.api.response.DeviceResponse;
 import com.example.labdata_main.api.response.LoginResponse;
 import com.example.labdata_main.api.response.ProjectResponse;
+import com.example.labdata_main.api.response.SandMaterialResponse;
+import com.example.labdata_main.api.response.StoneMaterialResponse;
 import com.example.labdata_main.api.response.SupportedDeviceResponse;
 import com.example.labdata_main.model.ExperimentTask;
 
@@ -206,4 +212,52 @@ public interface ApiService {
      */
     @DELETE(ApiConfig.PROJECT_BY_ID_URL)
     Call<ApiResponse<Boolean>> deleteProject(@Path("id") Long id);
+
+    /**
+     * 保存沥青原料
+     * @param request 沥青原料请求参数
+     * @return 沥青原料响应
+     */
+    @POST(ApiConfig.ASPHALT_MATERIAL_URL)
+    Call<ApiResponse<AsphaltMaterialResponse>> createAsphaltMaterial(@Body AsphaltMaterialRequest request);
+    
+    /**
+     * 获取所有沥青原料
+     * @param companyId 公司ID
+     * @return 沥青原料列表
+     */
+    @GET(ApiConfig.ASPHALT_MATERIAL_URL)
+    Call<ApiResponse<List<AsphaltMaterialResponse>>> getAllAsphaltMaterials(@Query("companyId") String companyId);
+    
+    /**
+     * 保存沙子原料
+     * @param request 沙子原料请求参数
+     * @return 沙子原料响应
+     */
+    @POST(ApiConfig.SAND_MATERIAL_URL)
+    Call<ApiResponse<SandMaterialResponse>> createSandMaterial(@Body SandMaterialRequest request);
+    
+    /**
+     * 获取所有沙子原料
+     * @param companyId 公司ID
+     * @return 沙子原料列表
+     */
+    @GET(ApiConfig.SAND_MATERIAL_URL)
+    Call<ApiResponse<List<SandMaterialResponse>>> getAllSandMaterials(@Query("companyId") String companyId);
+    
+    /**
+     * 保存石子原料
+     * @param request 石子原料请求参数
+     * @return 石子原料响应
+     */
+    @POST(ApiConfig.STONE_MATERIAL_URL)
+    Call<ApiResponse<StoneMaterialResponse>> createStoneMaterial(@Body StoneMaterialRequest request);
+    
+    /**
+     * 获取所有石子原料
+     * @param companyId 公司ID
+     * @return 石子原料列表
+     */
+    @GET(ApiConfig.STONE_MATERIAL_URL)
+    Call<ApiResponse<List<StoneMaterialResponse>>> getAllStoneMaterials(@Query("companyId") String companyId);
 }
