@@ -141,6 +141,20 @@ public class LoginActivity extends AppCompatActivity {
                         Log.d(TAG, "登录成功后的令牌信息:");
                         JwtUtils.decodeAndLogJwt(authToken);
                         
+                        // 验证令牌是否已正确保存到SharedPreferences
+                        String savedToken = sharedPrefsManager.getAuthToken();
+                        String savedTokenType = sharedPrefsManager.getTokenType();
+                        String savedAuthHeader = sharedPrefsManager.getAuthHeader();
+                        
+                        Log.d(TAG, "验证保存的认证信息:");
+                        Log.d(TAG, "- 保存的令牌: " + (savedToken != null ? "非空，长度: " + savedToken.length() : "为空"));
+                        Log.d(TAG, "- 保存的令牌类型: " + savedTokenType);
+                        Log.d(TAG, "- 完整认证头: " + (savedAuthHeader != null ? "非空，长度: " + savedAuthHeader.length() : "为空"));
+                        
+                        if (!loginResponse.getAccessToken().equals(savedToken)) {
+                            Log.e(TAG, "警告: 保存的令牌与API返回的令牌不匹配!");
+                        }
+                        
                         // 重置API客户端，确保新的认证令牌生效
                         ApiClient.resetClient();
                         
@@ -180,6 +194,20 @@ public class LoginActivity extends AppCompatActivity {
                             String authToken = loginResponse.getTokenType() + " " + loginResponse.getAccessToken();
                             Log.d(TAG, "登录成功后的令牌信息:");
                             JwtUtils.decodeAndLogJwt(authToken);
+                            
+                            // 验证令牌是否已正确保存到SharedPreferences
+                            String savedToken = sharedPrefsManager.getAuthToken();
+                            String savedTokenType = sharedPrefsManager.getTokenType();
+                            String savedAuthHeader = sharedPrefsManager.getAuthHeader();
+                            
+                            Log.d(TAG, "验证保存的认证信息:");
+                            Log.d(TAG, "- 保存的令牌: " + (savedToken != null ? "非空，长度: " + savedToken.length() : "为空"));
+                            Log.d(TAG, "- 保存的令牌类型: " + savedTokenType);
+                            Log.d(TAG, "- 完整认证头: " + (savedAuthHeader != null ? "非空，长度: " + savedAuthHeader.length() : "为空"));
+                            
+                            if (!loginResponse.getAccessToken().equals(savedToken)) {
+                                Log.e(TAG, "警告: 保存的令牌与API返回的令牌不匹配!");
+                            }
                             
                             // 重置API客户端，确保新的认证令牌生效
                             ApiClient.resetClient();

@@ -5,6 +5,7 @@ import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -477,6 +478,21 @@ public class MaterialSelectionActivity extends AppCompatActivity {
     private void saveAndReturn() {
         executorService.execute(() -> {
             try {
+                // 获取材料ID
+                Long materialId = null;
+                if (selectedProperty != null) {
+                    // 使用服务器ID而不是本地ID
+                    materialId = selectedProperty.getServerId();
+                    
+                    // 如果服务器ID为空，则使用原来的方法（兼容旧数据）
+                    if (materialId == null) {
+                        materialId = Long.valueOf(selectedProperty.getId());
+                        Log.w("MaterialSelection", "服务器ID为空，使用本地ID: " + materialId);
+                    } else {
+                        Log.d("MaterialSelection", "使用服务器ID: " + materialId);
+                    }
+                }
+
                 // 获取最新的设计组号
                 int newGroup = materialDao.getLatestDesignGroup() + 1;
 
@@ -494,7 +510,10 @@ public class MaterialSelectionActivity extends AppCompatActivity {
                 // 插入混合设计
                 materialDao.insertMixDesign(design);
 
-                // 在主线程更新UI
+                // 准备返回数据
+                final Long finalMaterialId = materialId;
+                
+                // 在主线程返回结果
                 mainHandler.post(() -> {
                     Intent resultIntent = new Intent();
                     resultIntent.putExtra("materialType", selectedMaterialType);
@@ -503,6 +522,11 @@ public class MaterialSelectionActivity extends AppCompatActivity {
                     resultIntent.putExtra("designGroup", design.getDesignGroup());
                     resultIntent.putExtra("gradation", selectedGradation);
                     resultIntent.putExtra("percentage", percentageSlider.getValue());
+                    
+                    // 添加材料ID，用于后端API调用
+                    if (finalMaterialId != null) {
+                        resultIntent.putExtra("materialId", finalMaterialId);
+                    }
 
                     setResult(RESULT_OK, resultIntent);
                     finish();

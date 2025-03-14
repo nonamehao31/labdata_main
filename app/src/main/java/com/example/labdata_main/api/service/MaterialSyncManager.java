@@ -151,6 +151,8 @@ public class MaterialSyncManager {
                             property.setCode(String.valueOf(item.getId()));
                             property.setGrade(item.getGrade());
                             property.setCharacter(item.getCharacter());
+                            // 设置服务器ID
+                            property.setServerId(item.getId());
                             properties.add(property);
                         }
                         
@@ -202,6 +204,8 @@ public class MaterialSyncManager {
                             property.setName(item.getName());
                             property.setType("sand");
                             property.setCode(String.valueOf(item.getId()));
+                            // 设置服务器ID
+                            property.setServerId(item.getId());
                             properties.add(property);
                         }
                         
@@ -253,6 +257,8 @@ public class MaterialSyncManager {
                             property.setName(item.getName());
                             property.setType("stone");
                             property.setCode(String.valueOf(item.getId()));
+                            // 设置服务器ID
+                            property.setServerId(item.getId());
                             properties.add(property);
                         }
                         

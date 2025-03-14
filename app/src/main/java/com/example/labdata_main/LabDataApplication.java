@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.utils.MaterialPropertyInitializer;
 import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.api.AuthService;
 
 public class LabDataApplication extends Application {
     private ExecutorService executorService;
@@ -23,6 +24,9 @@ public class LabDataApplication extends Application {
         
         // 初始化 API 客户端
         ApiClient.init(this);
+        
+        // 初始化认证服务
+        AuthService.init(this);
         
         // 创建单线程执行器
         executorService = Executors.newSingleThreadExecutor();

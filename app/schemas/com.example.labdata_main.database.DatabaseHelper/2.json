@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "5d6bbcc44418581af286bd217297f159",
+    "identityHash": "3a19e05551bd64d41ffdd6f6f6c7a8c6",
     "entities": [
       {
         "tableName": "projects",
@@ -150,7 +150,7 @@
       },
       {
         "tableName": "material_properties",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT, `name` TEXT, `unit` TEXT, `code` TEXT, `grade` TEXT, `character` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT, `name` TEXT, `unit` TEXT, `code` TEXT, `grade` TEXT, `character` TEXT, `serverId` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -192,6 +192,12 @@
             "fieldPath": "character",
             "columnName": "character",
             "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER",
             "notNull": false
           }
         ],
@@ -428,7 +434,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5d6bbcc44418581af286bd217297f159')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3a19e05551bd64d41ffdd6f6f6c7a8c6')"
     ]
   }
 }

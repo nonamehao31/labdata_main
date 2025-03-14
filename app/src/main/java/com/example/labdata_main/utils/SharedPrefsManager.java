@@ -110,6 +110,14 @@ public class SharedPrefsManager {
     }
 
     /**
+     * 获取令牌类型
+     * @return 令牌类型（例如 "Bearer"），如果未设置则返回默认值 "Bearer"
+     */
+    public String getTokenType() {
+        return sharedPreferences.getString(KEY_TOKEN_TYPE, "Bearer");
+    }
+
+    /**
      * 清除用户登录状态和信息
      */
     public void clearUserLoginSession() {

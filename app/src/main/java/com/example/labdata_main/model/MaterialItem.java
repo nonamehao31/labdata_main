@@ -9,6 +9,7 @@ public class MaterialItem implements Parcelable {
     private String type;
     private String materialName;
     private String amount;
+    private Long materialId; // 新增字段，用于存储材料的后端数据库ID
 
     public MaterialItem() {
     }
@@ -17,6 +18,13 @@ public class MaterialItem implements Parcelable {
         this.name = name;
         this.percentage = percentage;
         this.type = type;
+    }
+
+    public MaterialItem(String name, float percentage, String type, Long materialId) {
+        this.name = name;
+        this.percentage = percentage;
+        this.type = type;
+        this.materialId = materialId;
     }
 
     public MaterialItem(String materialName, String amount) {
@@ -30,6 +38,11 @@ public class MaterialItem implements Parcelable {
         type = in.readString();
         materialName = in.readString();
         amount = in.readString();
+        if (in.readByte() == 0) {
+            materialId = null;
+        } else {
+            materialId = in.readLong();
+        }
     }
 
     public static final Creator<MaterialItem> CREATOR = new Creator<MaterialItem>() {
@@ -84,11 +97,20 @@ public class MaterialItem implements Parcelable {
         this.amount = amount;
     }
 
-    // 添加getId()方法用于获取材料ID
+    public Long getMaterialId() {
+        return materialId;
+    }
+
+    public void setMaterialId(Long materialId) {
+        this.materialId = materialId;
+    }
+    
+    /**
+     * 获取材料ID (为了兼容现有代码)
+     * @return 材料ID，如果为空则返回0
+     */
     public long getId() {
-        // 由于MaterialItem没有ID字段，这里返回一个基于名称的哈希码作为临时ID
-        // 实际生产环境中，应当添加一个真实的ID字段
-        return getName() != null ? getName().hashCode() : 0;
+        return materialId != null ? materialId : 0L;
     }
 
     @Override
@@ -103,5 +125,11 @@ public class MaterialItem implements Parcelable {
         dest.writeString(type);
         dest.writeString(materialName);
         dest.writeString(amount);
+        if (materialId == null) {
+            dest.writeByte((byte) 0);
+        } else {
+            dest.writeByte((byte) 1);
+            dest.writeLong(materialId);
+        }
     }
 }

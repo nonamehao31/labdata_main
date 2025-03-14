@@ -19,9 +19,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.util.Log;
 
+import com.example.labdata_main.api.MixRatioApiService;
 import com.example.labdata_main.database.DatabaseHelper;
+import com.example.labdata_main.model.ApiResponse;
 import com.example.labdata_main.model.MaterialItem;
 import com.example.labdata_main.model.MixRatio;
+import com.example.labdata_main.model.MixRatioRequest;
+import com.example.labdata_main.model.MixRatioResponse;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
@@ -32,6 +37,10 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import java.util.ArrayList;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MixRatioEditActivity extends AppCompatActivity {
     private static final String TAG = "MixRatioEditActivity";
@@ -302,6 +311,16 @@ public class MixRatioEditActivity extends AppCompatActivity {
             String materialCode = data.getStringExtra("materialCode");
             String gradation = data.getStringExtra("gradation");
             float percentage = data.getFloatExtra("percentage", 0f);
+            // 获取材料ID
+            Long materialId = null;
+            if (data.hasExtra("materialId")) {
+                materialId = data.getLongExtra("materialId", 0L);
+                if (materialId == 0L) materialId = null;
+            }
+            
+            Log.d(TAG, "收到材料选择结果 - 类型: " + materialType + ", 名称: " + materialName + 
+                  ", 编号: " + materialCode + ", 级配: " + gradation + ", 百分比: " + percentage + 
+                  ", 材料ID: " + (materialId != null ? materialId : "无"));
 
             // 创建原料显示名称
             String displayName;
@@ -315,7 +334,7 @@ public class MixRatioEditActivity extends AppCompatActivity {
             }
 
             // 创建新的原料项
-            MaterialItem newMaterial = new MaterialItem(displayName, percentage, materialType);
+            MaterialItem newMaterial = new MaterialItem(displayName, percentage, materialType, materialId);
             materials.add(newMaterial);
             adapter.notifyItemInserted(materials.size() - 1);
             updatePieChart();
@@ -426,7 +445,7 @@ public class MixRatioEditActivity extends AppCompatActivity {
             return;
         }
 
-        // 创建配比对象
+        // 创建本地数据库的配比对象
         MixRatio mixRatio = new MixRatio();
         mixRatio.setName(mixRatioName);
         mixRatio.setCreationTime(System.currentTimeMillis());
@@ -441,26 +460,183 @@ public class MixRatioEditActivity extends AppCompatActivity {
                 item.getName(), item.getPercentage(), item.getType()));
         }
 
-        // 保存到数据库
+        // 创建后端API请求对象
+        MixRatioRequest request = new MixRatioRequest();
+        request.setMixName(mixRatioName);
+        
+        // 获取用户信息并设置
+        SharedPrefsManager sharedPrefsManager = new SharedPrefsManager(this);
+        long userId = sharedPrefsManager.getUserId();
+        String companyStr = sharedPrefsManager.getUserCompany();
+        
+        // 设置用户ID和单位ID
+        request.setCreatedBy(userId);
+        
+        // 尝试将公司字符串转换为Long ID
+        try {
+            if (companyStr != null && !companyStr.isEmpty()) {
+                Long companyId = Long.parseLong(companyStr);
+                request.setMixCompany(companyId);
+                Log.d(TAG, "设置公司ID: " + companyId);
+            } else {
+                Log.w(TAG, "无法获取公司ID，使用默认值null");
+            }
+        } catch (NumberFormatException e) {
+            Log.e(TAG, "公司ID格式错误: " + companyStr, e);
+        }
+        
+        Log.d(TAG, "设置用户ID: " + userId);
+        
+        List<MixRatioRequest.AsphaltComponentRequest> asphaltComponents = new ArrayList<>();
+        List<MixRatioRequest.SandComponentRequest> sandComponents = new ArrayList<>();
+        List<MixRatioRequest.StoneComponentRequest> stoneComponents = new ArrayList<>();
+        
+        for (MaterialItem item : materials) {
+            Long materialId = extractMaterialIdFromMaterial(item);
+            if (materialId == null) {
+                Log.w(TAG, "材料ID为空: " + item.getName());
+                continue;
+            }
+            
+            if ("asphalt".equals(item.getType())) {
+                MixRatioRequest.AsphaltComponentRequest component = new MixRatioRequest.AsphaltComponentRequest();
+                component.setAsphaltId(materialId);
+                component.setPercentage((double) item.getPercentage());
+                asphaltComponents.add(component);
+            } else if ("sand".equals(item.getType())) {
+                MixRatioRequest.SandComponentRequest component = new MixRatioRequest.SandComponentRequest();
+                component.setSandId(materialId);
+                component.setGradation(extractGradationFromMaterial(item));
+                component.setPercentage((double) item.getPercentage());
+                sandComponents.add(component);
+            } else if ("stone".equals(item.getType())) {
+                MixRatioRequest.StoneComponentRequest component = new MixRatioRequest.StoneComponentRequest();
+                component.setStoneId(materialId);
+                component.setGradation(extractGradationFromMaterial(item));
+                component.setPercentage((double) item.getPercentage());
+                stoneComponents.add(component);
+            }
+        }
+        
+        request.setAsphaltComponents(asphaltComponents);
+        request.setSandComponents(sandComponents);
+        request.setStoneComponents(stoneComponents);
+
+        // 显示加载对话框
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("正在保存")
+            .setMessage("请稍候...")
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        // 同时保存到本地数据库和后端
         DatabaseHelper db = DatabaseHelper.getInstance(this);
         new Thread(() -> {
             try {
                 Log.d(TAG, "正在执行数据库插入操作");
                 long id = db.insertMixRatio(mixRatio);
-                Log.d(TAG, "配比保存成功，ID：" + id);
+                Log.d(TAG, "本地数据库保存成功，ID：" + id);
                 
-                // 在主线程显示成功提示并返回
-                runOnUiThread(() -> {
-                    showToast("配比保存成功");
-                    setResult(RESULT_OK);
-                    finish();
+                // 后端API调用保存到服务器
+                MixRatioApiService apiService = new MixRatioApiService(MixRatioEditActivity.this);
+                Log.d(TAG, "调用createMixRatio API, 配比名称: " + request.getMixName());
+                apiService.createMixRatio(request, new Callback<ApiResponse<MixRatioResponse>>() {
+                    @Override
+                    public void onResponse(Call<ApiResponse<MixRatioResponse>> call, 
+                                         Response<ApiResponse<MixRatioResponse>> response) {
+                        // 关闭加载对话框
+                        runOnUiThread(() -> {
+                            if (loadingDialog.isShowing()) {
+                                loadingDialog.dismiss();
+                            }
+                        });
+                        
+                        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                            // 处理成功响应
+                            MixRatioResponse mixRatioResponse = response.body().getData();
+                            Log.d(TAG, "后端保存成功，ID: " + mixRatioResponse.getId() + 
+                                  ", 配比编号: " + mixRatioResponse.getMixId());
+                            
+                            runOnUiThread(() -> {
+                                showToast("配比保存成功");
+                                setResult(RESULT_OK);
+                                finish();
+                            });
+                        } else {
+                            // 处理错误响应
+                            String errorMsg = "保存失败";
+                            if (response.body() != null) {
+                                errorMsg = response.body().getMessage();
+                            } else if (response.errorBody() != null) {
+                                try {
+                                    errorMsg = response.errorBody().string();
+                                } catch (Exception e) {
+                                    Log.e(TAG, "解析错误响应失败", e);
+                                }
+                            }
+                            
+                            final String finalErrorMsg = errorMsg;
+                            runOnUiThread(() -> {
+                                showToast("后端保存失败: " + finalErrorMsg);
+                                // 如果后端保存失败但本地保存成功，仍然算作部分成功
+                                setResult(RESULT_OK);
+                                finish();
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<ApiResponse<MixRatioResponse>> call, Throwable t) {
+                        // 关闭加载对话框
+                        runOnUiThread(() -> {
+                            if (loadingDialog.isShowing()) {
+                                loadingDialog.dismiss();
+                            }
+                        });
+                        
+                        // 处理网络或其他错误
+                        Log.e(TAG, "后端API调用失败", t);
+                        runOnUiThread(() -> {
+                            showToast("网络错误: " + t.getMessage() + "，但数据已保存到本地");
+                            // 即使网络错误，只要本地保存成功，仍然返回RESULT_OK
+                            setResult(RESULT_OK);
+                            finish();
+                        });
+                    }
                 });
             } catch (Exception e) {
                 Log.e(TAG, "保存失败", e);
                 runOnUiThread(() -> {
+                    if (loadingDialog.isShowing()) {
+                        loadingDialog.dismiss();
+                    }
                     showToast("保存失败: " + e.getMessage());
                 });
             }
         }).start();
+    }
+    
+    /**
+     * 从材料项中提取材料ID
+     */
+    private Long extractMaterialIdFromMaterial(MaterialItem item) {
+        // 直接使用getMaterialId方法获取材料ID
+        return item.getMaterialId();
+    }
+    
+    /**
+     * 从材料项中提取级配信息
+     */
+    private String extractGradationFromMaterial(MaterialItem item) {
+        // 从原料显示名称中提取级配，假设格式为"...级配：XXX..."
+        String name = item.getName();
+        int startIndex = name.indexOf("级配：") + 3;
+        if (startIndex < 3) return ""; // 没有找到级配信息
+        
+        int endIndex = name.indexOf("\n", startIndex);
+        if (endIndex == -1) endIndex = name.length();
+        
+        return name.substring(startIndex, endIndex).trim();
     }
 }

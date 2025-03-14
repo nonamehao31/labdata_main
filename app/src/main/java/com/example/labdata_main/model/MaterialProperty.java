@@ -13,6 +13,8 @@ public class MaterialProperty {
     public String code;
     public String grade;
     public String character;
+    // 添加服务器ID字段，用于存储后端数据库中的材料ID
+    public Long serverId;
 
     public int getId() {
         return id;
@@ -68,5 +70,15 @@ public class MaterialProperty {
 
     public void setCharacter(String character) {
         this.character = character;
+    }
+    
+    // 添加获取服务器ID的方法
+    public Long getServerId() {
+        return serverId;
+    }
+    
+    // 添加设置服务器ID的方法
+    public void setServerId(Long serverId) {
+        this.serverId = serverId;
     }
 }
