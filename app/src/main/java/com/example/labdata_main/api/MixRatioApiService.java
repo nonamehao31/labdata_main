@@ -119,6 +119,9 @@ public class MixRatioApiService {
         
         @DELETE("mixratios/{id}")
         Call<ApiResponse<Void>> deleteMixRatio(@Path("id") Long id);
+        
+        @GET("mixratios/comprehensive")
+        Call<ApiResponse<List<MixRatioResponse>>> getComprehensiveMixRatios();
     }
 
     public MixRatioApiService(Context context) {
@@ -201,5 +204,10 @@ public class MixRatioApiService {
     public void deleteMixRatio(Long id, Callback<ApiResponse<Void>> callback) {
         Log.d(TAG, "调用deleteMixRatio API, id: " + id);
         api.deleteMixRatio(id).enqueue(callback);
+    }
+    
+    public void getComprehensiveMixRatios(Callback<ApiResponse<List<MixRatioResponse>>> callback) {
+        Log.d(TAG, "调用getComprehensiveMixRatios API");
+        api.getComprehensiveMixRatios().enqueue(callback);
     }
 }

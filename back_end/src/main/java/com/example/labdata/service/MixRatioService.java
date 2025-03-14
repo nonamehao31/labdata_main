@@ -54,6 +54,21 @@ public class MixRatioService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 获取综合配比数据，包含mixratio，mixratio_asphalt，mixratio_sand，mixratio_stone表的数据
+     * 用于前端展示完整的配比信息
+     * @return 包含完整配比信息的响应列表
+     */
+    public List<MixRatioResponse> getComprehensiveMixRatios() {
+        // 获取所有配比信息，并转换为完整响应
+        List<MixRatio> mixRatios = mixRatioRepository.findAll();
+        
+        // 使用现有的转换方法，convertToDetailedResponse已经包含了获取相关表数据的逻辑
+        return mixRatios.stream()
+                .map(this::convertToDetailedResponse)
+                .collect(Collectors.toList());
+    }
+
     public MixRatioResponse getMixRatioById(Long id) {
         MixRatio mixRatio = findMixRatioById(id);
         return convertToDetailedResponse(mixRatio);

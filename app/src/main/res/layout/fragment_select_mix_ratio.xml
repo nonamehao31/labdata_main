@@ -78,6 +78,15 @@
                 android:text="暂无配合比"
                 android:textSize="16sp"
                 android:visibility="gone" />
+                
+            <!-- 加载进度条 -->
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="32dp"
+                android:visibility="gone" />
 
         </LinearLayout>
 

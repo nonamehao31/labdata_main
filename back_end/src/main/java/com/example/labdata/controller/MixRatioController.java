@@ -86,4 +86,15 @@ public class MixRatioController {
                     .body(new ApiResponse<>(false, "配合比删除失败: " + e.getMessage(), null));
         }
     }
+    
+    @GetMapping("/comprehensive")
+    public ResponseEntity<ApiResponse<List<MixRatioResponse>>> getComprehensiveMixRatios() {
+        try {
+            List<MixRatioResponse> mixRatios = mixRatioService.getComprehensiveMixRatios();
+            return ResponseEntity.ok(new ApiResponse<>(true, "综合配合比数据获取成功", mixRatios));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取综合配合比数据失败: " + e.getMessage(), null));
+        }
+    }
 }
