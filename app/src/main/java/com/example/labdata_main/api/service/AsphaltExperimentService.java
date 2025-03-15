@@ -21,7 +21,7 @@ public interface AsphaltExperimentService {
      * @param request 沥青实验请求体
      * @return API响应
      */
-    @POST("/api/asphalt/experiments")
+    @POST("api/asphalt/experiments")
     Call<ApiResponse<AsphaltExperimentResponse>> createAsphaltExperiment(@Body AsphaltExperimentRequest request);
     
     /**
@@ -29,13 +29,13 @@ public interface AsphaltExperimentService {
      * @param requests 沥青实验请求体列表
      * @return API响应
      */
-    @POST("/api/asphalt/experiments/batch")
+    @POST("api/asphalt/experiments/batch")
     Call<ApiResponse<List<AsphaltExperimentResponse>>> createAsphaltExperiments(@Body List<AsphaltExperimentRequest> requests);
     
     /**
      * 获取所有沥青实验任务
      * @return API响应
      */
-    @GET("/api/asphalt/experiments")
+    @GET("api/asphalt/experiments")
     Call<ApiResponse<List<AsphaltExperimentResponse>>> getAsphaltExperiments();
 }

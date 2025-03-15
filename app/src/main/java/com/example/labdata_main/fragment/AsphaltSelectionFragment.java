@@ -20,7 +20,7 @@ import com.example.labdata_main.api.request.TestAsphaltMaterialRequest;
 import com.example.labdata_main.api.response.ApiResponse;
 import com.example.labdata_main.api.response.TestAsphaltMaterialResponse;
 import com.example.labdata_main.api.service.TestAsphaltMaterialService;
-import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.utils.ApiClient;
 import com.example.labdata_main.api.ApiConfig;
 import com.example.labdata_main.dialog.AddAsphaltBottomSheetDialog;
 import com.example.labdata_main.model.AsphaltInfo;
@@ -169,7 +169,8 @@ public class AsphaltSelectionFragment extends Fragment implements AddAsphaltBott
         String authHeader = sharedPrefsManager.getAuthHeader();
         Log.d(TAG, "发起API请求，认证头: " + (authHeader != null ? "已存在" : "不存在"));
         
-        asphaltService.getActiveAsphaltMaterials().enqueue(new Callback<ApiResponse<List<TestAsphaltMaterialResponse>>>() {
+        // 改为获取所有沥青材料，而不只是未过期的
+        asphaltService.getAllAsphaltMaterials().enqueue(new Callback<ApiResponse<List<TestAsphaltMaterialResponse>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<TestAsphaltMaterialResponse>>> call, Response<ApiResponse<List<TestAsphaltMaterialResponse>>> response) {
                 swipeRefreshLayout.setRefreshing(false);

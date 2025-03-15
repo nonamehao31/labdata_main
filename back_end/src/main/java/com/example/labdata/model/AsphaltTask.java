@@ -33,6 +33,9 @@ public class AsphaltTask {
     @Column(name = "status", nullable = false)
     private String status;
     
+    @Column(name = "selected_asphalt_id")
+    private Long selectedAsphaltId;
+    
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
     
@@ -98,6 +101,14 @@ public class AsphaltTask {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Long getSelectedAsphaltId() {
+        return selectedAsphaltId;
+    }
+
+    public void setSelectedAsphaltId(Long selectedAsphaltId) {
+        this.selectedAsphaltId = selectedAsphaltId;
     }
 
     public Instant getCreatedAt() {

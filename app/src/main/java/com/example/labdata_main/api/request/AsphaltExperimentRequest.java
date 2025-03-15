@@ -18,6 +18,9 @@ public class AsphaltExperimentRequest {
     
     @SerializedName("task_status")
     private String taskStatus;
+    
+    @SerializedName("selected_asphalt_id")
+    private Long selectedAsphaltId;
 
     public AsphaltExperimentRequest(String asphaltTaskAssignment) {
         this.asphaltTaskAssignment = asphaltTaskAssignment;
@@ -75,6 +78,14 @@ public class AsphaltExperimentRequest {
     
     public void setTaskStatus(String taskStatus) {
         this.taskStatus = taskStatus;
+    }
+    
+    public Long getSelectedAsphaltId() {
+        return selectedAsphaltId;
+    }
+    
+    public void setSelectedAsphaltId(Long selectedAsphaltId) {
+        this.selectedAsphaltId = selectedAsphaltId;
     }
     
     /**

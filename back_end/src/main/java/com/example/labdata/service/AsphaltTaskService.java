@@ -31,12 +31,15 @@ public class AsphaltTaskService {
     public AsphaltTask createAsphaltExperiment(AsphaltExperimentRequest request) {
         logger.info("创建沥青实验任务: {}", request.getAsphaltExperimentName());
         
-        // 确保asphaltTaskName不为null，给出默认值
+        // 获取请求中的参数
         String taskName = request.getAsphaltTaskName();
         if (taskName == null || taskName.trim().isEmpty()) {
-            taskName = "默认任务_" + System.currentTimeMillis();
-            logger.warn("任务名称为空，使用默认值: {}", taskName);
+            throw new IllegalArgumentException("任务名称不能为空");
         }
+        
+        // 添加调试日志 - 检查沥青ID是否存在
+        Long selectedAsphaltId = request.getSelectedAsphaltId();
+        logger.info("接收到的沥青ID: {}", selectedAsphaltId);
         
         // 前端发送的实验名称实际上是任务分派内容
         String taskAssignment = request.getAsphaltTaskAssignment();
@@ -71,6 +74,10 @@ public class AsphaltTaskService {
         asphaltTask.setStatus(status);
         asphaltTask.setTaskStatus(taskStatus);
         
+        // 设置沥青ID，并记录日志
+        asphaltTask.setSelectedAsphaltId(selectedAsphaltId);
+        logger.info("设置沥青ID: {}", selectedAsphaltId);
+        
         return asphaltTaskRepository.save(asphaltTask);
     }
 
@@ -90,12 +97,15 @@ public class AsphaltTaskService {
                     request.getAsphaltExperimentName(),
                     request.getAsphaltTaskName());
                     
-            // 确保asphaltTaskName不为null，给出默认值
+            // 获取请求中的参数
             String taskName = request.getAsphaltTaskName();
             if (taskName == null || taskName.trim().isEmpty()) {
-                taskName = "默认任务_" + System.currentTimeMillis();
-                logger.warn("任务名称为空，使用默认值: {}", taskName);
+                throw new IllegalArgumentException("任务名称不能为空");
             }
+            
+            // 添加调试日志 - 检查沥青ID是否存在
+            Long selectedAsphaltId = request.getSelectedAsphaltId();
+            logger.info("批量请求中接收到的沥青ID: {}", selectedAsphaltId);
             
             // 前端发送的实验名称实际上是任务分派内容
             String taskAssignment = request.getAsphaltTaskAssignment();
@@ -130,10 +140,9 @@ public class AsphaltTaskService {
             asphaltTask.setStatus(status);
             asphaltTask.setTaskStatus(taskStatus);
             
-            logger.info("创建实体: asphaltTaskName={}, asphaltTaskAssignment={}, taskStatus={}",
-                    asphaltTask.getAsphaltTaskName(),
-                    asphaltTask.getAsphaltTaskAssignment(),
-                    asphaltTask.getTaskStatus());
+            // 设置沥青ID，并记录日志
+            asphaltTask.setSelectedAsphaltId(selectedAsphaltId);
+            logger.info("为任务 {} 设置沥青ID: {}", taskName, selectedAsphaltId);
             
             asphaltTasks.add(asphaltTask);
         }

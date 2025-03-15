@@ -18,7 +18,7 @@ import com.example.labdata_main.api.request.AsphaltExperimentRequest;
 import com.example.labdata_main.api.response.ApiResponse;
 import com.example.labdata_main.api.response.AsphaltExperimentResponse;
 import com.example.labdata_main.api.service.AsphaltExperimentService;
-import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.utils.ApiClient;
 import com.example.labdata_main.api.ApiConfig;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.dialog.ExperimentSelectionBottomSheetDialog;
@@ -70,6 +70,8 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
         if (getArguments() != null) {
             taskName = getArguments().getString(ARG_TASK_NAME);
         }
+        // 确保API客户端已初始化
+        ApiClient.init(requireContext());
         executor = new Executor() {
             @Override
             public void execute(Runnable command) {
@@ -334,6 +336,17 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
                     experiment.getName(),  // 实验名称现在应该是任务分派内容
                     asphalt.getGrade() + "_" + taskName // 使用沥青标号+任务名作为任务名称
                 );
+                
+                // 添加调试日志 - 检查沥青ID是否正确设置
+                Long asphaltId = asphalt.getId();
+                Log.e(TAG, "创建沥青实验请求，沥青ID: " + asphaltId + ", 沥青等级: " + asphalt.getGrade());
+                
+                // 设置选定的沥青ID
+                experimentRequest.setSelectedAsphaltId(asphaltId);
+                
+                // 再次检查请求对象中的沥青ID
+                Log.e(TAG, "请求对象中的沥青ID: " + experimentRequest.getSelectedAsphaltId());
+                
                 asphaltExperimentRequests.add(experimentRequest);
                 
                 Log.e(TAG, "添加沥青实验请求: 任务分派=" + experiment.getName() + ", 任务名称=" + 
@@ -411,7 +424,8 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
         Log.d(TAG, "准备发送沥青实验请求，数量: " + asphaltExperimentRequests.size());
         for (AsphaltExperimentRequest req : asphaltExperimentRequests) {
             Log.d(TAG, "沥青实验请求: 任务分派=" + req.getAsphaltTaskAssignment() + 
-                  ", 任务名称=" + req.getAsphaltTaskName());
+                  ", 任务名称=" + req.getAsphaltTaskName() + 
+                  ", 沥青ID=" + req.getSelectedAsphaltId());
         }
         Log.e(TAG, "API基础URL: " + ApiConfig.BASE_URL);
         

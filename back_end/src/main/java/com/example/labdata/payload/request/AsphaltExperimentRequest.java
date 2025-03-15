@@ -33,6 +33,9 @@ public class AsphaltExperimentRequest {
     @JsonProperty("task_status")
     private String taskStatus;
 
+    @JsonProperty("selected_asphalt_id")
+    private Long selectedAsphaltId;
+
     public AsphaltExperimentRequest() {
     }
 
@@ -118,5 +121,13 @@ public class AsphaltExperimentRequest {
 
     public void setTaskStatus(String taskStatus) {
         this.taskStatus = taskStatus;
+    }
+
+    public Long getSelectedAsphaltId() {
+        return selectedAsphaltId;
+    }
+
+    public void setSelectedAsphaltId(Long selectedAsphaltId) {
+        this.selectedAsphaltId = selectedAsphaltId;
     }
 }
