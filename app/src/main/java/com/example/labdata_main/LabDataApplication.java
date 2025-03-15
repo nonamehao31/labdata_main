@@ -28,6 +28,9 @@ public class LabDataApplication extends Application {
         // 初始化 API 客户端
         ApiClient.init(this);
         
+        // 初始化沥青材料API客户端 - 使用全限定名称
+        com.example.labdata_main.utils.ApiClient.init(this);
+        
         // 初始化认证服务
         AuthService.init(this);
         

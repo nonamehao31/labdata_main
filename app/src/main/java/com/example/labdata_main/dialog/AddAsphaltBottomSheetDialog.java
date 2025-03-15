@@ -2,15 +2,22 @@ package com.example.labdata_main.dialog;
 
 import android.app.DatePickerDialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.example.labdata_main.R;
+import com.example.labdata_main.api.request.TestAsphaltMaterialRequest;
+import com.example.labdata_main.api.response.ApiResponse;
+import com.example.labdata_main.api.response.TestAsphaltMaterialResponse;
+import com.example.labdata_main.api.service.TestAsphaltMaterialService;
 import com.example.labdata_main.model.AsphaltInfo;
+import com.example.labdata_main.utils.ApiClient;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -18,9 +25,16 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class AddAsphaltBottomSheetDialog extends BottomSheetDialogFragment {
+    private static final String TAG = "AddAsphaltDialog";
+    
     private TextInputLayout supplierLayout;
     private TextInputLayout expiryDateLayout;
     private TextInputLayout gradeLayout;
@@ -30,8 +44,16 @@ public class AddAsphaltBottomSheetDialog extends BottomSheetDialogFragment {
     private TextInputEditText gradeInput;
     private AutoCompleteTextView typeDropdown;
     private MaterialButton btnConfirm;
+    
+    // 类型映射，将UI显示文本映射到后端值
+    private static final Map<String, String> TYPE_MAPPING = new HashMap<>();
+    static {
+        TYPE_MAPPING.put("普通沥青", "NORMAL");
+        TYPE_MAPPING.put("改性沥青", "MODIFIED");
+    }
 
     private OnAsphaltAddedListener listener;
+    private TestAsphaltMaterialService asphaltService;
 
     public interface OnAsphaltAddedListener {
         void onAsphaltAdded(AsphaltInfo asphaltInfo);
@@ -44,6 +66,7 @@ public class AddAsphaltBottomSheetDialog extends BottomSheetDialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        asphaltService = ApiClient.getClient().create(TestAsphaltMaterialService.class);
     }
 
     @Nullable
@@ -111,16 +134,60 @@ public class AddAsphaltBottomSheetDialog extends BottomSheetDialogFragment {
     private void setupConfirmButton() {
         btnConfirm.setOnClickListener(v -> {
             if (validateInputs()) {
-                AsphaltInfo asphaltInfo = new AsphaltInfo(
-                        supplierInput.getText().toString().trim(),
-                        expiryDateInput.getText().toString().trim(),
-                        gradeInput.getText().toString().trim(),
-                        typeDropdown.getText().toString().trim()
+                btnConfirm.setEnabled(false);
+                
+                String supplier = supplierInput.getText().toString().trim();
+                String expiryDate = expiryDateInput.getText().toString().trim();
+                String grade = gradeInput.getText().toString().trim();
+                String typeName = typeDropdown.getText().toString().trim();
+                
+                // 将UI显示的类型名称转换为后端需要的类型值
+                String typeValue = TYPE_MAPPING.getOrDefault(typeName, "NORMAL");
+                
+                // 创建请求对象
+                TestAsphaltMaterialRequest request = new TestAsphaltMaterialRequest(
+                        supplier, expiryDate, grade, typeValue
                 );
-                if (listener != null) {
-                    listener.onAsphaltAdded(asphaltInfo);
-                }
-                dismiss();
+                
+                // 调用API保存沥青材料
+                asphaltService.saveAsphaltMaterial(request).enqueue(new Callback<ApiResponse<TestAsphaltMaterialResponse>>() {
+                    @Override
+                    public void onResponse(Call<ApiResponse<TestAsphaltMaterialResponse>> call, Response<ApiResponse<TestAsphaltMaterialResponse>> response) {
+                        btnConfirm.setEnabled(true);
+                        
+                        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                            TestAsphaltMaterialResponse savedMaterial = response.body().getData();
+                            Log.d(TAG, "沥青材料保存成功，ID: " + savedMaterial.getId());
+                            
+                            // 创建AsphaltInfo对象并回调给监听器
+                            AsphaltInfo asphaltInfo = new AsphaltInfo(
+                                    savedMaterial.getId(),
+                                    savedMaterial.getAsphaltGrade(),
+                                    savedMaterial.getAsphaltCatalog(),
+                                    savedMaterial.getAsphaltSupplier(),
+                                    savedMaterial.getAsphaltTestDue()
+                            );
+                            
+                            if (listener != null) {
+                                listener.onAsphaltAdded(asphaltInfo);
+                            }
+                            
+                            Toast.makeText(requireContext(), "沥青材料添加成功", Toast.LENGTH_SHORT).show();
+                            dismiss();
+                        } else {
+                            String errorMessage = response.body() != null ? response.body().getMessage() : "未知错误";
+                            Log.e(TAG, "保存沥青材料失败: " + errorMessage);
+                            Toast.makeText(requireContext(), "保存失败: " + errorMessage, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    
+                    @Override
+                    public void onFailure(Call<ApiResponse<TestAsphaltMaterialResponse>> call, Throwable t) {
+                        btnConfirm.setEnabled(true);
+                        Log.e(TAG, "保存沥青材料请求失败", t);
+                        Toast.makeText(requireContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         });
     }

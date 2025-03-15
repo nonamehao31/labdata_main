@@ -11,7 +11,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
 import com.example.labdata_main.model.AsphaltInfo;
 import com.google.android.material.card.MaterialCardView;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class AsphaltAdapter extends ListAdapter<AsphaltInfo, AsphaltAdapter.AsphaltViewHolder> {
@@ -54,6 +56,26 @@ public class AsphaltAdapter extends ListAdapter<AsphaltInfo, AsphaltAdapter.Asph
         selectedAsphalt.clear();
         notifyDataSetChanged();
     }
+    
+    public void updateData(List<AsphaltInfo> newList) {
+        // 保留选中项
+        Set<AsphaltInfo> newSelections = new HashSet<>();
+        for (AsphaltInfo item : newList) {
+            for (AsphaltInfo selected : selectedAsphalt) {
+                if (item.equals(selected)) {
+                    newSelections.add(item);
+                    break;
+                }
+            }
+        }
+        
+        // 更新选中集合
+        selectedAsphalt.clear();
+        selectedAsphalt.addAll(newSelections);
+        
+        // 更新列表数据
+        submitList(new ArrayList<>(newList));
+    }
 
     static class AsphaltViewHolder extends RecyclerView.ViewHolder {
         private final TextView tvGrade;
@@ -73,7 +95,18 @@ public class AsphaltAdapter extends ListAdapter<AsphaltInfo, AsphaltAdapter.Asph
 
         void bind(AsphaltInfo asphalt, OnAsphaltClickListener listener, boolean isSelected) {
             tvGrade.setText(asphalt.getGrade());
-            tvType.setText(asphalt.getType());
+            
+            // 处理 asphalt.getType() 的显示映射
+            String displayType;
+            if ("NORMAL".equals(asphalt.getType())) {
+                displayType = "普通沥青";
+            } else if ("MODIFIED".equals(asphalt.getType())) {
+                displayType = "改性沥青";
+            } else {
+                displayType = asphalt.getType(); // 默认显示原值
+            }
+            tvType.setText(displayType);
+            
             tvSupplier.setText("供应商：" + asphalt.getSupplier());
             tvExpiryDate.setText("检测截止日期：" + asphalt.getExpiryDate());
             
@@ -95,6 +128,12 @@ public class AsphaltAdapter extends ListAdapter<AsphaltInfo, AsphaltAdapter.Asph
     private static class AsphaltDiffCallback extends DiffUtil.ItemCallback<AsphaltInfo> {
         @Override
         public boolean areItemsTheSame(@NonNull AsphaltInfo oldItem, @NonNull AsphaltInfo newItem) {
+            // 如果有ID，优先使用ID判断
+            if (oldItem.getId() != null && newItem.getId() != null) {
+                return oldItem.getId().equals(newItem.getId());
+            }
+            
+            // 没有ID时回退到基于内容的比较
             return oldItem.getSupplier().equals(newItem.getSupplier()) &&
                    oldItem.getExpiryDate().equals(newItem.getExpiryDate()) &&
                    oldItem.getGrade().equals(newItem.getGrade()) &&
@@ -103,10 +142,7 @@ public class AsphaltAdapter extends ListAdapter<AsphaltInfo, AsphaltAdapter.Asph
 
         @Override
         public boolean areContentsTheSame(@NonNull AsphaltInfo oldItem, @NonNull AsphaltInfo newItem) {
-            return oldItem.getSupplier().equals(newItem.getSupplier()) &&
-                   oldItem.getExpiryDate().equals(newItem.getExpiryDate()) &&
-                   oldItem.getGrade().equals(newItem.getGrade()) &&
-                   oldItem.getType().equals(newItem.getType());
+            return oldItem.equals(newItem);
         }
     }
 }

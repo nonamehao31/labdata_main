@@ -15,6 +15,10 @@ import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ExperimentType;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class ExperimentSelectionBottomSheetDialog extends BottomSheetDialogFragment {
@@ -50,7 +54,18 @@ public class ExperimentSelectionBottomSheetDialog extends BottomSheetDialogFragm
         // 加载实验类型
         new Thread(() -> {
             AppDatabase db = AppDatabase.getInstance(requireContext());
-            adapter.submitList(db.experimentTypeDao().getExperimentTypesByCategory("ASPHALT"));
+            List<ExperimentType> experiments = db.experimentTypeDao().getExperimentTypesByCategory("ASPHALT");
+            
+            // 去除重复的实验类型（通过实验名称去重）
+            Map<String, ExperimentType> uniqueExperiments = new HashMap<>();
+            for (ExperimentType experiment : experiments) {
+                uniqueExperiments.put(experiment.getName(), experiment);
+            }
+            
+            requireActivity().runOnUiThread(() -> {
+                // 将去重后的实验列表转换回列表并提交给适配器
+                adapter.submitList(new ArrayList<>(uniqueExperiments.values()));
+            });
         }).start();
 
         btnConfirm.setOnClickListener(v -> {

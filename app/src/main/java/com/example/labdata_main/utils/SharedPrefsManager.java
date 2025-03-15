@@ -106,7 +106,7 @@ public class SharedPrefsManager {
      * @return JWT令牌字符串
      */
     public String getAuthToken() {
-        return sharedPreferences.getString(KEY_AUTH_TOKEN, null);
+        return sharedPreferences.getString(KEY_AUTH_TOKEN, "");
     }
 
     /**
@@ -234,5 +234,14 @@ public class SharedPrefsManager {
     public String getUserTypeString() {
         int userType = getUserType();
         return userType == 1 ? "admin" : "user";
+    }
+
+    /**
+     * 清除认证令牌
+     */
+    public void clearAuthToken() {
+        editor.remove(KEY_AUTH_TOKEN);
+        editor.remove(KEY_TOKEN_TYPE);
+        editor.apply();
     }
 }

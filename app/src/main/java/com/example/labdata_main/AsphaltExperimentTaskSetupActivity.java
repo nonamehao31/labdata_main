@@ -3,13 +3,16 @@ package com.example.labdata_main;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.FragmentManager;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 import com.example.labdata_main.fragment.AsphaltExperimentAssignmentFragment;
@@ -64,12 +67,40 @@ public class AsphaltExperimentTaskSetupActivity extends AppCompatActivity {
 
         btnNext.setOnClickListener(v -> {
             if (viewPager.getCurrentItem() < 1) {
+                Toast.makeText(this, "正在前往下一步...", Toast.LENGTH_SHORT).show();
                 viewPager.setCurrentItem(viewPager.getCurrentItem() + 1);
             } else {
-                // 发送广播通知任务更新
-                Intent intent = new Intent("com.example.labdata_main.TASK_UPDATED");
-                sendBroadcast(intent);
-                finish();
+                Toast.makeText(this, "任务保存中...", Toast.LENGTH_SHORT).show();
+                
+                // 获取当前显示的AsphaltExperimentAssignmentFragment
+                FragmentStateAdapter adapter = (FragmentStateAdapter) viewPager.getAdapter();
+                if (adapter != null && adapter.getItemCount() > 1) {
+                    FragmentManager fragmentManager = getSupportFragmentManager();
+                    Fragment currentFragment = fragmentManager.findFragmentByTag("f1");
+                    
+                    if (currentFragment instanceof AsphaltExperimentAssignmentFragment) {
+                        // 调用Fragment的保存方法
+                        ((AsphaltExperimentAssignmentFragment) currentFragment).saveExperimentTask();
+                        
+                        // 延迟一点时间再结束Activity，给API请求一些时间
+                        new Handler().postDelayed(() -> {
+                            // 发送广播通知任务更新
+                            Intent intent = new Intent("com.example.labdata_main.TASK_UPDATED");
+                            sendBroadcast(intent);
+                            finish();
+                        }, 2000); // 延迟2秒
+                    } else {
+                        // 直接结束Activity
+                        Intent intent = new Intent("com.example.labdata_main.TASK_UPDATED");
+                        sendBroadcast(intent);
+                        finish();
+                    }
+                } else {
+                    // 如果无法获取Fragment，则直接结束
+                    Intent intent = new Intent("com.example.labdata_main.TASK_UPDATED");
+                    sendBroadcast(intent);
+                    finish();
+                }
             }
         });
     }
