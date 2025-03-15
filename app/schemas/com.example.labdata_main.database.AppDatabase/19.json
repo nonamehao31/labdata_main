@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 19,
-    "identityHash": "38cb4a20c5cceba126135da1f382b0fb",
+    "identityHash": "cc5126c07b1d73744709d02bdd85fc88",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -62,7 +62,7 @@
       },
       {
         "tableName": "specimens",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, FOREIGN KEY(`mix_ratio_id`) REFERENCES `mix_ratios`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER DEFAULT 0, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, `created_by` INTEGER DEFAULT 0)",
         "fields": [
           {
             "fieldPath": "id",
@@ -74,7 +74,8 @@
             "fieldPath": "mixRatioId",
             "columnName": "mix_ratio_id",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": false,
+            "defaultValue": "0"
           },
           {
             "fieldPath": "mixingTemperature",
@@ -141,6 +142,13 @@
             "affinity": "REAL",
             "notNull": true,
             "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "INTEGER",
+            "notNull": false,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -160,19 +168,7 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_specimens_mix_ratio_id` ON `${TABLE_NAME}` (`mix_ratio_id`)"
           }
         ],
-        "foreignKeys": [
-          {
-            "table": "mix_ratios",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "mix_ratio_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
+        "foreignKeys": []
       },
       {
         "tableName": "materials",
@@ -948,7 +944,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '38cb4a20c5cceba126135da1f382b0fb')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cc5126c07b1d73744709d02bdd85fc88')"
     ]
   }
 }

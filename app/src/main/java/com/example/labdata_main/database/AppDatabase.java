@@ -46,7 +46,7 @@ import java.util.List;
     ExperimentType.class,  
     ExperimentDataField.class,  
     AsphaltExperimentData.class
-}, version = 19)
+}, version = 20)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static final String TAG = "AppDatabase";
@@ -357,6 +357,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_19_20 = new Migration(19, 20) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Log.d(TAG, "Running migration from version 19 to version 20");
+            database.execSQL("ALTER TABLE specimens ADD COLUMN specimen_company TEXT");
+        }
+    };
+
     private static RoomDatabase.Callback roomCallback = new RoomDatabase.Callback() {
         @Override
         public void onCreate(@NonNull SupportSQLiteDatabase db) {
@@ -572,7 +580,7 @@ public abstract class AppDatabase extends RoomDatabase {
                             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
                             MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+                            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
                     .addCallback(roomCallback)
                     // 如果数据库升级失败，允许重建数据库
                     .fallbackToDestructiveMigration()

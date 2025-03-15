@@ -1,27 +1,41 @@
 package com.example.labdata_main.api.response;
 
+import com.google.gson.annotations.SerializedName;
+
 /**
- * 登录响应
+ * 登录响应数据类
  */
 public class LoginResponse {
-    private String accessToken;
-    private Long userId;
-    private String username;
-    private String tokenType = "Bearer";
-    private String companyId;  // 公司ID
-    private String companyName;  // 公司名称
     
+    @SerializedName("accessToken")
+    private String accessToken;
+    
+    @SerializedName("tokenType")
+    private String tokenType;
+    
+    @SerializedName("userId")
+    private long userId;
+    
+    @SerializedName("username")
+    private String username;
+    
+    @SerializedName("companyId")
+    private String companyId;
+    
+    // 默认构造函数
     public LoginResponse() {
     }
     
-    public LoginResponse(String accessToken, Long userId, String username, String companyId, String companyName) {
+    // 带参数的构造函数
+    public LoginResponse(String accessToken, String tokenType, long userId, String username, String companyId) {
         this.accessToken = accessToken;
+        this.tokenType = tokenType;
         this.userId = userId;
         this.username = username;
         this.companyId = companyId;
-        this.companyName = companyName;
     }
     
+    // Getters and Setters
     public String getAccessToken() {
         return accessToken;
     }
@@ -30,11 +44,19 @@ public class LoginResponse {
         this.accessToken = accessToken;
     }
     
-    public Long getUserId() {
+    public String getTokenType() {
+        return tokenType;
+    }
+    
+    public void setTokenType(String tokenType) {
+        this.tokenType = tokenType;
+    }
+    
+    public long getUserId() {
         return userId;
     }
     
-    public void setUserId(Long userId) {
+    public void setUserId(long userId) {
         this.userId = userId;
     }
     
@@ -46,27 +68,11 @@ public class LoginResponse {
         this.username = username;
     }
     
-    public String getTokenType() {
-        return tokenType;
-    }
-    
-    public void setTokenType(String tokenType) {
-        this.tokenType = tokenType;
-    }
-    
     public String getCompanyId() {
         return companyId;
     }
     
     public void setCompanyId(String companyId) {
         this.companyId = companyId;
-    }
-    
-    public String getCompanyName() {
-        return companyName;
-    }
-    
-    public void setCompanyName(String companyName) {
-        this.companyName = companyName;
     }
 }

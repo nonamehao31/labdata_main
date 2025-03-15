@@ -73,12 +73,17 @@ public class MoldingMethodAdapter extends RecyclerView.Adapter<MoldingMethodAdap
         // 设置标题编号
         holder.tvMoldingMethodTitle.setText(String.format("制件方法%d", position + 1));
         
-        String mixingDetails = String.format("拌合温度: %.1f℃\n拌合速度: %.1f r/min\n拌合时间: %.1f s", 
-            method.getMixingTemperature(), 
-            method.getMixingSpeed(), 
-            method.getMixingTime());
+        // 检查拌合参数是否为0，如果是则显示"暂无数据"
+        if (method.getMixingTemperature() == 0 && method.getMixingSpeed() == 0 && method.getMixingTime() == 0) {
+            holder.tvMixingMethodDetails.setText("拌合参数：暂无数据");
+        } else {
+            String mixingDetails = String.format("拌合温度: %.1f℃\n拌合速度: %.1f r/min\n拌合时间: %.1f s", 
+                method.getMixingTemperature(), 
+                method.getMixingSpeed(), 
+                method.getMixingTime());
+            holder.tvMixingMethodDetails.setText(mixingDetails);
+        }
         
-        holder.tvMixingMethodDetails.setText(mixingDetails);
         holder.tvCompactionMethodDetails.setText("" + method.getCompactionMethod());
         
         holder.btnDeleteMoldingMethod.setOnClickListener(v -> showDeleteConfirmationDialog(position));

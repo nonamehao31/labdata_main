@@ -14,6 +14,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewpager2.widget.ViewPager2;
 import com.example.labdata_main.adapter.MixRatioAdapter;
 import com.example.labdata_main.adapter.MixRatioAdapter.OnMixRatioDeleteListener;
@@ -45,6 +46,7 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
     private ExecutorService executorService;
     private MixRatioApiService apiService;
     private List<MixRatio> selectedMixRatios = new ArrayList<>();
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -71,6 +73,7 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
         rvMixRatios = view.findViewById(R.id.rvMixRatios);
         emptyView = view.findViewById(R.id.emptyView);
         progressBar = view.findViewById(R.id.progressBar);
+        swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
 
         // 初始化配比列表
         rvMixRatios.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -84,6 +87,11 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
             Intent intent = new Intent(requireContext(), MixRatioEditActivity.class);
             startActivity(intent);
         });
+        
+        // 设置下拉刷新监听器
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(this::loadMixRatios);
+        }
     }
 
     private void loadMixRatios() {
@@ -95,6 +103,11 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
             @Override
             public void onResponse(Call<ApiResponse<List<MixRatioResponse>>> call, Response<ApiResponse<List<MixRatioResponse>>> response) {
                 showLoading(false);
+                
+                // 停止刷新动画
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
                 
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     List<MixRatioResponse> mixRatioResponses = response.body().getData();
@@ -160,6 +173,12 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
             @Override
             public void onFailure(Call<ApiResponse<List<MixRatioResponse>>> call, Throwable t) {
                 showLoading(false);
+                
+                // 停止刷新动画
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+                
                 Log.e(TAG, "API调用失败", t);
                 showError("网络请求失败: " + t.getMessage());
                 
@@ -175,6 +194,11 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
         executorService.execute(() -> {
             List<MixRatio> mixRatios = databaseHelper.mixRatioDao().getAllMixRatios();
             requireActivity().runOnUiThread(() -> {
+                // 停止刷新动画
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+                
                 mixRatioAdapter.submitList(mixRatios);
                 updateEmptyView(mixRatios.isEmpty());
                 checkInputValidity();

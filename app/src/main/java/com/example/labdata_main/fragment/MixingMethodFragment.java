@@ -83,8 +83,17 @@ public class MixingMethodFragment extends Fragment {
         return Float.parseFloat(etMixingSpeed.getText().toString().trim());
     }
 
-    public float getMixingTime() {
-        return Float.parseFloat(etMixingTime.getText().toString().trim());
+    public int getMixingTime() {
+        try {
+            // 解析用户输入的拌合时间，并直接以整数形式返回
+            String timeStr = etMixingTime.getText().toString().trim();
+            if (timeStr.isEmpty()) {
+                return 0; // 如果用户未输入，返回默认值0
+            }
+            return (int)Float.parseFloat(timeStr);
+        } catch (NumberFormatException e) {
+            return 0; // 解析失败时返回默认值0
+        }
     }
 
     @Override

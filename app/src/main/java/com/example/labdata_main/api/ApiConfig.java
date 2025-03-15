@@ -61,6 +61,13 @@ public class ApiConfig {
     public static final String SAND_MATERIAL_BY_ID_URL = "api/materials/sand/{id}";
     public static final String STONE_MATERIAL_URL = "api/materials/stone";
     public static final String STONE_MATERIAL_BY_ID_URL = "api/materials/stone/{id}";
+    
+    // 混合料任务相关
+    public static final String SAVE_MIXTURE_TASK_URL = "api/mixture-tasks";
+    public static final String GET_USER_MIXTURE_TASKS_URL = "api/mixture-tasks/user";
+    public static final String GET_COMPANY_MIXTURE_TASKS_URL = "api/mixture-tasks/company";
+    public static final String GET_ALL_MIXTURE_TASKS_URL = "api/mixtureTask/list";
+    public static final String GET_MIXTURE_TASKS_BY_TYPE_URL = "api/mixtureTask/listByType";
 
     /**
      * JSON媒体类型

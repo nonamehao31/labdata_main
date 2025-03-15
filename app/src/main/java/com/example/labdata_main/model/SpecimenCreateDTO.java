@@ -1,66 +1,43 @@
 package com.example.labdata_main.model;
 
-import androidx.room.ColumnInfo;
-import androidx.room.Entity;
-import androidx.room.Index;
-import androidx.room.PrimaryKey;
-
-@Entity(tableName = "specimens",
-        indices = {@Index("mix_ratio_id")})
-public class Specimen {
-    @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = "id")
-    private long id;
-
-    @ColumnInfo(name = "mix_ratio_id", defaultValue = "0")
+/**
+ * 用于创建Specimen的数据传输对象，不包含ID字段
+ * 这是为了解决创建新Specimen时ID默认值(0)被发送到后端的问题
+ */
+public class SpecimenCreateDTO {
     private Long mixRatioId;
-
-    @ColumnInfo(name = "mixing_temperature")
     private float mixingTemperature;
-
-    @ColumnInfo(name = "mixing_speed")
     private float mixingSpeed;
-
-    @ColumnInfo(name = "mixing_time")
     private Integer mixingTime;
-
-    @ColumnInfo(name = "compaction_method", defaultValue = "")
     private String compactionMethod;
-
-    @ColumnInfo(name = "creation_time")
     private long creationTime;
-
-    @ColumnInfo(name = "cut_shape")
     private String cutShape;
-
-    @ColumnInfo(name = "cut_count", defaultValue = "1")
     private int cutCount;
-
-    @ColumnInfo(name = "length", defaultValue = "0")
     private float length;
-
-    @ColumnInfo(name = "width", defaultValue = "0")
     private float width;
-
-    @ColumnInfo(name = "height", defaultValue = "0")
     private float height;
-
-    @ColumnInfo(name = "radius", defaultValue = "0")
     private float radius;
+    private Long createdBy; // 添加创建者ID字段
+    private Long specimenCompany; // 添加所属单位ID字段
     
-    @ColumnInfo(name = "created_by", defaultValue = "0")
-    private Long createdBy;
-
-    @ColumnInfo(name = "specimen_company", defaultValue = "0")
-    private Long specimenCompany;
-
-    // Getters and Setters
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
+    // 从Specimen对象创建DTO，但不包含ID
+    public static SpecimenCreateDTO fromSpecimen(Specimen specimen) {
+        SpecimenCreateDTO dto = new SpecimenCreateDTO();
+        dto.mixRatioId = specimen.getMixRatioId();
+        dto.mixingTemperature = specimen.getMixingTemperature();
+        dto.mixingSpeed = specimen.getMixingSpeed();
+        dto.mixingTime = specimen.getMixingTime();
+        dto.compactionMethod = specimen.getCompactionMethod();
+        dto.creationTime = specimen.getCreationTime();
+        dto.cutShape = specimen.getCutShape();
+        dto.cutCount = specimen.getCutCount();
+        dto.length = specimen.getLength();
+        dto.width = specimen.getWidth();
+        dto.height = specimen.getHeight();
+        dto.radius = specimen.getRadius();
+        dto.createdBy = specimen.getCreatedBy(); // 添加创建者ID
+        dto.specimenCompany = specimen.getSpecimenCompany(); // 添加所属单位ID
+        return dto;
     }
 
     public Long getMixRatioId() {

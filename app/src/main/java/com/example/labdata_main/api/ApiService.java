@@ -4,6 +4,7 @@ import com.example.labdata_main.api.dto.SyncExperimentTaskRequest;
 import com.example.labdata_main.api.request.AsphaltMaterialRequest;
 import com.example.labdata_main.api.request.DeviceRequest;
 import com.example.labdata_main.api.request.LoginRequest;
+import com.example.labdata_main.api.request.MixtureTaskRequest;
 import com.example.labdata_main.api.request.ProjectRequest;
 import com.example.labdata_main.api.request.RegisterRequest;
 import com.example.labdata_main.api.request.SandMaterialRequest;
@@ -17,6 +18,7 @@ import com.example.labdata_main.api.response.SandMaterialResponse;
 import com.example.labdata_main.api.response.StoneMaterialResponse;
 import com.example.labdata_main.api.response.SupportedDeviceResponse;
 import com.example.labdata_main.model.ExperimentTask;
+import com.example.labdata_main.model.MixtureTaskModel;
 
 import java.util.List;
 
@@ -27,7 +29,6 @@ import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
-import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
@@ -260,4 +261,41 @@ public interface ApiService {
      */
     @GET(ApiConfig.STONE_MATERIAL_URL)
     Call<ApiResponse<List<StoneMaterialResponse>>> getAllStoneMaterials(@Query("companyId") String companyId);
+
+    /**
+     * 获取所有混合料任务类型
+     * @return 混合料任务类型列表
+     */
+    @GET(ApiConfig.GET_ALL_MIXTURE_TASKS_URL)
+    Call<ApiResponse<List<MixtureTaskModel>>> getAllMixtureTasks();
+
+    /**
+     * 根据类型获取混合料任务
+     * @param taskType 任务类型
+     * @return 混合料任务类型列表
+     */
+    @GET(ApiConfig.GET_MIXTURE_TASKS_BY_TYPE_URL)
+    Call<List<MixtureTaskModel>> getMixtureTasksByType(@Query("taskType") String taskType);
+
+    /**
+     * 保存用户混合料任务
+     * @param request 混合料任务请求
+     * @return 保存结果响应
+     */
+    @POST(ApiConfig.SAVE_MIXTURE_TASK_URL)
+    Call<ApiResponse<String>> saveMixtureTask(@Body MixtureTaskRequest request);
+    
+    /**
+     * 获取当前用户的混合料任务
+     * @return 用户任务列表
+     */
+    @GET(ApiConfig.GET_USER_MIXTURE_TASKS_URL)
+    Call<ApiResponse<List<MixtureTaskModel>>> getUserMixtureTasks();
+    
+    /**
+     * 获取当前用户单位的混合料任务
+     * @return 单位任务列表
+     */
+    @GET(ApiConfig.GET_COMPANY_MIXTURE_TASKS_URL)
+    Call<ApiResponse<List<MixtureTaskModel>>> getCompanyMixtureTasks();
 }

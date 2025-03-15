@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 20,
-    "identityHash": "05c7ba12e2ad44e934ee0a5e1f785572",
+    "identityHash": "0623985c33239cd9fb050874e352570d",
     "entities": [
       {
         "tableName": "mix_ratios",
@@ -62,7 +62,7 @@
       },
       {
         "tableName": "specimens",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, FOREIGN KEY(`mix_ratio_id`) REFERENCES `mix_ratios`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER DEFAULT 0, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `mixing_time` INTEGER, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, `created_by` INTEGER DEFAULT 0, `specimen_company` INTEGER DEFAULT 0)",
         "fields": [
           {
             "fieldPath": "id",
@@ -74,7 +74,8 @@
             "fieldPath": "mixRatioId",
             "columnName": "mix_ratio_id",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": false,
+            "defaultValue": "0"
           },
           {
             "fieldPath": "mixingTemperature",
@@ -87,6 +88,12 @@
             "columnName": "mixing_speed",
             "affinity": "REAL",
             "notNull": true
+          },
+          {
+            "fieldPath": "mixingTime",
+            "columnName": "mixing_time",
+            "affinity": "INTEGER",
+            "notNull": false
           },
           {
             "fieldPath": "compactionMethod",
@@ -141,6 +148,20 @@
             "affinity": "REAL",
             "notNull": true,
             "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "INTEGER",
+            "notNull": false,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "specimenCompany",
+            "columnName": "specimen_company",
+            "affinity": "INTEGER",
+            "notNull": false,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -160,19 +181,7 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_specimens_mix_ratio_id` ON `${TABLE_NAME}` (`mix_ratio_id`)"
           }
         ],
-        "foreignKeys": [
-          {
-            "table": "mix_ratios",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "mix_ratio_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
+        "foreignKeys": []
       },
       {
         "tableName": "materials",
@@ -386,7 +395,7 @@
       },
       {
         "tableName": "experiment_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT NOT NULL, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT, `mixingMethodId` INTEGER, `mixRatioId` INTEGER, `materialIds` TEXT, `asphaltMaterial` TEXT, `rockMaterial` TEXT, `sandMaterial` TEXT, `mixingTemperature` REAL, `mixingSpeed` REAL, `mixingTime` INTEGER, `compactionMethod` TEXT, `rockGradation` TEXT, `sandGradation` TEXT, `synced` INTEGER NOT NULL, `syncStatus` TEXT, `clientId` INTEGER, `organizationId` TEXT, `assignedExperiments` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT NOT NULL, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT, `mixingMethodId` INTEGER, `mixRatioId` INTEGER, `materialIds` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -523,90 +532,6 @@
           {
             "fieldPath": "materialIds",
             "columnName": "materialIds",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "asphaltMaterial",
-            "columnName": "asphaltMaterial",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "rockMaterial",
-            "columnName": "rockMaterial",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "sandMaterial",
-            "columnName": "sandMaterial",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "mixingTemperature",
-            "columnName": "mixingTemperature",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "mixingSpeed",
-            "columnName": "mixingSpeed",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "mixingTime",
-            "columnName": "mixingTime",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "compactionMethod",
-            "columnName": "compactionMethod",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "rockGradation",
-            "columnName": "rockGradation",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "sandGradation",
-            "columnName": "sandGradation",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "synced",
-            "columnName": "synced",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "syncStatus",
-            "columnName": "syncStatus",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "clientId",
-            "columnName": "clientId",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "organizationId",
-            "columnName": "organizationId",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "assignedExperiments",
-            "columnName": "assignedExperiments",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -1032,7 +957,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '05c7ba12e2ad44e934ee0a5e1f785572')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0623985c33239cd9fb050874e352570d')"
     ]
   }
 }

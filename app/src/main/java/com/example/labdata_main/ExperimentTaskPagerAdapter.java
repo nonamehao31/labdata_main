@@ -75,4 +75,8 @@ public class ExperimentTaskPagerAdapter extends FragmentStateAdapter {
     public ExperimentAssignmentFragment getExperimentAssignmentFragment() {
         return (ExperimentAssignmentFragment) fragments.get(3);
     }
+    
+    public SelectProjectFragment getProjectFragment() {
+        return (SelectProjectFragment) fragments.get(0);
+    }
 }

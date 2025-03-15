@@ -14,12 +14,15 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.labdata_main.adapter.MoldingMethodAdapter;
+import com.example.labdata_main.api.CompactionMethodApiService;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.fragment.CompactionMethodFragment;
 import com.example.labdata_main.fragment.MixingMethodFragment;
+import com.example.labdata_main.model.ApiResponse;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -32,6 +35,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import androidx.viewpager2.adapter.FragmentStateAdapter;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class SelectMoldingMethodFragment extends Fragment implements MixingMethodFragment.OnNextStepListener {
 
@@ -55,6 +61,7 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private AppDatabase database;
     private List<MixRatio> selectedMixRatios = new ArrayList<>();
     private MoldingMethod selectedMoldingMethod;
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -86,6 +93,8 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         initViews(view);
         setupListeners();
         setupRecyclerView();
+        
+        // 从API加载制件方法
         loadMoldingMethods();
 
         return view;
@@ -95,10 +104,15 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         rvMoldingMethods = view.findViewById(R.id.rvMoldingMethods);
         emptyView = view.findViewById(R.id.emptyView_at_molding);
         cardAddMoldingMethod = view.findViewById(R.id.cardAddMoldingMethod);
+        swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
     }
 
     private void setupListeners() {
         cardAddMoldingMethod.setOnClickListener(v -> showMoldingMethodBottomSheet());
+        
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(this::loadMoldingMethods);
+        }
     }
 
     private void setupRecyclerView() {
@@ -119,18 +133,130 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     }
 
     private void loadMoldingMethods() {
+        Log.d("SelectMoldingMethod", "开始加载制件方法数据...");
+        
+        // 显示刷新动画
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setRefreshing(true);
+        }
+        
+        try {
+            // 获取应用级别初始化的API服务实例
+            CompactionMethodApiService apiService = LabDataApplication.getCompactionMethodApiService();
+            
+            if (apiService == null) {
+                Log.e("SelectMoldingMethod", "API服务实例为空，尝试创建新实例");
+                apiService = new CompactionMethodApiService(requireContext());
+            }
+            
+            Log.d("SelectMoldingMethod", "准备调用API服务");
+            
+            // 调用API获取当前用户所属单位的制件方法
+            apiService.getOrganizationCompactionMethods(new Callback<ApiResponse<List<MoldingMethod>>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<List<MoldingMethod>>> call, Response<ApiResponse<List<MoldingMethod>>> response) {
+                    if (getActivity() == null) {
+                        Log.d("SelectMoldingMethod", "Fragment已分离，忽略API响应");
+                        return;  // 避免Fragment已分离的情况
+                    }
+                    
+                    Log.d("SelectMoldingMethod", "收到API响应: " + response.code());
+                    
+                    if (response.isSuccessful() && response.body() != null) {
+                        ApiResponse<List<MoldingMethod>> apiResponse = response.body();
+                        Log.d("SelectMoldingMethod", "API响应成功: " + (apiResponse.isSuccess() ? "成功" : "失败") + 
+                              ", 消息: " + apiResponse.getMessage());
+                        
+                        if (apiResponse.isSuccess() && apiResponse.getData() != null) {
+                            // 成功获取数据
+                            requireActivity().runOnUiThread(() -> {
+                                moldingMethods.clear();
+                                moldingMethods.addAll(apiResponse.getData());
+                                moldingMethodAdapter.notifyDataSetChanged();
+                                updateEmptyView();
+                                
+                                // 隐藏刷新动画
+                                if (swipeRefreshLayout != null) {
+                                    swipeRefreshLayout.setRefreshing(false);
+                                }
+                                
+                                Log.d("SelectMoldingMethod", "成功从服务器获取" + moldingMethods.size() + "个制件方法");
+                            });
+                        } else {
+                            // API返回失败信息
+                            String errorMsg = apiResponse.getMessage() != null ? apiResponse.getMessage() : "获取制件方法失败";
+                            Log.e("SelectMoldingMethod", "API返回错误: " + errorMsg);
+                            showErrorAndFallbackToLocal(errorMsg);
+                        }
+                    } else {
+                        // HTTP请求失败
+                        String errorMsg = "服务器连接失败: " + response.code();
+                        Log.e("SelectMoldingMethod", errorMsg);
+                        showErrorAndFallbackToLocal(errorMsg);
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<ApiResponse<List<MoldingMethod>>> call, Throwable t) {
+                    if (getActivity() == null) return;  // 避免Fragment已分离的情况
+                    
+                    // 记录错误详情
+                    Log.e("SelectMoldingMethod", "API调用失败", t);
+                    showErrorAndFallbackToLocal("网络错误: " + t.getMessage());
+                }
+            });
+            
+            Log.d("SelectMoldingMethod", "API请求已发送，等待响应...");
+        } catch (Exception e) {
+            Log.e("SelectMoldingMethod", "加载制件方法时发生异常", e);
+            showErrorAndFallbackToLocal("初始化API服务失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 显示错误并回退到本地数据库加载
+     * @param errorMessage 错误信息
+     */
+    private void showErrorAndFallbackToLocal(String errorMessage) {
+        if (getActivity() == null) return;  // 避免Fragment已分离的情况
+        
+        requireActivity().runOnUiThread(() -> {
+            // 隐藏刷新动画
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setRefreshing(false);
+            }
+            
+            // 显示错误提示
+            Toast.makeText(requireContext(), errorMessage + "，使用本地数据", Toast.LENGTH_SHORT).show();
+            
+            // 回退到本地数据库
+            loadMoldingMethodsFromLocalDb();
+        });
+    }
+    
+    /**
+     * 从本地数据库加载制件方法（作为备选方案）
+     */
+    private void loadMoldingMethodsFromLocalDb() {
         new Thread(() -> {
             try {
                 List<MoldingMethod> methods = database.moldingMethodDao().getAllMoldingMethods();
+                
+                if (getActivity() == null) return;  // 避免Fragment已分离的情况
+                
                 requireActivity().runOnUiThread(() -> {
                     moldingMethods.clear();
                     moldingMethods.addAll(methods);
                     moldingMethodAdapter.notifyDataSetChanged();
                     updateEmptyView();
+                    
+                    Log.d("SelectMoldingMethod", "已从本地数据库加载" + methods.size() + "个制件方法");
                 });
             } catch (Exception e) {
+                if (getActivity() == null) return;
+                
                 requireActivity().runOnUiThread(() -> {
-                    android.util.Log.e("LoadMoldingMethods", "加载制件方法失败", e);
+                    Log.e("LoadMoldingMethods", "加载本地制件方法失败", e);
                     Toast.makeText(requireContext(), "加载制件方法失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
@@ -267,7 +393,13 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     @Override
     public void onResume() {
         super.onResume();
-        // 在 Fragment 恢复时更新按钮状态
+        
+        // 在Fragment恢复时刷新数据
+        if (moldingMethods.isEmpty()) {
+            loadMoldingMethods();
+        }
+        
+        // 在Fragment恢复时更新按钮状态
         if (getActivity() instanceof ExperimentTaskSetupActivity) {
             ((ExperimentTaskSetupActivity) getActivity()).updateNextButton();
         }
@@ -305,5 +437,13 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     // 添加获取已选择制件方法列表的方法
     public List<MoldingMethod> getSelectedMethods() {
         return selectedMethods;
+    }
+    
+    /**
+     * 获取选中的配比列表，供子Fragment使用
+     * @return 已选择的配比列表
+     */
+    public List<MixRatio> getSelectedMixRatios() {
+        return selectedMixRatios;
     }
 }
