@@ -15,6 +15,7 @@ public class AsphaltTaskResponse {
     private String asphaltExperimentType;
     private String asphaltTaskName;
     private String asphaltTaskAssignment;
+    private String asphaltTaskAssignmentId;
     private String taskStatus;
     private String status;
     private Long selectedAsphaltId;
@@ -62,6 +63,14 @@ public class AsphaltTaskResponse {
     
     public void setAsphaltTaskAssignment(String asphaltTaskAssignment) {
         this.asphaltTaskAssignment = asphaltTaskAssignment;
+    }
+    
+    public String getAsphaltTaskAssignmentId() {
+        return asphaltTaskAssignmentId;
+    }
+    
+    public void setAsphaltTaskAssignmentId(String asphaltTaskAssignmentId) {
+        this.asphaltTaskAssignmentId = asphaltTaskAssignmentId;
     }
     
     public String getTaskStatus() {

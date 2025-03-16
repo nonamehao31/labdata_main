@@ -10,9 +10,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 沥青实验任务服务类
@@ -55,6 +57,16 @@ public class AsphaltTaskService {
             logger.info("任务分派为空，使用前端发送的实验名称作为任务分派: {}", taskAssignment);
         }
         
+        // 生成统一的asphalt_task_assignment_id
+        String assignmentId = request.getAsphaltTaskAssignmentId();
+        if (assignmentId == null || assignmentId.trim().isEmpty()) {
+            // 如果未提供分配ID，则生成一个新的UUID
+            assignmentId = generateAsphaltTaskAssignmentId();
+            logger.info("生成新的任务分配ID: {}", assignmentId);
+        } else {
+            logger.info("使用提供的任务分配ID: {}", assignmentId);
+        }
+        
         // 将任务名称也用作实验名称，因为experimentName字段是不必要的
         String experimentName = taskName;
         
@@ -77,6 +89,7 @@ public class AsphaltTaskService {
         asphaltTask.setAsphaltExperimentType(request.getAsphaltExperimentType());
         asphaltTask.setAsphaltTaskName(taskName);
         asphaltTask.setAsphaltTaskAssignment(taskAssignment);
+        asphaltTask.setAsphaltTaskAssignmentId(assignmentId);  // 设置任务分配ID
         asphaltTask.setStatus(status);
         asphaltTask.setTaskStatus(taskStatus);
         
@@ -118,13 +131,20 @@ public class AsphaltTaskService {
     public List<AsphaltTask> createAsphaltExperiments(List<AsphaltExperimentRequest> requests) {
         logger.info("批量创建沥青实验任务: {} 条", requests.size());
         
+        // 为整个批次生成一个统一的任务分配ID
+        String batchAssignmentId = generateAsphaltTaskAssignmentId();
+        logger.info("为整个批次生成统一的任务分配ID: {}", batchAssignmentId);
+        
         List<AsphaltTask> result = new ArrayList<>();
         
         for (AsphaltExperimentRequest request : requests) {
             try {
+                // 在请求中设置统一的任务分配ID
+                request.setAsphaltTaskAssignmentId(batchAssignmentId);
+                
                 AsphaltTask task = createAsphaltExperiment(request);
                 result.add(task);
-                logger.info("成功创建沥青实验任务: {}", task.getAsphaltTaskName());
+                logger.info("成功创建沥青实验任务: {}, 分配ID: {}", task.getAsphaltTaskName(), task.getAsphaltTaskAssignmentId());
             } catch (Exception e) {
                 logger.error("创建沥青实验任务失败: {}, 错误: {}", request.getAsphaltTaskName(), e.getMessage());
             }
@@ -174,5 +194,15 @@ public class AsphaltTaskService {
     public List<AsphaltTask> getAsphaltExperimentsByName(String name) {
         logger.info("根据名称获取沥青实验任务: {}", name);
         return asphaltTaskRepository.findByAsphaltExperimentName(name);
+    }
+
+    /**
+     * 生成沥青任务分配ID
+     * 
+     * @return 生成的分配ID
+     */
+    private String generateAsphaltTaskAssignmentId() {
+        // 生成基于UUID的任务分配ID
+        return UUID.randomUUID().toString();
     }
 }

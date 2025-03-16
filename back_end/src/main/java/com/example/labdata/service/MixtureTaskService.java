@@ -45,34 +45,61 @@ public class MixtureTaskService {
     /**
      * 根据任务ID获取项目名称
      * 
-     * @param taskId 任务ID
+     * @param taskId 任务ID（数据库中的主键ID）
      * @return 项目名称，如果没有找到则返回"未知项目"
      */
     public String getProjectNameByTaskId(Long taskId) {
         logger.info("获取任务ID: {} 的项目名称", taskId);
         
-        // 从 mixture_task 表中通过 id 列查找记录
-        Optional<UserMixtureTask> userTaskOpt = userMixtureTaskRepository.findById(taskId);
-        if (userTaskOpt.isPresent()) {
-            UserMixtureTask userTask = userTaskOpt.get();
-            logger.info("在mixture_task表中找到任务(id={}): {}，项目ID: {}", 
-                        taskId, userTask.getTaskName(), userTask.getProjectId());
+        // 首先尝试使用主键ID查找任务记录
+        Optional<UserMixtureTask> taskByIdOpt = userMixtureTaskRepository.findById(taskId);
+        if (taskByIdOpt.isPresent()) {
+            UserMixtureTask task = taskByIdOpt.get();
+            logger.info("通过主键ID={}找到任务记录: {}, task_id={}, 项目ID={}", 
+                         taskId, task.getTaskName(), task.getTaskId(), task.getProjectId());
             
-            if (userTask.getProjectId() != null) {
+            if (task.getProjectId() != null) {
                 // 使用project_id到projects表中查询项目
-                Optional<Project> projectOpt = projectRepository.findByProjectId(userTask.getProjectId());
+                logger.info("正在查询项目ID: {}", task.getProjectId());
+                Optional<Project> projectOpt = projectRepository.findByProjectId(task.getProjectId());
                 if (projectOpt.isPresent()) {
                     Project project = projectOpt.get();
                     logger.info("找到项目: {}", project.getName());
                     return project.getName();
                 } else {
-                    logger.info("在projects表中未找到project_id={}的项目", userTask.getProjectId());
+                    logger.info("在projects表中未找到project_id={}的项目", task.getProjectId());
                 }
             } else {
                 logger.info("任务的项目ID为null");
             }
         } else {
-            logger.info("在mixture_task表中未找到ID: {}的任务", taskId);
+            logger.info("在mixture_task表中未找到主键ID={}的任务，尝试使用task_id查询", taskId);
+            
+            // 如果未找到，尝试将数字ID转换为字符串作为task_id查询
+            // 这是为了兼容可能的不同调用方式
+            List<UserMixtureTask> userTasks = userMixtureTaskRepository.findByTaskId(String.valueOf(taskId));
+            if (!userTasks.isEmpty()) {
+                UserMixtureTask userTask = userTasks.get(0);
+                logger.info("在mixture_task表中找到任务(task_id={}): {}，项目ID: {}", 
+                            taskId, userTask.getTaskName(), userTask.getProjectId());
+                
+                if (userTask.getProjectId() != null) {
+                    // 使用project_id到projects表中查询项目
+                    logger.info("正在查询项目ID: {}", userTask.getProjectId());
+                    Optional<Project> projectOpt = projectRepository.findByProjectId(userTask.getProjectId());
+                    if (projectOpt.isPresent()) {
+                        Project project = projectOpt.get();
+                        logger.info("找到项目: {}", project.getName());
+                        return project.getName();
+                    } else {
+                        logger.info("在projects表中未找到project_id={}的项目", userTask.getProjectId());
+                    }
+                } else {
+                    logger.info("任务的项目ID为null");
+                }
+            } else {
+                logger.info("在mixture_task表中未找到task_id={}的任务", taskId);
+            }
         }
         
         return "未知项目";

@@ -28,6 +28,9 @@ public class AsphaltTask {
     @Column(name = "asphalt_task_assignment", nullable = false)
     private String asphaltTaskAssignment;
     
+    @Column(name = "asphalt_task_assignment_id")
+    private String asphaltTaskAssignmentId;
+    
     @Column(name = "task_status", nullable = false)
     private String taskStatus;
     
@@ -92,6 +95,14 @@ public class AsphaltTask {
 
     public void setAsphaltTaskAssignment(String asphaltTaskAssignment) {
         this.asphaltTaskAssignment = asphaltTaskAssignment;
+    }
+
+    public String getAsphaltTaskAssignmentId() {
+        return asphaltTaskAssignmentId;
+    }
+
+    public void setAsphaltTaskAssignmentId(String asphaltTaskAssignmentId) {
+        this.asphaltTaskAssignmentId = asphaltTaskAssignmentId;
     }
 
     public String getTaskStatus() {

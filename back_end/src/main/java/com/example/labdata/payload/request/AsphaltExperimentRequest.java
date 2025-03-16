@@ -27,6 +27,9 @@ public class AsphaltExperimentRequest {
     @JsonProperty("asphalt_task_assignment")
     private String asphaltTaskAssignment;
 
+    @JsonProperty("asphalt_task_assignment_id")
+    private String asphaltTaskAssignmentId;
+
     @JsonProperty("status")
     private String status;
 
@@ -108,6 +111,14 @@ public class AsphaltExperimentRequest {
 
     public void setAsphaltTaskAssignment(String asphaltTaskAssignment) {
         this.asphaltTaskAssignment = asphaltTaskAssignment;
+    }
+
+    public String getAsphaltTaskAssignmentId() {
+        return asphaltTaskAssignmentId;
+    }
+
+    public void setAsphaltTaskAssignmentId(String asphaltTaskAssignmentId) {
+        this.asphaltTaskAssignmentId = asphaltTaskAssignmentId;
     }
 
     public String getStatus() {

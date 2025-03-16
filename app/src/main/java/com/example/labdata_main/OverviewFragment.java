@@ -49,9 +49,11 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -485,9 +487,30 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         List<ExperimentTask> unacceptedTasks = new ArrayList<>();
         List<ExperimentTask> acceptedTasks = new ArrayList<>();
         
+        // 用于跟踪已处理的task_id基础部分，避免重复
+        Set<String> processedBaseTaskIds = new HashSet<>();
+        
         // 遍历任务列表
         for (MixtureTaskResponse mixtureTask : tasks) {
-            Log.d(TAG, "处理混合料任务: " + mixtureTask.getTaskName() + ", 状态: " + mixtureTask.getStatus());
+            String taskId = mixtureTask.getTaskId();
+            
+            // 提取基础UUID部分（去掉最后的"-数字"后缀）
+            String baseTaskId = taskId;
+            int lastDashIndex = taskId.lastIndexOf("-");
+            if (lastDashIndex > 0) {
+                baseTaskId = taskId.substring(0, lastDashIndex);
+            }
+            
+            // 如果这个基础task_id已经处理过，则跳过
+            if (processedBaseTaskIds.contains(baseTaskId)) {
+                Log.d(TAG, "跳过重复任务，基础ID: " + baseTaskId + ", 完整ID: " + taskId + ", 任务名称: " + mixtureTask.getTaskName());
+                continue;
+            }
+            
+            // 记录这个基础task_id已经处理
+            processedBaseTaskIds.add(baseTaskId);
+            
+            Log.d(TAG, "处理混合料任务: " + mixtureTask.getTaskName() + ", 状态: " + mixtureTask.getStatus() + ", ID: " + taskId + ", 基础ID: " + baseTaskId);
             
             // 创建任务对象
             ExperimentTask task = convertMixtureTaskToExperimentTask(mixtureTask);
@@ -529,9 +552,29 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         List<ExperimentTask> unacceptedTasks = new ArrayList<>();
         List<ExperimentTask> acceptedTasks = new ArrayList<>();
         
+        // 用于跟踪已处理的assignment_id，避免重复
+        Set<String> processedAssignmentIds = new HashSet<>();
+        
         // 处理每个任务
         for (AsphaltTaskResponse asphaltTask : tasks) {
-            Log.d(TAG, "处理沥青任务: " + asphaltTask.getAsphaltTaskName() + ", 状态: " + asphaltTask.getStatus());
+            String assignmentId = asphaltTask.getAsphaltTaskAssignmentId();
+            
+            // 如果没有分配ID，则使用实验ID作为唯一标识
+            if (assignmentId == null || assignmentId.trim().isEmpty()) {
+                assignmentId = String.valueOf(asphaltTask.getAsphaltExperimentId());
+                Log.d(TAG, "任务没有分配ID，使用实验ID作为唯一标识: " + assignmentId);
+            }
+            
+            // 如果这个assignment_id已经处理过，则跳过
+            if (processedAssignmentIds.contains(assignmentId)) {
+                Log.d(TAG, "跳过重复任务，分配ID: " + assignmentId + ", 任务名称: " + asphaltTask.getAsphaltTaskName());
+                continue;
+            }
+            
+            // 记录这个assignment_id已经处理
+            processedAssignmentIds.add(assignmentId);
+            
+            Log.d(TAG, "处理沥青任务: " + asphaltTask.getAsphaltTaskName() + ", 状态: " + asphaltTask.getStatus() + ", 分配ID: " + assignmentId);
             
             // 转换为通用实验任务模型
             ExperimentTask task = convertAsphaltTaskToExperimentTask(asphaltTask);
@@ -550,7 +593,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         }
         
         // 更新集合
+        apiAsphaltUnacceptedTasks.clear();  // 先清空，避免添加重复数据
         apiAsphaltUnacceptedTasks.addAll(unacceptedTasks);
+        apiAsphaltAcceptedTasks.clear();  // 先清空，避免添加重复数据
         apiAsphaltAcceptedTasks.addAll(acceptedTasks);
         
         Log.d(TAG, "共转换 " + unacceptedTasks.size() + " 个未接受任务和 " + acceptedTasks.size() + " 个已接受任务");
