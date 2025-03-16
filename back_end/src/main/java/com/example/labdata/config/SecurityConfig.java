@@ -81,6 +81,9 @@ public class SecurityConfig {
                 .requestMatchers("/css/**").permitAll()
                 .requestMatchers("/js/**").permitAll()
                 
+                // 项目API - 允许公开访问项目名称
+                .requestMatchers("/api/projects/*/name").permitAll()
+                
                 // 用户资料 - 允许GET请求访问
                 .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
                 

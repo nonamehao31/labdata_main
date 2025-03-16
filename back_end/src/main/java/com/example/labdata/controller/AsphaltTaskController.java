@@ -147,7 +147,7 @@ public class AsphaltTaskController {
     }
 
     /**
-     * 获取所有沥青实验任务（按公司过滤）
+     * 获取指定公司的沥青实验任务
      *
      * @param companyId   公司ID
      * @param currentUser 当前用户
@@ -160,38 +160,43 @@ public class AsphaltTaskController {
             @CurrentUser UserPrincipal currentUser) {
         logger.info("用户 {} 获取沥青实验任务，公司ID: {}", currentUser.getUsername(), companyId);
 
-        List<AsphaltTask> asphaltTasks = asphaltTaskService.getAllAsphaltExperiments();
-        // 过滤出该公司的沥青实验任务
-        List<AsphaltTask> companyTasks = asphaltTasks.stream()
-                .filter(task -> task.getCompanyId() != null && task.getCompanyId().equals(companyId))
-                .collect(Collectors.toList());
-        
-        // 添加调试日志，输出获取到的任务及其字段
-        logger.info("获取到 {} 个公司任务", companyTasks.size());
-        for (AsphaltTask task : companyTasks) {
-            logger.info("任务ID: {}, 名称: {}, 任务名称: {}, 状态: {}, 任务状态: {}", 
-                   task.getAsphaltExperimentId(), 
-                   task.getAsphaltExperimentName(),
-                   task.getAsphaltTaskName(),
-                   task.getStatus(),
-                   task.getTaskStatus());
-        }
-                
-        List<AsphaltExperimentResponse> responses = companyTasks.stream()
-                .map(AsphaltExperimentResponse::new)
-                .collect(Collectors.toList());
-        
-        // 添加调试日志，输出响应对象及其字段
-        logger.info("生成 {} 个响应对象", responses.size());
-        for (AsphaltExperimentResponse response : responses) {
-            logger.info("响应ID: {}, 名称: {}, 任务名称: {}, 状态: {}, 任务状态: {}", 
-                   response.getAsphaltExperimentId(), 
-                   response.getAsphaltExperimentName(),
-                   response.getAsphaltTaskName(),
-                   response.getStatus(),
-                   response.getTaskStatus());
-        }
+        try {
+            List<AsphaltTask> asphaltTasks = asphaltTaskService.getAllAsphaltExperiments();
+            // 过滤出该公司的沥青实验任务
+            List<AsphaltTask> companyTasks = asphaltTasks.stream()
+                    .filter(task -> task.getCompanyId() != null && task.getCompanyId().equals(companyId))
+                    .collect(Collectors.toList());
+            
+            // 添加调试日志，输出获取到的任务及其字段
+            logger.info("获取到 {} 个公司任务", companyTasks.size());
+            for (AsphaltTask task : companyTasks) {
+                logger.info("任务ID: {}, 名称: {}, 任务名称: {}, 状态: {}, 任务状态: {}", 
+                       task.getAsphaltExperimentId(), 
+                       task.getAsphaltExperimentName(),
+                       task.getAsphaltTaskName(),
+                       task.getStatus(),
+                       task.getTaskStatus());
+            }
+                    
+            List<AsphaltExperimentResponse> responses = companyTasks.stream()
+                    .map(AsphaltExperimentResponse::new)
+                    .collect(Collectors.toList());
+            
+            // 添加调试日志，输出响应对象及其字段
+            logger.info("生成 {} 个响应对象", responses.size());
+            for (AsphaltExperimentResponse response : responses) {
+                logger.info("响应ID: {}, 名称: {}, 任务名称: {}, 状态: {}, 任务状态: {}", 
+                       response.getAsphaltExperimentId(), 
+                       response.getAsphaltExperimentName(),
+                       response.getAsphaltTaskName(),
+                       response.getStatus(),
+                       response.getTaskStatus());
+            }
 
-        return ResponseEntity.ok(new ApiResponse<>(true, "获取公司沥青实验列表成功", responses));
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取公司沥青实验列表成功", responses));
+        } catch (Exception e) {
+            logger.error("获取公司沥青实验列表失败", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "获取公司沥青实验列表失败", null));
+        }
     }
 }

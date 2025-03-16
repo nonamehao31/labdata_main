@@ -25,13 +25,16 @@ public class UserMixtureTask {
     private String taskName;
     
     @Column(name = "task_company", nullable = false)
-    private Long taskCompany;
+    private String taskCompany;
     
     @Column(name = "est_by", nullable = false)
     private Long estBy;
     
+    /**
+     * 这个字段实际上与Project表中的project_id字段相关联，而不是Project表的id
+     */
     @Column(name = "project_id", nullable = false)
-    private Long projectId;
+    private String projectId;
     
     @Column(name = "mixratio_id", nullable = false)
     private Long mixratioId;
@@ -76,8 +79,8 @@ public class UserMixtureTask {
     /**
      * 创建新任务实例的便捷方法
      */
-    public static UserMixtureTask createTask(String taskId, Long taskCompany, Long estBy, 
-                                           Long projectId, Long mixratioId, Long specimenId,
+    public static UserMixtureTask createTask(String taskId, String taskCompany, Long estBy, 
+                                           String projectId, Long mixratioId, Long specimenId,
                                            String taskAssignment, String remarks, String taskName) {
         UserMixtureTask task = new UserMixtureTask();
         task.setTaskId(taskId);
@@ -98,8 +101,8 @@ public class UserMixtureTask {
     /**
      * 向后兼容的创建方法 (不含任务名称)
      */
-    public static UserMixtureTask createTask(String taskId, Long taskCompany, Long estBy, 
-                                           Long projectId, Long mixratioId, Long specimenId,
+    public static UserMixtureTask createTask(String taskId, String taskCompany, Long estBy, 
+                                           String projectId, Long mixratioId, Long specimenId,
                                            String taskAssignment, String remarks) {
         return createTask(taskId, taskCompany, estBy, projectId, mixratioId, specimenId, 
                         taskAssignment, remarks, null);

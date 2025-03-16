@@ -3,11 +3,15 @@ package com.example.labdata.controller;
 import com.example.labdata.model.Project;
 import com.example.labdata.model.User;
 import com.example.labdata.model.UserMixtureTask;
+import com.example.labdata.model.MixRatio;
+import com.example.labdata.model.Specimen;
 import com.example.labdata.payload.request.UserMixtureTaskRequest;
 import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.repository.ProjectRepository;
 import com.example.labdata.repository.UserMixtureTaskRepository;
 import com.example.labdata.repository.UserRepository;
+import com.example.labdata.repository.MixRatioRepository;
+import com.example.labdata.repository.SpecimenRepository;
 import com.example.labdata.security.CurrentUser;
 import com.example.labdata.security.UserPrincipal;
 
@@ -37,6 +41,12 @@ public class UserMixtureTaskController {
     
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Autowired
+    private MixRatioRepository mixRatioRepository;
+
+    @Autowired
+    private SpecimenRepository specimenRepository;
 
     /**
      * 保存混合料任务
@@ -69,20 +79,46 @@ public class UserMixtureTaskController {
             String projectDueDate = null;
             Optional<Project> projectOpt = projectRepository.findById(request.getProjectId());
             if (projectOpt.isPresent()) {
-                projectDueDate = projectOpt.get().getDeadline();
-                logger.info("获取到项目截止日期: {}", projectDueDate);
+                Project project = projectOpt.get();
+                projectDueDate = project.getDeadline();
+                logger.info("获取到项目ID={}, 项目标识符={}, 截止日期: {}", 
+                    project.getId(), project.getProjectId(), projectDueDate);
+                
+                // 检查project_id字段是否为空
+                if (project.getProjectId() == null) {
+                    logger.warn("项目ID={}的project_id字段为空", project.getId());
+                    return ResponseEntity.ok(new ApiResponse<>(false, 
+                        "项目ID=" + project.getId() + "的project_id字段为空，无法创建任务", null));
+                }
             } else {
                 logger.warn("找不到项目ID={} 的信息，无法获取截止日期", request.getProjectId());
+                return ResponseEntity.ok(new ApiResponse<>(false, "项目不存在，ID: " + request.getProjectId(), null));
             }
             
             // 生成主任务ID，用于关联所有子任务
             String mainTaskId = UUID.randomUUID().toString();
+            
+            // 获取项目的project_id字段值，用于外键关联
+            String projectIdValue = projectOpt.get().getProjectId();
+            logger.info("将使用项目标识符: {} 创建任务", projectIdValue);
             
             // 保存所有配比-制件方式组合与任务指派的组合
             List<UserMixtureTask> savedTasks = new ArrayList<>();
             int counter = 0; // 用于确保每个任务ID都是唯一的
             
             for (UserMixtureTaskRequest.MixratioSpecimenPair pair : request.getMixratioSpecimenPairs()) {
+                // 验证混合比ID是否存在
+                if (!mixRatioRepository.existsById(pair.getMixratioId())) {
+                    logger.warn("找不到混合比ID={}", pair.getMixratioId());
+                    return ResponseEntity.ok(new ApiResponse<>(false, "混合比不存在，ID: " + pair.getMixratioId(), null));
+                }
+                
+                // 验证试件ID是否存在
+                if (!specimenRepository.existsById(pair.getSpecimenId())) {
+                    logger.warn("找不到试件ID={}", pair.getSpecimenId());
+                    return ResponseEntity.ok(new ApiResponse<>(false, "试件不存在，ID: " + pair.getSpecimenId(), null));
+                }
+            
                 // 如果没有任务指派，至少创建一个任务记录
                 if (request.getTaskAssignments() == null || request.getTaskAssignments().isEmpty()) {
                     // 使用计数器生成唯一的taskId
@@ -90,9 +126,9 @@ public class UserMixtureTaskController {
                     
                     UserMixtureTask task = UserMixtureTask.createTask(
                             taskId, 
-                            user.getOrganizationId(), 
+                            String.valueOf(user.getOrganizationId()), 
                             user.getId(), 
-                            request.getProjectId(),
+                            projectIdValue,
                             pair.getMixratioId(),
                             pair.getSpecimenId(),
                             null,
@@ -110,9 +146,9 @@ public class UserMixtureTaskController {
                         
                         UserMixtureTask task = UserMixtureTask.createTask(
                                 taskId, 
-                                user.getOrganizationId(), 
+                                String.valueOf(user.getOrganizationId()), 
                                 user.getId(), 
-                                request.getProjectId(),
+                                projectIdValue,
                                 pair.getMixratioId(),
                                 pair.getSpecimenId(),
                                 assignment,
@@ -175,7 +211,8 @@ public class UserMixtureTaskController {
             }
             
             User user = userOpt.get();
-            List<UserMixtureTask> tasks = userMixtureTaskRepository.findByTaskCompany(user.getOrganizationId());
+            logger.info("查询组织ID: {} 的混合料任务", user.getOrganizationId());
+            List<UserMixtureTask> tasks = userMixtureTaskRepository.findByTaskCompany(String.valueOf(user.getOrganizationId()));
             return ResponseEntity.ok(new ApiResponse<>(true, "获取任务成功", tasks));
         } catch (Exception e) {
             logger.error("获取单位混合料任务失败", e);

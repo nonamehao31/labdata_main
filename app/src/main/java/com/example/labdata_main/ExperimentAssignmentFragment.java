@@ -345,7 +345,7 @@ public class ExperimentAssignmentFragment extends Fragment {
         
         // 构建请求数据
         MixtureTaskRequest request = new MixtureTaskRequest();
-        request.setProjectId(projectId);
+        request.setProjectId(String.valueOf(projectId));
         request.setRemarks(getNotes());
         
         // 从Activity获取任务名称并设置

@@ -1010,35 +1010,21 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     
     // 显示混合料实验信息
     private void showMixtureExperimentInfo(ExperimentTask task) {
-        // 直接使用传入的任务对象显示底部弹窗
-        BottomSheetMixRatioDetailFragment bottomSheet = BottomSheetMixRatioDetailFragment.newInstance(task);
+        // 使用TaskDetailBottomSheet而不是BottomSheetMixRatioDetailFragment
+        TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
         
-        bottomSheet.setOnTaskActionListener(new BottomSheetMixRatioDetailFragment.OnTaskActionListener() {
+        // 设置任务接受监听器
+        bottomSheet.setTaskAcceptListener(new TaskDetailBottomSheet.TaskAcceptListener() {
             @Override
-            public void onTaskAccepted(long taskId) {
-                // 找到对应任务
-                for (ExperimentTask unacceptedTask : apiMixtureUnacceptedTasks) {
-                    if (unacceptedTask.getId() == taskId) {
-                        handleMixtureTaskAccepted(unacceptedTask);
-                        break;
-                    }
-                }
-            }
-            
-            @Override
-            public void onTaskRejected(long taskId) {
-                // 任务被拒绝后刷新数据
+            public void onTaskAccepted(ExperimentTask acceptedTask) {
+                // 处理任务被接受的情况
+                handleMixtureTaskAccepted(acceptedTask);
+                // 刷新数据
                 refreshData();
             }
         });
         
-        // 设置完成备料的监听器
-        bottomSheet.setOnMaterialCompletedListener(updatedTask -> {
-            // 更新任务后直接刷新数据
-            refreshData();
-        });
-        
-        bottomSheet.show(getChildFragmentManager(), "mix_ratio_detail");
+        bottomSheet.show(getChildFragmentManager(), "task_detail_bottom_sheet");
     }
 
     // 开始混合料实验

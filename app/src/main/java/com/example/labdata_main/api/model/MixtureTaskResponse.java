@@ -20,13 +20,16 @@ public class MixtureTaskResponse {
     private String taskType = "MIXTURE";
     
     @SerializedName("taskCompany")
-    private Long taskCompany;
+    private String taskCompany;
     
     @SerializedName("estBy")
     private Long estBy;
     
     @SerializedName("projectId")
-    private Long projectId;
+    private String projectId;
+    
+    @SerializedName("projectName")
+    private String projectName;
     
     @SerializedName("mixratioId")
     private Long mixratioId;
@@ -86,11 +89,11 @@ public class MixtureTaskResponse {
         this.taskType = taskType;
     }
     
-    public Long getTaskCompany() {
+    public String getTaskCompany() {
         return taskCompany;
     }
     
-    public void setTaskCompany(Long taskCompany) {
+    public void setTaskCompany(String taskCompany) {
         this.taskCompany = taskCompany;
     }
     
@@ -102,12 +105,21 @@ public class MixtureTaskResponse {
         this.estBy = estBy;
     }
     
-    public Long getProjectId() {
+    public String getProjectId() {
         return projectId;
     }
     
-    public void setProjectId(Long projectId) {
+    public void setProjectId(String projectId) {
         this.projectId = projectId;
+    }
+    
+    public String getProjectName() {
+        // 如果没有项目名称，返回默认值
+        return projectName != null ? projectName : "未知项目";
+    }
+    
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
     }
     
     public Long getMixratioId() {

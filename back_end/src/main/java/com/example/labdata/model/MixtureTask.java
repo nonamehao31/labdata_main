@@ -4,6 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.FetchType;
 
 @Entity
 @Table(name = "support_mixture_task")
@@ -17,6 +21,16 @@ public class MixtureTask {
     
     @Column(name = "task_type")
     private String taskType;
+    
+    @Column(name = "project_id")
+    private Long projectId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", insertable = false, updatable = false)
+    private Project project;
+    
+    @Transient
+    private String projectName;
     
     // Constructors
     public MixtureTask() {}
@@ -50,5 +64,33 @@ public class MixtureTask {
     
     public void setTaskType(String taskType) {
         this.taskType = taskType;
+    }
+    
+    public Long getProjectId() {
+        return projectId;
+    }
+    
+    public void setProjectId(Long projectId) {
+        this.projectId = projectId;
+    }
+    
+    public Project getProject() {
+        return project;
+    }
+    
+    public void setProject(Project project) {
+        this.project = project;
+    }
+    
+    public String getProjectName() {
+        // 优先使用从数据库获取的项目名称
+        if (project != null && project.getName() != null) {
+            return project.getName();
+        }
+        return projectName;
+    }
+    
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
     }
 }

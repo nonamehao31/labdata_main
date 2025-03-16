@@ -3,6 +3,7 @@ package com.example.labdata.controller;
 import com.example.labdata.payload.request.SpecimenRequest;
 import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.payload.response.SpecimenResponse;
+import com.example.labdata.payload.response.SpecimenParametersResponse;
 import com.example.labdata.service.SpecimenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -132,6 +133,27 @@ public class SpecimenController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(false, "试件删除失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 获取制件参数
+     * @param id 制件ID
+     * @return 制件参数响应
+     */
+    @GetMapping("/{id}/parameters")
+    public ResponseEntity<ApiResponse<SpecimenParametersResponse>> getSpecimenParameters(@PathVariable Long id) {
+        try {
+            System.out.println("收到获取制件参数请求，制件ID：" + id);
+            SpecimenParametersResponse parameters = specimenService.getSpecimenParameters(id);
+            System.out.println("找到制件参数：" + parameters);
+            return ResponseEntity.ok(new ApiResponse<>(true, "制件参数获取成功", parameters));
+        } catch (Exception e) {
+            System.err.println("获取制件参数失败，详细信息如下:");
+            System.err.println("制件ID: " + id);
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, "制件参数获取失败: " + e.getMessage(), null));
         }
     }
 }

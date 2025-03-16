@@ -7,7 +7,7 @@ import java.util.List;
  */
 public class MixtureTaskRequest {
     
-    private Long projectId;
+    private String projectId;
     private String taskName; 
     private String remarks;
     private List<MixratioSpecimenPair> mixratioSpecimenPairs;
@@ -51,7 +51,7 @@ public class MixtureTaskRequest {
     // Constructors
     public MixtureTaskRequest() {}
     
-    public MixtureTaskRequest(Long projectId, String taskName, String remarks, 
+    public MixtureTaskRequest(String projectId, String taskName, String remarks, 
                              List<MixratioSpecimenPair> mixratioSpecimenPairs, 
                              List<String> taskAssignments) {
         this.projectId = projectId;
@@ -62,11 +62,11 @@ public class MixtureTaskRequest {
     }
     
     // Getters and Setters
-    public Long getProjectId() {
+    public String getProjectId() {
         return projectId;
     }
     
-    public void setProjectId(Long projectId) {
+    public void setProjectId(String projectId) {
         this.projectId = projectId;
     }
     

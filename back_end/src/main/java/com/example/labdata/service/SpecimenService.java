@@ -4,6 +4,7 @@ import com.example.labdata.model.MixRatio;
 import com.example.labdata.model.Specimen;
 import com.example.labdata.payload.request.SpecimenRequest;
 import com.example.labdata.payload.response.SpecimenResponse;
+import com.example.labdata.payload.response.SpecimenParametersResponse;
 import com.example.labdata.repository.MixRatioRepository;
 import com.example.labdata.repository.SpecimenRepository;
 import com.example.labdata.repository.UserRepository;
@@ -207,6 +208,24 @@ public class SpecimenService {
             throw new RuntimeException("试件不存在，ID: " + id);
         }
         specimenRepository.deleteById(id);
+    }
+
+    /**
+     * 获取制件参数
+     * @param specimenId 制件ID
+     * @return 制件参数响应
+     */
+    public SpecimenParametersResponse getSpecimenParameters(Long specimenId) {
+        Specimen specimen = specimenRepository.findById(specimenId)
+                .orElseThrow(() -> new RuntimeException("制件不存在，ID: " + specimenId));
+        
+        return new SpecimenParametersResponse(
+                specimen.getId(),
+                specimen.getMixingTemperature(),
+                specimen.getMixingSpeed(),
+                specimen.getMixingTime(),
+                specimen.getCompactionMethod()
+        );
     }
 
     /**

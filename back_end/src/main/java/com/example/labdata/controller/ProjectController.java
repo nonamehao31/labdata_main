@@ -2,6 +2,7 @@ package com.example.labdata.controller;
 
 import com.example.labdata.payload.request.ProjectRequest;
 import com.example.labdata.payload.response.ApiResponse;
+import com.example.labdata.payload.response.ProjectNameResponse;
 import com.example.labdata.payload.response.ProjectResponse;
 import com.example.labdata.security.CurrentUser;
 import com.example.labdata.security.UserPrincipal;
@@ -15,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 项目控制器，处理与项目相关的HTTP请求
@@ -146,6 +148,28 @@ public class ProjectController {
             return ResponseEntity.badRequest().body(
                     new ApiResponse<>(false, "项目删除失败，可能是权限不足或项目不存在", false)
             );
+        }
+    }
+
+    /**
+     * 通过ID获取项目名称
+     */
+    @GetMapping("/projects/{projectId}/name")
+    public ResponseEntity<ApiResponse<ProjectNameResponse>> getProjectNameById(@PathVariable Long projectId) {
+        logger.info("API请求: 通过ID获取项目名称, projectId={}", projectId);
+        
+        ProjectResponse project = projectService.getProjectById(projectId);
+        
+        if (project != null) {
+            String projectName = project.getName();
+            logger.info("找到项目: projectId={}, projectName={}", projectId, projectName);
+            
+            ProjectNameResponse response = new ProjectNameResponse(projectId, projectName);
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功获取项目名称", response));
+        } else {
+            logger.warn("未找到项目: projectId={}", projectId);
+            ProjectNameResponse response = new ProjectNameResponse(projectId, "未知项目");
+            return ResponseEntity.ok(new ApiResponse<>(false, "未找到指定ID的项目", response));
         }
     }
 }

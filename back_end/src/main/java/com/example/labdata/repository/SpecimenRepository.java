@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SpecimenRepository extends JpaRepository<Specimen, Long> {
@@ -50,4 +51,11 @@ public interface SpecimenRepository extends JpaRepository<Specimen, Long> {
      */
     @Query(value = "SELECT s.* FROM specimens s WHERE s.specimen_company = CAST(:specimenCompany AS VARCHAR) AND s.compaction_method = :compactionMethod ORDER BY s.creation_time DESC LIMIT 1", nativeQuery = true)
     Specimen findLatestSpecimenByCompanyAndMethod(@Param("specimenCompany") Long specimenCompany, @Param("compactionMethod") String compactionMethod);
+    
+    /**
+     * 根据ID查找试件
+     * @param id 试件ID
+     * @return 试件对象
+     */
+    Optional<Specimen> findById(Long id);
 }

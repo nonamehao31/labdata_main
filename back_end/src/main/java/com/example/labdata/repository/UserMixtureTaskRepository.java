@@ -31,14 +31,14 @@ public interface UserMixtureTaskRepository extends JpaRepository<UserMixtureTask
      * @param taskCompany 单位ID
      * @return 单位任务列表
      */
-    List<UserMixtureTask> findByTaskCompany(Long taskCompany);
+    List<UserMixtureTask> findByTaskCompany(String taskCompany);
     
     /**
      * 根据项目ID查找所有任务
      * @param projectId 项目ID
      * @return 项目任务列表
      */
-    List<UserMixtureTask> findByProjectId(Long projectId);
+    List<UserMixtureTask> findByProjectId(String projectId);
     
     /**
      * 根据配比ID查找所有任务
