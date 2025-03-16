@@ -312,7 +312,7 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
             task.setExperimentType("ASPHALT");
             task.setStatus("未接受");
             task.setCreationTime(System.currentTimeMillis());
-            task.setCompanyId(String.valueOf(companyId)); // 已修改为String类型
+            task.setCompanyId(companyId); // 已修改为String类型
             
             // 解析检测截止日期字符串为时间戳
             try {
@@ -343,6 +343,10 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
                 
                 // 设置选定的沥青ID
                 experimentRequest.setSelectedAsphaltId(asphaltId);
+                
+                // 设置公司ID
+                experimentRequest.setCompanyId(companyId);
+                Log.e(TAG, "设置沥青实验请求的公司ID: " + companyId);
                 
                 // 再次检查请求对象中的沥青ID
                 Log.e(TAG, "请求对象中的沥青ID: " + experimentRequest.getSelectedAsphaltId());

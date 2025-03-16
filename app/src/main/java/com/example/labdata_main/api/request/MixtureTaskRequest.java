@@ -8,6 +8,7 @@ import java.util.List;
 public class MixtureTaskRequest {
     
     private Long projectId;
+    private String taskName; 
     private String remarks;
     private List<MixratioSpecimenPair> mixratioSpecimenPairs;
     private List<String> taskAssignments;
@@ -50,10 +51,11 @@ public class MixtureTaskRequest {
     // Constructors
     public MixtureTaskRequest() {}
     
-    public MixtureTaskRequest(Long projectId, String remarks, 
+    public MixtureTaskRequest(Long projectId, String taskName, String remarks, 
                              List<MixratioSpecimenPair> mixratioSpecimenPairs, 
                              List<String> taskAssignments) {
         this.projectId = projectId;
+        this.taskName = taskName;
         this.remarks = remarks;
         this.mixratioSpecimenPairs = mixratioSpecimenPairs;
         this.taskAssignments = taskAssignments;
@@ -66,6 +68,14 @@ public class MixtureTaskRequest {
     
     public void setProjectId(Long projectId) {
         this.projectId = projectId;
+    }
+    
+    public String getTaskName() {
+        return taskName;
+    }
+    
+    public void setTaskName(String taskName) {
+        this.taskName = taskName;
     }
     
     public String getRemarks() {

@@ -78,6 +78,15 @@ public class AsphaltTaskService {
         asphaltTask.setSelectedAsphaltId(selectedAsphaltId);
         logger.info("设置沥青ID: {}", selectedAsphaltId);
         
+        // 设置公司ID
+        String companyId = request.getCompanyId();
+        if (companyId != null && !companyId.trim().isEmpty()) {
+            asphaltTask.setCompanyId(companyId);
+            logger.info("设置公司ID: {}", companyId);
+        } else {
+            logger.info("未提供公司ID");
+        }
+        
         return asphaltTaskRepository.save(asphaltTask);
     }
 
@@ -90,64 +99,19 @@ public class AsphaltTaskService {
     public List<AsphaltTask> createAsphaltExperiments(List<AsphaltExperimentRequest> requests) {
         logger.info("批量创建沥青实验任务: {} 条", requests.size());
         
-        List<AsphaltTask> asphaltTasks = new ArrayList<>();
+        List<AsphaltTask> result = new ArrayList<>();
         
         for (AsphaltExperimentRequest request : requests) {
-            logger.info("处理请求: 实验名称={}, 任务名称={}",
-                    request.getAsphaltExperimentName(),
-                    request.getAsphaltTaskName());
-                    
-            // 获取请求中的参数
-            String taskName = request.getAsphaltTaskName();
-            if (taskName == null || taskName.trim().isEmpty()) {
-                throw new IllegalArgumentException("任务名称不能为空");
+            try {
+                AsphaltTask task = createAsphaltExperiment(request);
+                result.add(task);
+                logger.info("成功创建沥青实验任务: {}", task.getAsphaltTaskName());
+            } catch (Exception e) {
+                logger.error("创建沥青实验任务失败: {}, 错误: {}", request.getAsphaltTaskName(), e.getMessage());
             }
-            
-            // 添加调试日志 - 检查沥青ID是否存在
-            Long selectedAsphaltId = request.getSelectedAsphaltId();
-            logger.info("批量请求中接收到的沥青ID: {}", selectedAsphaltId);
-            
-            // 前端发送的实验名称实际上是任务分派内容
-            String taskAssignment = request.getAsphaltTaskAssignment();
-            if (taskAssignment == null || taskAssignment.trim().isEmpty()) {
-                // 如果任务分派为空，使用前端传入的实验名称作为任务分派
-                taskAssignment = request.getAsphaltExperimentName();
-                logger.info("任务分派为空，使用前端发送的实验名称作为任务分派: {}", taskAssignment);
-            }
-            
-            // 将任务名称也用作实验名称，因为experimentName字段是不必要的
-            String experimentName = taskName;
-            
-            // 确保status不为null，给出默认值
-            String status = request.getStatus();
-            if (status == null || status.trim().isEmpty()) {
-                status = "PENDING";
-                logger.warn("状态为空，使用默认值: {}", status);
-            }
-            
-            // 确保taskStatus不为null，给出默认值为CREATED
-            String taskStatus = request.getTaskStatus();
-            if (taskStatus == null || taskStatus.trim().isEmpty()) {
-                taskStatus = "CREATED";
-                logger.warn("任务状态为空，使用默认值: {}", taskStatus);
-            }
-            
-            AsphaltTask asphaltTask = new AsphaltTask();
-            asphaltTask.setAsphaltExperimentName(experimentName);
-            asphaltTask.setAsphaltExperimentType(request.getAsphaltExperimentType());
-            asphaltTask.setAsphaltTaskName(taskName);
-            asphaltTask.setAsphaltTaskAssignment(taskAssignment);
-            asphaltTask.setStatus(status);
-            asphaltTask.setTaskStatus(taskStatus);
-            
-            // 设置沥青ID，并记录日志
-            asphaltTask.setSelectedAsphaltId(selectedAsphaltId);
-            logger.info("为任务 {} 设置沥青ID: {}", taskName, selectedAsphaltId);
-            
-            asphaltTasks.add(asphaltTask);
         }
         
-        return asphaltTaskRepository.saveAll(asphaltTasks);
+        return result;
     }
 
     /**

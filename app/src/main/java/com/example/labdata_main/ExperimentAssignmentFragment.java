@@ -348,6 +348,13 @@ public class ExperimentAssignmentFragment extends Fragment {
         request.setProjectId(projectId);
         request.setRemarks(getNotes());
         
+        // 从Activity获取任务名称并设置
+        if (getActivity() instanceof ExperimentTaskSetupActivity) {
+            String taskName = ((ExperimentTaskSetupActivity) getActivity()).getTaskName();
+            request.setTaskName(taskName);
+            Log.d("MixtureTask", "设置任务名称: " + taskName);
+        }
+        
         // 获取所有选中的实验类型
         List<String> allTaskAssignments = new ArrayList<>();
         Map<Long, List<String>> experimentAssignments = getExperimentAssignments();

@@ -16,6 +16,11 @@ public class UserMixtureTaskRequest {
     private Long projectId;
     
     /**
+     * 任务名称
+     */
+    private String taskName;
+    
+    /**
      * 备注信息
      */
     private String remarks;

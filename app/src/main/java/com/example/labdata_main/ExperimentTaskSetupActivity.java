@@ -323,6 +323,10 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         return super.onOptionsItemSelected(item);
     }
 
+    public String getTaskName() {
+        return taskName;
+    }
+
     public void setSelectedProject(Project project) {
         this.selectedProject = project;
         enableNextButton(true);

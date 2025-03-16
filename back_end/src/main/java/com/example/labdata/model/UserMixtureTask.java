@@ -21,6 +21,9 @@ public class UserMixtureTask {
     @Column(name = "task_id", nullable = false)
     private String taskId;
     
+    @Column(name = "task_name")
+    private String taskName;
+    
     @Column(name = "task_company", nullable = false)
     private Long taskCompany;
     
@@ -49,11 +52,30 @@ public class UserMixtureTask {
     private String status = "CREATED";
     
     /**
+     * 根据当前任务自动设置任务ID，格式为 MIXTURE_yyyyMMdd_序号
+     */
+    public void generateTaskId() {
+        // 已在数据库中实现
+    }
+
+    /**
+     * 获取默认任务名称
+     * 当任务名称为空时使用
+     * @return 默认任务名称
+     */
+    public String getDefaultTaskName() {
+        if (taskName == null || taskName.isEmpty()) {
+            return "混合料任务-" + (id != null ? id : "未知");
+        }
+        return taskName;
+    }
+
+    /**
      * 创建新任务实例的便捷方法
      */
     public static UserMixtureTask createTask(String taskId, Long taskCompany, Long estBy, 
                                            Long projectId, Long mixratioId, Long specimenId,
-                                           String taskAssignment, String remarks) {
+                                           String taskAssignment, String remarks, String taskName) {
         UserMixtureTask task = new UserMixtureTask();
         task.setTaskId(taskId);
         task.setTaskCompany(taskCompany);
@@ -63,8 +85,19 @@ public class UserMixtureTask {
         task.setSpecimenId(specimenId);
         task.setTaskAssignment(taskAssignment);
         task.setRemarks(remarks);
+        task.setTaskName(taskName);
         task.setCreationTime(System.currentTimeMillis());
         task.setStatus("CREATED");
         return task;
+    }
+    
+    /**
+     * 向后兼容的创建方法 (不含任务名称)
+     */
+    public static UserMixtureTask createTask(String taskId, Long taskCompany, Long estBy, 
+                                           Long projectId, Long mixratioId, Long specimenId,
+                                           String taskAssignment, String remarks) {
+        return createTask(taskId, taskCompany, estBy, projectId, mixratioId, specimenId, 
+                        taskAssignment, remarks, null);
     }
 }

@@ -36,6 +36,7 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
     public interface OnTaskActionListener {
         void onTaskAccepted(ExperimentTask task);
         void onTaskRejected(ExperimentTask task);
+        void onTaskCompleted(ExperimentTask task);
     }
 
     public static BottomSheetAsphaltTaskDetailFragment newInstance(ExperimentTask task, boolean showAcceptButton) {

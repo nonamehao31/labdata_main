@@ -36,6 +36,9 @@ public class AsphaltExperimentRequest {
     @JsonProperty("selected_asphalt_id")
     private Long selectedAsphaltId;
 
+    @JsonProperty("company_id")
+    private String companyId;
+
     public AsphaltExperimentRequest() {
     }
 
@@ -129,5 +132,13 @@ public class AsphaltExperimentRequest {
 
     public void setSelectedAsphaltId(Long selectedAsphaltId) {
         this.selectedAsphaltId = selectedAsphaltId;
+    }
+
+    public String getCompanyId() {
+        return companyId;
+    }
+
+    public void setCompanyId(String companyId) {
+        this.companyId = companyId;
     }
 }

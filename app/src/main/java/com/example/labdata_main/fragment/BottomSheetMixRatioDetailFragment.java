@@ -51,11 +51,22 @@ public class BottomSheetMixRatioDetailFragment extends BottomSheetDialogFragment
     public interface OnMaterialCompletedListener {
         void onMaterialCompleted(ExperimentTask task);
     }
-
+    
+    // 添加任务操作接口
+    public interface OnTaskActionListener {
+        void onTaskAccepted(long taskId);
+        void onTaskRejected(long taskId);
+    }
+    
     private OnMaterialCompletedListener materialCompletedListener;
+    private OnTaskActionListener taskActionListener;
 
     public void setOnMaterialCompletedListener(OnMaterialCompletedListener listener) {
         this.materialCompletedListener = listener;
+    }
+    
+    public void setOnTaskActionListener(OnTaskActionListener listener) {
+        this.taskActionListener = listener;
     }
 
     @Override

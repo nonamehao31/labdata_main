@@ -45,8 +45,9 @@ public class UserMixtureTaskController {
             @CurrentUser UserPrincipal currentUser,
             @RequestBody UserMixtureTaskRequest request) {
         
-        logger.info("接收到混合料任务保存请求：项目ID={}, 配比数量={}, 任务指派数量={}",
+        logger.info("接收到混合料任务保存请求：项目ID={}, 任务名称={}, 配比数量={}, 任务指派数量={}",
                 request.getProjectId(), 
+                request.getTaskName(),
                 request.getMixratioSpecimenPairs() != null ? request.getMixratioSpecimenPairs().size() : 0,
                 request.getTaskAssignments() != null ? request.getTaskAssignments().size() : 0);
         
@@ -80,7 +81,8 @@ public class UserMixtureTaskController {
                             pair.getMixratioId(),
                             pair.getSpecimenId(),
                             null,
-                            request.getRemarks()
+                            request.getRemarks(),
+                            request.getTaskName()
                     );
                     savedTasks.add(userMixtureTaskRepository.save(task));
                 } else {
@@ -97,18 +99,23 @@ public class UserMixtureTaskController {
                                 pair.getMixratioId(),
                                 pair.getSpecimenId(),
                                 assignment,
-                                request.getRemarks()
+                                request.getRemarks(),
+                                request.getTaskName()
                         );
                         savedTasks.add(userMixtureTaskRepository.save(task));
                     }
                 }
             }
             
+            if (savedTasks.isEmpty()) {
+                return ResponseEntity.ok(new ApiResponse<>(false, "没有创建任何任务", null));
+            }
+            
             logger.info("成功保存混合料任务，主任务ID={}, 总共保存{}条记录", mainTaskId, savedTasks.size());
-            return ResponseEntity.ok(new ApiResponse<>(true, "任务保存成功", mainTaskId));
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功创建" + savedTasks.size() + "个混合料任务", mainTaskId));
             
         } catch (Exception e) {
-            logger.error("保存混合料任务失败", e);
+            logger.error("保存混合料任务时发生错误", e);
             return ResponseEntity.ok(new ApiResponse<>(false, "保存失败: " + e.getMessage(), null));
         }
     }

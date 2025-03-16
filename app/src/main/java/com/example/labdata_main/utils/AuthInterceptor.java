@@ -31,6 +31,12 @@ public class AuthInterceptor implements Interceptor {
         Log.d(TAG, "请求方法: " + original.method());
         Log.d(TAG, "认证头: " + (authHeader != null ? "已存在" : "不存在"));
         
+        // [临时调试] 输出完整的认证令牌和请求信息
+        if (authHeader != null) {
+            Log.d(TAG, "完整认证令牌: " + authHeader);
+        }
+        Log.d(TAG, "请求头: " + original.headers().toString());
+        
         // 如果没有认证令牌，直接传递原始请求并记录警告
         if (authHeader == null || authHeader.isEmpty()) {
             Log.w(TAG, "警告: 未找到认证令牌，发送未认证请求: " + original.url());
@@ -51,6 +57,9 @@ public class AuthInterceptor implements Interceptor {
         if (!authHeader.equals(requestAuthHeader)) {
             Log.e(TAG, "错误: 认证头添加失败。请求中的认证头: " + requestAuthHeader);
         }
+        
+        // [临时调试] 输出修改后的请求头
+        Log.d(TAG, "修改后的请求头: " + modifiedRequest.headers().toString());
         
         return chain.proceed(modifiedRequest);
     }
