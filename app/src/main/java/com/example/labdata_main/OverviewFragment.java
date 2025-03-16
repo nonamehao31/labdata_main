@@ -578,6 +578,26 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             mixtureTask.getStatus().equals("PROCESSING") ? "已接受" : "未接受" : "未接受");
         task.setCompanyId(String.valueOf(mixtureTask.getTaskCompany()));
         
+        // 设置截止日期 - 如果dueDate不为空，尝试将其转换为时间戳
+        if (mixtureTask.getDueDate() != null && !mixtureTask.getDueDate().isEmpty()) {
+            try {
+                // 尝试解析日期字符串为日期对象，然后获取时间戳
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                Date date = dateFormat.parse(mixtureTask.getDueDate());
+                if (date != null) {
+                    task.setDeadline(date.getTime());
+                    Log.d(TAG, "设置混合料任务截止日期: " + mixtureTask.getDueDate() + " -> " + date.getTime());
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "解析混合料任务截止日期时出错: " + mixtureTask.getDueDate(), e);
+                // 如果解析失败，设置为0（表示无截止日期）
+                task.setDeadline(0);
+            }
+        } else {
+            // 如果没有截止日期，设置为0
+            task.setDeadline(0);
+        }
+        
         return task;
     }
     
@@ -637,6 +657,26 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         } else {
             task.setStatus("未接受");  // 默认为未接受
             Log.d(TAG, "沥青任务状态为null，默认设置为'未接受'");
+        }
+        
+        // 设置截止日期 - 如果dueDate不为空，尝试将其转换为时间戳
+        if (asphaltTask.getDueDate() != null && !asphaltTask.getDueDate().isEmpty()) {
+            try {
+                // 尝试解析日期字符串为日期对象，然后获取时间戳
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                Date date = dateFormat.parse(asphaltTask.getDueDate());
+                if (date != null) {
+                    task.setDeadline(date.getTime());
+                    Log.d(TAG, "设置沥青任务截止日期: " + asphaltTask.getDueDate() + " -> " + date.getTime());
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "解析沥青任务截止日期时出错: " + asphaltTask.getDueDate(), e);
+                // 如果解析失败，设置为0（表示无截止日期）
+                task.setDeadline(0);
+            }
+        } else {
+            // 如果没有截止日期，设置为0
+            task.setDeadline(0);
         }
         
         return task;

@@ -21,6 +21,7 @@ public class AsphaltTaskResponse {
     private String companyId;
     private String createdAt;
     private String updatedAt;
+    private String dueDate;
     
     // Getters and Setters
     public Long getAsphaltExperimentId() {
@@ -109,5 +110,13 @@ public class AsphaltTaskResponse {
     
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public String getDueDate() {
+        return dueDate;
+    }
+    
+    public void setDueDate(String dueDate) {
+        this.dueDate = dueDate;
     }
 }

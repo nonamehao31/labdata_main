@@ -1,8 +1,10 @@
 package com.example.labdata.service;
 
 import com.example.labdata.model.AsphaltTask;
+import com.example.labdata.model.TestAsphaltMaterial;
 import com.example.labdata.payload.request.AsphaltExperimentRequest;
 import com.example.labdata.repository.AsphaltTaskRepository;
+import com.example.labdata.repository.TestAsphaltMaterialRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 沥青实验任务服务类
@@ -21,6 +24,9 @@ public class AsphaltTaskService {
 
     @Autowired
     private AsphaltTaskRepository asphaltTaskRepository;
+    
+    @Autowired
+    private TestAsphaltMaterialRepository testAsphaltMaterialRepository;
 
     /**
      * 创建单个沥青实验任务
@@ -85,6 +91,19 @@ public class AsphaltTaskService {
             logger.info("设置公司ID: {}", companyId);
         } else {
             logger.info("未提供公司ID");
+        }
+        
+        // 从test_asphalt_material中获取截止日期
+        if (selectedAsphaltId != null) {
+            Optional<TestAsphaltMaterial> asphaltMaterial = testAsphaltMaterialRepository.findById(selectedAsphaltId);
+            if (asphaltMaterial.isPresent()) {
+                asphaltTask.setDueDate(asphaltMaterial.get().getAsphaltTestDue());
+                logger.info("从test_asphalt_material中获取并设置截止日期: {}", asphaltMaterial.get().getAsphaltTestDue());
+            } else {
+                logger.warn("未找到ID为 {} 的沥青材料，无法设置截止日期", selectedAsphaltId);
+            }
+        } else {
+            logger.warn("未提供沥青ID，无法设置截止日期");
         }
         
         return asphaltTaskRepository.save(asphaltTask);

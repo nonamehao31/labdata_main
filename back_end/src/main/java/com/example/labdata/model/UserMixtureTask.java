@@ -50,6 +50,9 @@ public class UserMixtureTask {
     
     @Column(name = "status", columnDefinition = "varchar(20) default 'CREATED'")
     private String status = "CREATED";
+
+    @Column(name = "due_date")
+    private String dueDate;
     
     /**
      * 根据当前任务自动设置任务ID，格式为 MIXTURE_yyyyMMdd_序号
@@ -88,6 +91,7 @@ public class UserMixtureTask {
         task.setTaskName(taskName);
         task.setCreationTime(System.currentTimeMillis());
         task.setStatus("CREATED");
+        // 注意: 这里不设置dueDate，因为需要从Project获取
         return task;
     }
     
@@ -99,5 +103,21 @@ public class UserMixtureTask {
                                            String taskAssignment, String remarks) {
         return createTask(taskId, taskCompany, estBy, projectId, mixratioId, specimenId, 
                         taskAssignment, remarks, null);
+    }
+
+    /**
+     * 设置截止日期
+     * @param dueDate 截止日期
+     */
+    public void setDueDate(String dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    /**
+     * 获取截止日期
+     * @return 截止日期
+     */
+    public String getDueDate() {
+        return dueDate;
     }
 }

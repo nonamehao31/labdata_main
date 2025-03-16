@@ -46,6 +46,9 @@ public class MixtureTaskResponse {
     @SerializedName("status")
     private String status;
     
+    @SerializedName("dueDate")
+    private String dueDate;
+    
     // Getters and Setters
     public Long getId() {
         return id;
@@ -153,5 +156,13 @@ public class MixtureTaskResponse {
     
     public void setStatus(String status) {
         this.status = status;
+    }
+    
+    public String getDueDate() {
+        return dueDate;
+    }
+    
+    public void setDueDate(String dueDate) {
+        this.dueDate = dueDate;
     }
 }

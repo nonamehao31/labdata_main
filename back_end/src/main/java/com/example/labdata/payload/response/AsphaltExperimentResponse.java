@@ -1,6 +1,9 @@
 package com.example.labdata.payload.response;
 
 import com.example.labdata.model.AsphaltTask;
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import java.time.LocalDate;
 
 /**
  * 沥青实验响应体
@@ -15,6 +18,9 @@ public class AsphaltExperimentResponse {
     private String status;
     private Long selectedAsphaltId;
     private String companyId;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate dueDate;
 
     public AsphaltExperimentResponse() {
     }
@@ -29,6 +35,7 @@ public class AsphaltExperimentResponse {
         this.status = asphaltTask.getStatus();
         this.selectedAsphaltId = asphaltTask.getSelectedAsphaltId();
         this.companyId = asphaltTask.getCompanyId();
+        this.dueDate = asphaltTask.getDueDate();
     }
 
     public Long getAsphaltExperimentId() {
@@ -101,5 +108,13 @@ public class AsphaltExperimentResponse {
 
     public void setCompanyId(String companyId) {
         this.companyId = companyId;
+    }
+    
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+    
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
     }
 }

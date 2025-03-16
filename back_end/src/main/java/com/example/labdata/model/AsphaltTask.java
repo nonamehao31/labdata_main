@@ -2,6 +2,7 @@ package com.example.labdata.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.LocalDate;
 
 /**
  * 沥青实验任务实体类
@@ -38,6 +39,9 @@ public class AsphaltTask {
     
     @Column(name = "company_id")
     private String companyId;
+    
+    @Column(name = "due_date")
+    private LocalDate dueDate;
     
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -120,6 +124,14 @@ public class AsphaltTask {
     
     public void setCompanyId(String companyId) {
         this.companyId = companyId;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
     }
 
     public Instant getCreatedAt() {

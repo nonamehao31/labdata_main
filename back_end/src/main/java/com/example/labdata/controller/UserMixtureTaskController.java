@@ -1,9 +1,11 @@
 package com.example.labdata.controller;
 
+import com.example.labdata.model.Project;
 import com.example.labdata.model.User;
 import com.example.labdata.model.UserMixtureTask;
 import com.example.labdata.payload.request.UserMixtureTaskRequest;
 import com.example.labdata.payload.response.ApiResponse;
+import com.example.labdata.repository.ProjectRepository;
 import com.example.labdata.repository.UserMixtureTaskRepository;
 import com.example.labdata.repository.UserRepository;
 import com.example.labdata.security.CurrentUser;
@@ -32,6 +34,9 @@ public class UserMixtureTaskController {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ProjectRepository projectRepository;
 
     /**
      * 保存混合料任务
@@ -60,6 +65,16 @@ public class UserMixtureTaskController {
             
             User user = userOpt.get();
             
+            // 获取项目截止日期
+            String projectDueDate = null;
+            Optional<Project> projectOpt = projectRepository.findById(request.getProjectId());
+            if (projectOpt.isPresent()) {
+                projectDueDate = projectOpt.get().getDeadline();
+                logger.info("获取到项目截止日期: {}", projectDueDate);
+            } else {
+                logger.warn("找不到项目ID={} 的信息，无法获取截止日期", request.getProjectId());
+            }
+            
             // 生成主任务ID，用于关联所有子任务
             String mainTaskId = UUID.randomUUID().toString();
             
@@ -84,6 +99,8 @@ public class UserMixtureTaskController {
                             request.getRemarks(),
                             request.getTaskName()
                     );
+                    // 设置截止日期
+                    task.setDueDate(projectDueDate);
                     savedTasks.add(userMixtureTaskRepository.save(task));
                 } else {
                     // 为每个任务指派创建一条记录
@@ -102,6 +119,8 @@ public class UserMixtureTaskController {
                                 request.getRemarks(),
                                 request.getTaskName()
                         );
+                        // 设置截止日期
+                        task.setDueDate(projectDueDate);
                         savedTasks.add(userMixtureTaskRepository.save(task));
                     }
                 }
