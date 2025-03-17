@@ -16,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -163,7 +164,7 @@ public class AsphaltTaskController {
 
         try {
             List<AsphaltTask> asphaltTasks = asphaltTaskService.getAllAsphaltExperiments();
-            // 过滤出该公司的沥青实验任务
+            // 过滤出该公司的沥青实验任务，包括所有状态的任务
             List<AsphaltTask> companyTasks = asphaltTasks.stream()
                     .filter(task -> task.getCompanyId() != null && task.getCompanyId().equals(companyId))
                     .collect(Collectors.toList());
@@ -215,5 +216,74 @@ public class AsphaltTaskController {
         AsphaltDetailResponse detailResponse = asphaltTaskService.getAsphaltDetailByTaskId(taskId);
         
         return ResponseEntity.ok(new ApiResponse<>(true, "获取沥青任务详情成功", detailResponse));
+    }
+
+    /**
+     * 接受沥青实验任务
+     *
+     * @param taskId      任务ID
+     * @param acceptor    接受人姓名
+     * @param acceptTime  接受时间
+     * @param currentUser 当前用户
+     * @return 响应
+     */
+    @PostMapping("/accept/{taskId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Boolean>> acceptAsphaltTask(
+            @PathVariable String taskId,
+            @RequestParam(required = false) String acceptor,
+            @RequestParam(required = false) Long acceptTime,
+            @CurrentUser UserPrincipal currentUser) {
+        logger.info("用户 {} 接受沥青实验任务 ID: {}, 接受人: {}, 接受时间: {}", 
+                currentUser.getUsername(), taskId, acceptor, acceptTime);
+
+        try {
+            // 查找任务
+            List<AsphaltTask> tasks = asphaltTaskService.getAsphaltTasksByAssignmentId(taskId);
+            if (tasks.isEmpty()) {
+                return ResponseEntity.ok(new ApiResponse<>(false, "未找到ID为 " + taskId + " 的沥青实验任务", false));
+            }
+            
+            // 检查第一个任务的状态 - 如果无法接受，则不继续处理
+            AsphaltTask firstTask = tasks.get(0);
+            if (!"CREATED".equals(firstTask.getTaskStatus())) {
+                return ResponseEntity.ok(new ApiResponse<>(false, "任务状态不是CREATED，无法接受", false));
+            }
+            
+            logger.info("找到 {} 个相关沥青任务，准备全部更新为 ONGOING 状态", tasks.size());
+            
+            // 更新所有关联任务的状态
+            for (AsphaltTask task : tasks) {
+                // 更新任务状态为ONGOING
+                task.setTaskStatus("ONGOING");
+                task.setStatus("ONGOING");
+                
+                // 设置接受人和接受时间
+                if (acceptor != null && !acceptor.isEmpty()) {
+                    task.setAcceptor(acceptor);
+                } else {
+                    task.setAcceptor(currentUser.getName());
+                }
+                
+                if (acceptTime != null) {
+                    task.setAcceptTime(acceptTime);
+                } else {
+                    task.setAcceptTime(System.currentTimeMillis());
+                }
+                
+                // 更新时间戳
+                task.setUpdatedAt(Instant.now());
+                
+                // 保存更新后的任务
+                asphaltTaskService.updateAsphaltTask(task);
+                logger.info("已更新沥青任务状态: ID={}, 名称={}, 新状态=ONGOING", 
+                        task.getAsphaltExperimentId(), task.getAsphaltTaskName());
+            }
+            
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功接受任务，已更新 " + tasks.size() + " 个相关任务", true));
+        } catch (Exception e) {
+            logger.error("接受沥青实验任务失败", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "接受任务失败: " + e.getMessage(), false));
+        }
     }
 }

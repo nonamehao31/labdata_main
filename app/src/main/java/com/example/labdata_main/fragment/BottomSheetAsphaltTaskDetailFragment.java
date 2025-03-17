@@ -14,12 +14,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.R;
 import com.example.labdata_main.adapter.AsphaltExperimentAdapter;
+import com.example.labdata_main.api.ApiClient;
 import com.example.labdata_main.api.model.ApiResponse;
 import com.example.labdata_main.api.model.AsphaltDetailResponse;
+import com.example.labdata_main.api.model.AsphaltDetailResponse.AsphaltInfo;
 import com.example.labdata_main.api.service.AsphaltTaskService;
-import com.example.labdata_main.api.ApiClient;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 
@@ -42,6 +44,7 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
     private OnTaskActionListener listener;
     private boolean showAcceptButton = true; // 默认显示按钮
     private AsphaltTaskService asphaltTaskService;
+    private SharedPrefsManager sharedPrefsManager;
 
     public interface OnTaskActionListener {
         void onTaskAccepted(ExperimentTask task);
@@ -89,6 +92,9 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        
+        // 在视图创建后初始化 SharedPrefsManager
+        sharedPrefsManager = new SharedPrefsManager(requireContext());
 
         TextView taskNameText = view.findViewById(R.id.taskNameText);
         TextView taskDeadlineText = view.findViewById(R.id.taskDeadlineText);
@@ -129,15 +135,22 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
         } else {
             // 设置接受按钮点击事件
             fabAcceptTask.setOnClickListener(v -> {
+                // 禁用按钮，防止重复点击
+                fabAcceptTask.setEnabled(false);
+                
+                // 直接通知监听器任务已接受，由OverviewFragment处理API调用
                 if (listener != null) {
-                    task.setStatus("已接受");
                     listener.onTaskAccepted(task);
+                    Toast.makeText(requireContext(), "正在处理任务接受请求...", Toast.LENGTH_SHORT).show();
+                    dismiss();
+                } else {
+                    Toast.makeText(requireContext(), "错误：监听器未设置", Toast.LENGTH_SHORT).show();
+                    fabAcceptTask.setEnabled(true);
                 }
-                dismiss();
             });
 
-            // 如果任务已经有状态，禁用按钮
-            if (task.getStatus() != null && !task.getStatus().equals("未接受")) {
+            // 如果任务不是CREATED状态，禁用按钮
+            if (task.getStatus() != null && !task.getStatus().equals("CREATED")) {
                 fabAcceptTask.setEnabled(false);
             }
         }
@@ -180,7 +193,7 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
         // 1. 处理沥青信息
         if (detailResponse.getAsphaltInfoList() != null && !detailResponse.getAsphaltInfoList().isEmpty()) {
             StringBuilder asphaltInfoBuilder = new StringBuilder();
-            for (AsphaltDetailResponse.AsphaltInfo asphaltInfo : detailResponse.getAsphaltInfoList()) {
+            for (AsphaltInfo asphaltInfo : detailResponse.getAsphaltInfoList()) {
                 asphaltInfoBuilder.append("• 供应商: ").append(asphaltInfo.getAsphaltSupplier()).append("\n");
                 asphaltInfoBuilder.append("• 标号: ").append(asphaltInfo.getAsphaltGrade()).append("\n");
                 asphaltInfoBuilder.append("• 类型: ").append(asphaltInfo.getAsphaltCatalog()).append("\n\n");
@@ -206,7 +219,7 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
                     // 找到对应的沥青信息
                     String asphaltName = "沥青 #" + asphaltId;
                     if (detailResponse.getAsphaltInfoList() != null) {
-                        for (AsphaltDetailResponse.AsphaltInfo info : detailResponse.getAsphaltInfoList()) {
+                        for (AsphaltInfo info : detailResponse.getAsphaltInfoList()) {
                             if (info.getAsphaltId().equals(asphaltId)) {
                                 asphaltName = info.getAsphaltGrade() + " (" + info.getAsphaltSupplier() + ")";
                                 break;

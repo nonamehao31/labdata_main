@@ -8,6 +8,7 @@ import jakarta.persistence.Transient;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.PrePersist;
 
 @Entity
 @Table(name = "support_mixture_task")
@@ -25,6 +26,15 @@ public class MixtureTask {
     @Column(name = "project_id")
     private Long projectId;
     
+    @Column(name = "prepare_status")
+    private String prepareStatus;
+    
+    @Column(name = "making_status")
+    private String makingStatus;
+    
+    @Column(name = "testing_status")
+    private String testingStatus;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", insertable = false, updatable = false)
     private Project project;
@@ -33,12 +43,26 @@ public class MixtureTask {
     private String projectName;
     
     // Constructors
-    public MixtureTask() {}
+    public MixtureTask() {
+        this.prepareStatus = "unfinished";
+        this.makingStatus = "unfinished";
+        this.testingStatus = "unfinished";
+    }
 
     public MixtureTask(Long taskId, String taskName, String taskType) {
         this.taskId = taskId;
         this.taskName = taskName;
         this.taskType = taskType;
+        this.prepareStatus = "unfinished";
+        this.makingStatus = "unfinished";
+        this.testingStatus = "unfinished";
+    }
+    
+    @PrePersist
+    protected void onCreate() {
+        if (this.prepareStatus == null) this.prepareStatus = "unfinished";
+        if (this.makingStatus == null) this.makingStatus = "unfinished";
+        if (this.testingStatus == null) this.testingStatus = "unfinished";
     }
     
     // Getters and Setters
@@ -72,6 +96,30 @@ public class MixtureTask {
     
     public void setProjectId(Long projectId) {
         this.projectId = projectId;
+    }
+    
+    public String getPrepareStatus() {
+        return prepareStatus;
+    }
+    
+    public void setPrepareStatus(String prepareStatus) {
+        this.prepareStatus = prepareStatus;
+    }
+    
+    public String getMakingStatus() {
+        return makingStatus;
+    }
+    
+    public void setMakingStatus(String makingStatus) {
+        this.makingStatus = makingStatus;
+    }
+    
+    public String getTestingStatus() {
+        return testingStatus;
+    }
+    
+    public void setTestingStatus(String testingStatus) {
+        this.testingStatus = testingStatus;
     }
     
     public Project getProject() {

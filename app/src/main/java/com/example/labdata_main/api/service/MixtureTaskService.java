@@ -11,6 +11,7 @@ import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
+import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
@@ -80,4 +81,19 @@ public interface MixtureTaskService {
      */
     @GET("api/mixtureTask/task-remarks/{taskId}")
     Call<ApiResponse<String>> getTaskRemarksByTaskId(@Path("taskId") Long taskId);
+    
+    /**
+     * 接受任务，将任务状态从CREATED更新为ONGOING
+     * 
+     * @param taskId 任务ID
+     * @param acceptor 接受人
+     * @param acceptTime 接受时间
+     * @return 更新结果
+     */
+    @PUT("api/mixture-tasks/{taskId}/accept")
+    Call<ApiResponse<Boolean>> acceptTask(
+        @Path("taskId") Long taskId,
+        @Query("acceptor") String acceptor,
+        @Query("acceptTime") Long acceptTime
+    );
 }

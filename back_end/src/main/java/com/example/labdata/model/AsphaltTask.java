@@ -37,6 +37,12 @@ public class AsphaltTask {
     @Column(name = "status", nullable = false)
     private String status;
     
+    @Column(name = "acceptor")
+    private String acceptor;
+    
+    @Column(name = "accept_time")
+    private Long acceptTime;
+    
     @Column(name = "selected_asphalt_id")
     private Long selectedAsphaltId;
     
@@ -119,6 +125,22 @@ public class AsphaltTask {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getAcceptor() {
+        return acceptor;
+    }
+
+    public void setAcceptor(String acceptor) {
+        this.acceptor = acceptor;
+    }
+
+    public Long getAcceptTime() {
+        return acceptTime;
+    }
+
+    public void setAcceptTime(Long acceptTime) {
+        this.acceptTime = acceptTime;
     }
 
     public Long getSelectedAsphaltId() {

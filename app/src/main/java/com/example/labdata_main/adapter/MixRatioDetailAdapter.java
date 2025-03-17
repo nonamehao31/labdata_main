@@ -17,6 +17,7 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,12 +42,38 @@ public class MixRatioDetailAdapter extends RecyclerView.Adapter<MixRatioDetailAd
     @Override
     public void onBindViewHolder(@NonNull MixRatioDetailViewHolder holder, int position) {
         MixRatio mixRatio = mixRatios.get(position);
-        holder.bind(mixRatio, experimentAssignments.get(mixRatio.getId()));
+        
+        // 记录配比信息，辅助调试
+        List<MaterialItem> materials = mixRatio.getMaterials();
+        Log.d("MixRatioDetailAdapter", "绑定配比: " + mixRatio.getName() 
+            + ", ID: " + mixRatio.getId()
+            + ", 材料数量: " + (materials != null ? materials.size() : "null"));
+        
+        // 安全地获取实验指派，如果为null则传递一个空列表
+        List<String> assignments = null;
+        if (experimentAssignments != null) {
+            assignments = experimentAssignments.get(mixRatio.getId());
+            Log.d("MixRatioDetailAdapter", "实验指派: " + (assignments != null ? assignments.size() : "null") 
+                + " 个指派, 配比ID: " + mixRatio.getId());
+        } else {
+            Log.d("MixRatioDetailAdapter", "无实验指派数据");
+        }
+        
+        holder.bind(mixRatio, assignments);
     }
 
     @Override
     public int getItemCount() {
         return mixRatios.size();
+    }
+    
+    /**
+     * 获取实验指派信息
+     * 
+     * @return 实验指派信息映射表，如果为空则返回新的HashMap
+     */
+    public Map<Long, List<String>> getExperimentAssignments() {
+        return experimentAssignments != null ? experimentAssignments : new HashMap<>();
     }
 
     static class MixRatioDetailViewHolder extends RecyclerView.ViewHolder {
@@ -74,11 +101,29 @@ public class MixRatioDetailAdapter extends RecyclerView.Adapter<MixRatioDetailAd
             // 设置配比名称
             mixRatioName.setText(mixRatio.getName());
 
-            // 获取材料列表
+            // 获取材料列表并确保不为null
             List<MaterialItem> materials = mixRatio.getMaterials();
+            if (materials == null) {
+                materials = new ArrayList<>();
+                Log.w("MixRatioDetailAdapter", "材料列表为空：" + mixRatio.getName());
+            }
+            
+            if (materials.isEmpty()) {
+                Log.w("MixRatioDetailAdapter", "配比没有材料，可能导致饼图和图例不显示: " + mixRatio.getName());
+                // 创建一个占位材料，避免饼图显示为空
+                MaterialItem placeholder = new MaterialItem();
+                placeholder.setName("无材料信息");
+                placeholder.setAmount("100%");
+                materials.add(placeholder);
+            }
             
             // 设置饼图数据
-            pieChart.setMaterials(materials);
+            try {
+                pieChart.setMaterials(materials);
+            } catch (Exception e) {
+                Log.e("MixRatioDetailAdapter", "设置饼图数据异常: " + e.getMessage());
+                e.printStackTrace();
+            }
 
             // 清除旧的图例
             legendContainer.removeAllViews();

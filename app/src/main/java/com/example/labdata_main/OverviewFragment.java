@@ -50,6 +50,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -72,7 +73,8 @@ import com.google.gson.Gson;
 
 public class OverviewFragment extends Fragment implements AdapterView.OnItemSelectedListener, 
         ExperimentTaskAdapter.OnTaskClickListener, 
-        AsphaltProjectCardAdapter.OnAsphaltTaskActionListener {
+        AsphaltProjectCardAdapter.OnAsphaltTaskActionListener,
+        TaskDetailBottomSheet.TaskAcceptListener {
     private static final String TAG = "OverviewFragment";
     
     private TextView welcomeText;
@@ -356,6 +358,8 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             @Override
             public void onResponse(Call<ApiResponse<List<MixtureTaskResponse>>> call, Response<ApiResponse<List<MixtureTaskResponse>>> response) {
                 Log.d(TAG, "混合料任务响应码: " + response.code());
+                swipeRefreshLayout.setRefreshing(false);
+                
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     Log.d(TAG, "混合料任务获取成功");
                     
@@ -393,18 +397,14 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                     showEmptyState("MIXTURE");
                     Toast.makeText(requireContext(), "获取混合料任务失败: " + code, Toast.LENGTH_SHORT).show();
                 }
-                
-                // 停止刷新动画
-                swipeRefreshLayout.setRefreshing(false);
             }
             
             @Override
             public void onFailure(Call<ApiResponse<List<MixtureTaskResponse>>> call, Throwable t) {
                 Log.e(TAG, "网络请求失败: " + t.getMessage(), t);
+                swipeRefreshLayout.setRefreshing(false);
                 showEmptyState("MIXTURE");
                 Toast.makeText(requireContext(), "网络请求失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                // 停止刷新动画
-                swipeRefreshLayout.setRefreshing(false);
             }
         });
     }
@@ -422,6 +422,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         call.enqueue(new Callback<ApiResponse<List<AsphaltTaskResponse>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<AsphaltTaskResponse>>> call, Response<ApiResponse<List<AsphaltTaskResponse>>> response) {
+                // 停止刷新动画
+                swipeRefreshLayout.setRefreshing(false);
+                
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     Log.d(TAG, "沥青任务获取成功");
                     
@@ -478,6 +481,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             
             @Override
             public void onFailure(Call<ApiResponse<List<AsphaltTaskResponse>>> call, Throwable t) {
+                // 停止刷新动画
+                swipeRefreshLayout.setRefreshing(false);
+                
                 Log.e(TAG, "获取沥青任务请求失败", t);
                 showEmptyState("ASPHALT");
             }
@@ -520,13 +526,19 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             String status = mixtureTask.getStatus();
             Log.d(TAG, "混合料任务原始状态: " + status + " 对应任务: " + task.getTaskName());
             
-            if (status != null && status.equals("PROCESSING")) {
+            if (status != null && (status.equals("PROCESSING") || status.equals("ONGOING"))) {
                 Log.d(TAG, "设置状态为'已接受'");
                 task.setStatus("已接受");
                 acceptedTasks.add(task);
                 Log.d(TAG, "添加到已接受任务: " + task.getTaskName());
-            } else {
+            } else if (status != null && status.equals("CREATED")) {
                 Log.d(TAG, "设置状态为'未接受'");
+                task.setStatus("未接受");
+                unacceptedTasks.add(task);
+                Log.d(TAG, "添加到未接受任务: " + task.getTaskName());
+            } else {
+                // 默认处理为未接受
+                Log.d(TAG, "未知状态，默认设置为'未接受': " + status);
                 task.setStatus("未接受");
                 unacceptedTasks.add(task);
                 Log.d(TAG, "添加到未接受任务: " + task.getTaskName());
@@ -575,21 +587,36 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             // 记录这个assignment_id已经处理
             processedAssignmentIds.add(assignmentId);
             
-            Log.d(TAG, "处理沥青任务: " + asphaltTask.getAsphaltTaskName() + ", 状态: " + asphaltTask.getStatus() + ", 分配ID: " + assignmentId);
+            Log.d(TAG, "处理沥青任务: " + asphaltTask.getAsphaltTaskName() + ", 状态: " + asphaltTask.getStatus() + ", 分配ID: " + assignmentId + ", taskStatus=" + asphaltTask.getTaskStatus());
             
             // 转换为通用实验任务模型
             ExperimentTask task = convertAsphaltTaskToExperimentTask(asphaltTask);
             
-            // 根据状态分类
-            if ("未接受".equals(task.getStatus())) {
-                unacceptedTasks.add(task);
-                Log.d(TAG, "添加到未接受任务: " + task.getTaskName());
-            } else if ("已接受".equals(task.getStatus())) {
+            // 根据状态分类 - 优先使用 taskStatus，其次使用 status
+            String taskStatus = asphaltTask.getTaskStatus();
+            String status = asphaltTask.getStatus();
+            
+            // 如果 taskStatus 为 ONGOING 或者 status 为 ONGOING，则添加到已接受任务
+            if ("ONGOING".equalsIgnoreCase(taskStatus) || 
+                "ACCEPTED".equalsIgnoreCase(taskStatus) || 
+                "PROCESSING".equalsIgnoreCase(taskStatus) ||
+                "ONGOING".equalsIgnoreCase(status)) {
                 acceptedTasks.add(task);
                 Log.d(TAG, "添加到已接受任务: " + task.getTaskName());
-            } else if ("已完成".equals(task.getStatus())) {
-                // 已完成的任务不显示
+            } 
+            // 如果是 CREATED 状态，则添加到未接受任务
+            else if ("CREATED".equalsIgnoreCase(taskStatus)) {
+                unacceptedTasks.add(task);
+                Log.d(TAG, "添加到未接受任务: " + task.getTaskName());
+            } 
+            // 完成状态的任务不显示
+            else if ("COMPLETED".equalsIgnoreCase(taskStatus)) {
                 Log.d(TAG, "已完成任务不显示: " + task.getTaskName());
+            }
+            // 默认情况，添加到未接受任务
+            else {
+                unacceptedTasks.add(task);
+                Log.d(TAG, "状态未知，默认添加到未接受任务: " + task.getTaskName());
             }
         }
         
@@ -683,35 +710,61 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 设置公司ID (假设在当前上下文中不直接可用，使用当前用户的公司ID)
         task.setCompanyId(sharedPrefsManager.getUserCompany()); // 设置公司ID
 
-        // 设置任务状态 - 首先尝试使用taskStatus，如果为空则尝试使用status
-        String status = null;
-        if (asphaltTask.getTaskStatus() != null && !asphaltTask.getTaskStatus().isEmpty()) {
-            status = asphaltTask.getTaskStatus();
-            Log.d(TAG, "使用taskStatus字段: " + status);
-        } else if (asphaltTask.getStatus() != null && !asphaltTask.getStatus().isEmpty()) {
-            status = asphaltTask.getStatus();
-            Log.d(TAG, "使用status字段: " + status);
-        }
+        // 设置任务状态 - 优先使用 taskStatus
+        String taskStatus = asphaltTask.getTaskStatus();
+        String statusField = asphaltTask.getStatus();
         
-        if (status != null) {
-            Log.d(TAG, "沥青任务原始状态: " + status + " 对应任务: " + task.getTaskName());
+        Log.d(TAG, "沥青任务状态解析：taskStatus=" + taskStatus + ", status=" + statusField + ", 任务=" + task.getTaskName());
+        
+        // 优先使用 taskStatus 字段
+        if (taskStatus != null && !taskStatus.isEmpty()) {
+            Log.d(TAG, "使用 taskStatus 字段值：" + taskStatus);
             
-            if ("CREATED".equalsIgnoreCase(status) || "PENDING".equalsIgnoreCase(status)) {
-                task.setStatus("未接受");
-                Log.d(TAG, "设置沥青任务状态为'未接受'");
-            } else if ("ACCEPTED".equalsIgnoreCase(status) || "PROCESSING".equalsIgnoreCase(status)) {
-                task.setStatus("已接受");
-                Log.d(TAG, "设置沥青任务状态为'已接受'");
-            } else if ("COMPLETED".equalsIgnoreCase(status)) {
-                task.setStatus("已完成");
-                Log.d(TAG, "设置沥青任务状态为'已完成'");
+            if ("ONGOING".equalsIgnoreCase(taskStatus)) {
+                task.setStatus("ONGOING");
+                Log.d(TAG, "👉设置沥青任务状态为 ONGOING (来自taskStatus)");
+            } else if ("CREATED".equalsIgnoreCase(taskStatus)) {
+                task.setStatus("CREATED");
+                Log.d(TAG, "设置沥青任务状态为 CREATED (来自taskStatus)");
+            } else if ("COMPLETED".equalsIgnoreCase(taskStatus)) {
+                task.setStatus("COMPLETED");
+                Log.d(TAG, "设置沥青任务状态为 COMPLETED (来自taskStatus)");
             } else {
-                task.setStatus("未接受");  // 默认为未接受
-                Log.d(TAG, "未知状态值，默认设置为'未接受': " + status);
+                // 如果 taskStatus 不是已知状态，则使用 status 字段
+                if (statusField != null && !statusField.isEmpty()) {
+                    if ("ONGOING".equalsIgnoreCase(statusField)) {
+                        task.setStatus("ONGOING");
+                        Log.d(TAG, "设置沥青任务状态为 ONGOING (来自status)");
+                    } else {
+                        task.setStatus("CREATED");
+                        Log.d(TAG, "设置沥青任务状态为默认 CREATED");
+                    }
+                } else {
+                    task.setStatus("CREATED");
+                    Log.d(TAG, "设置沥青任务状态为默认 CREATED (字段为空)");
+                }
+            }
+        } else if (statusField != null && !statusField.isEmpty()) {
+            // 如果 taskStatus 为空，则使用 status 字段
+            Log.d(TAG, "使用 status 字段值：" + statusField);
+            
+            if ("ONGOING".equalsIgnoreCase(statusField)) {
+                task.setStatus("ONGOING");
+                Log.d(TAG, "设置沥青任务状态为 ONGOING (来自status)");
+            } else if ("CREATED".equalsIgnoreCase(statusField) || "PENDING".equalsIgnoreCase(statusField)) {
+                task.setStatus("CREATED");
+                Log.d(TAG, "设置沥青任务状态为 CREATED (来自status)");
+            } else if ("COMPLETED".equalsIgnoreCase(statusField)) {
+                task.setStatus("COMPLETED");
+                Log.d(TAG, "设置沥青任务状态为 COMPLETED (来自status)");
+            } else {
+                task.setStatus("CREATED");
+                Log.d(TAG, "设置沥青任务状态为默认 CREATED (未知status值)");
             }
         } else {
-            task.setStatus("未接受");  // 默认为未接受
-            Log.d(TAG, "沥青任务状态为null，默认设置为'未接受'");
+            // 如果两个字段都为空，默认为未接受
+            task.setStatus("CREATED");
+            Log.d(TAG, "设置沥青任务状态为默认 CREATED (字段为空)");
         }
         
         // 设置截止日期 - 如果dueDate不为空，尝试将其转换为时间戳
@@ -905,28 +958,97 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
     // 处理混合料任务的接受
     private void handleMixtureTaskAccepted(ExperimentTask task) {
+        Log.d(TAG, "处理混合料任务接受: " + task.getTaskName() + ", ID: " + task.getId());
+        
+        // 更新任务状态为"已接受"
         task.setStatus("已接受");
+        
         // 设置实验人员为当前登录用户
         String currentUser = sharedPrefsManager.getUserName();
         if (currentUser != null && !currentUser.isEmpty()) {
             task.setExperimenter(currentUser);
+            Log.d(TAG, "设置实验人员: " + currentUser);
         }
         
-        // 更新任务状态后，直接刷新数据
-        refreshData();
+        // 从未接受列表中移除任务
+        for (Iterator<ExperimentTask> iterator = apiMixtureUnacceptedTasks.iterator(); iterator.hasNext();) {
+            ExperimentTask t = iterator.next();
+            if (t.getId() == task.getId()) {
+                iterator.remove();
+                Log.d(TAG, "从未接受列表中移除任务: " + t.getTaskName());
+                break;
+            }
+        }
+        
+        // 添加到已接受列表
+        boolean alreadyInList = false;
+        for (ExperimentTask t : apiMixtureAcceptedTasks) {
+            if (t.getId() == task.getId()) {
+                alreadyInList = true;
+                t.setStatus("已接受");
+                t.setExperimenter(task.getExperimenter());
+                Log.d(TAG, "更新已接受列表中的任务: " + t.getTaskName());
+                break;
+            }
+        }
+        
+        if (!alreadyInList) {
+            apiMixtureAcceptedTasks.add(task);
+            Log.d(TAG, "添加到已接受列表: " + task.getTaskName());
+        }
+        
+        // 更新UI显示
+        updateTaskUI(apiMixtureUnacceptedTasks, apiMixtureAcceptedTasks, "MIXTURE");
+        
+        // 显示成功提示
+        Toast.makeText(requireContext(), "成功接受任务：" + task.getTaskName(), Toast.LENGTH_SHORT).show();
     }
 
     // 处理沥青任务的接受
     public void onAcceptTask(ExperimentTask task) {
-        task.setStatus("已接受");
-        // 设置实验人员为当前登录用户
+        // 获取当前登录用户
         String currentUser = sharedPrefsManager.getUserName();
-        if (currentUser != null && !currentUser.isEmpty()) {
-            task.setExperimenter(currentUser);
+        if (currentUser == null || currentUser.isEmpty()) {
+            Toast.makeText(requireContext(), "未登录用户无法接受任务", Toast.LENGTH_SHORT).show();
+            return;
         }
         
-        // 更新任务状态后，直接刷新数据
-        refreshData();
+        // 获取任务分配ID，如果为空则使用任务ID
+        String taskId = task.getTaskAssignmentId();
+        if (taskId == null || taskId.isEmpty()) {
+            taskId = task.getTaskId();
+            Log.w(TAG, "任务缺少分配ID，使用任务ID代替: " + taskId);
+        }
+        
+        // 调用API接受任务
+        asphaltTaskService.acceptAsphaltTask(
+                taskId, 
+                currentUser, 
+                System.currentTimeMillis()
+        ).enqueue(new Callback<ApiResponse<Boolean>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    // 显示成功提示
+                    Toast.makeText(requireContext(), "成功接受任务：" + task.getTaskName(), Toast.LENGTH_SHORT).show();
+                    
+                    // 重新从后端获取最新的任务列表
+                    fetchAsphaltTasks();
+                } else {
+                    // 获取错误信息
+                    String errorMsg = "接受任务失败";
+                    if (response.body() != null) {
+                        errorMsg = response.body().getMessage();
+                    }
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                Toast.makeText(requireContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
     
     // 处理沥青任务的详情查看
@@ -1004,13 +1126,13 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 直接使用传入的任务对象显示底部弹窗
         BottomSheetAsphaltTaskDetailFragment bottomSheet = 
-                BottomSheetAsphaltTaskDetailFragment.newInstance(task, task.getStatus().equals("未接受"));
+                BottomSheetAsphaltTaskDetailFragment.newInstance(task, task.getStatus().equals("CREATED"));
         
         bottomSheet.setOnTaskActionListener(new BottomSheetAsphaltTaskDetailFragment.OnTaskActionListener() {
             @Override
             public void onTaskAccepted(ExperimentTask acceptedTask) {
-                // 接受任务后直接刷新数据
-                refreshData();
+                // 使用 onAcceptTask 方法更新任务状态和UI
+                onAcceptTask(acceptedTask);
             }
             
             @Override
@@ -1047,13 +1169,13 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 使用传入的任务对象创建底部弹窗
         BottomSheetAsphaltTaskDetailFragment bottomSheet = 
-                BottomSheetAsphaltTaskDetailFragment.newInstance(task, task.getStatus().equals("未接受"));
+                BottomSheetAsphaltTaskDetailFragment.newInstance(task, task.getStatus().equals("CREATED"));
         
         bottomSheet.setOnTaskActionListener(new BottomSheetAsphaltTaskDetailFragment.OnTaskActionListener() {
             @Override
             public void onTaskAccepted(ExperimentTask acceptedTask) {
-                // 接受任务后直接刷新数据
-                refreshData();
+                // 使用 onAcceptTask 方法更新任务状态和UI
+                onAcceptTask(acceptedTask);
             }
             
             @Override
@@ -1102,24 +1224,12 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     
     // 显示混合料实验信息
     private void showMixtureExperimentInfo(ExperimentTask task) {
-        // 使用TaskDetailBottomSheet而不是BottomSheetMixRatioDetailFragment
-        TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
+        // 使用BottomSheetMixRatioDetailFragment而不是TaskDetailBottomSheet
+        BottomSheetMixRatioDetailFragment bottomSheet = BottomSheetMixRatioDetailFragment.newInstance(task);
         
-        // 设置任务接受监听器
-        bottomSheet.setTaskAcceptListener(new TaskDetailBottomSheet.TaskAcceptListener() {
-            @Override
-            public void onTaskAccepted(ExperimentTask acceptedTask) {
-                // 处理任务被接受的情况
-                handleMixtureTaskAccepted(acceptedTask);
-                // 刷新数据
-                refreshData();
-            }
-        });
-        
-        bottomSheet.show(getChildFragmentManager(), "task_detail_bottom_sheet");
+        bottomSheet.show(getChildFragmentManager(), "mixratio_detail_bottom_sheet");
     }
 
-    // 开始混合料实验
     private void startMixtureExperiment(ExperimentTask task) {
         Intent intent = new Intent(requireContext(), RecordExperimentDataActivity.class);
         intent.putExtra("taskId", task.getId());  // 这里也需要修改为 "taskId"
@@ -1168,22 +1278,18 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                         fetchAsphaltTasks();
                     }
                 } else {
-                    try {
-                        String errorBody = response.errorBody() != null ? response.errorBody().string() : "";
-                        Log.e(TAG, "API连接测试失败，错误响应: " + errorBody);
-                    } catch (IOException e) {
-                        Log.e(TAG, "无法读取错误响应", e);
+                    // 获取错误信息
+                    String errorMsg = "接受任务失败";
+                    if (response.body() != null) {
+                        errorMsg = response.body().getMessage();
                     }
-                    
-                    Log.e(TAG, "API连接测试失败: " + response.code());
-                    Toast.makeText(requireContext(), "API连接测试失败: " + response.code(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse<List<MixtureTaskResponse>>> call, Throwable t) {
-                Log.e(TAG, "API连接测试异常: " + t.getMessage(), t);
-                Toast.makeText(requireContext(), "API连接测试失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -1221,5 +1327,10 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 myTasksRecyclerView.setVisibility(View.GONE);
             }
         });
+    }
+
+    @Override
+    public void onTaskAccepted(ExperimentTask task) {
+        handleMixtureTaskAccepted(task);
     }
 }

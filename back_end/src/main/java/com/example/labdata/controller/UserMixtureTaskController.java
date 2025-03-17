@@ -219,4 +219,50 @@ public class UserMixtureTaskController {
             return ResponseEntity.ok(new ApiResponse<>(false, "获取任务失败: " + e.getMessage(), null));
         }
     }
+    
+    /**
+     * 接受任务并更新状态为ONGOING
+     * @param taskId 任务ID
+     * @param acceptor 接受人
+     * @param acceptTime 接受时间
+     * @return 更新结果
+     */
+    @PutMapping("/{taskId}/accept")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Boolean>> acceptTask(
+            @PathVariable Long taskId,
+            @RequestParam String acceptor,
+            @RequestParam Long acceptTime) {
+        
+        logger.info("接收到接受任务请求：任务ID={}, 接受人={}, 接受时间={}", taskId, acceptor, acceptTime);
+        
+        try {
+            Optional<UserMixtureTask> taskOpt = userMixtureTaskRepository.findById(taskId);
+            if (!taskOpt.isPresent()) {
+                logger.warn("找不到ID为{}的任务", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(false, "任务不存在", false));
+            }
+            
+            UserMixtureTask task = taskOpt.get();
+            // 检查任务当前状态
+            if (!"CREATED".equals(task.getStatus())) {
+                logger.warn("任务ID={}的状态不是CREATED，当前状态={}", taskId, task.getStatus());
+                return ResponseEntity.ok(new ApiResponse<>(false, 
+                    "任务状态不是'未接受'，无法接受任务", false));
+            }
+            
+            // 更新任务状态
+            task.setStatus("ONGOING");
+            task.setAcceptor(acceptor);
+            task.setAcceptTime(acceptTime);
+            userMixtureTaskRepository.save(task);
+            
+            logger.info("成功接受任务，任务ID={}, 新状态=ONGOING", taskId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功接受任务", true));
+            
+        } catch (Exception e) {
+            logger.error("接受任务时发生错误", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "接受任务失败: " + e.getMessage(), false));
+        }
+    }
 }

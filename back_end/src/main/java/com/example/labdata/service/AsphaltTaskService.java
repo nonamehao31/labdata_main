@@ -255,6 +255,32 @@ public class AsphaltTaskService {
     }
 
     /**
+     * 根据任务分配ID获取沥青任务
+     *
+     * @param taskId 任务分配ID
+     * @return 沥青任务列表
+     */
+    public List<AsphaltTask> getAsphaltTasksByAssignmentId(String taskId) {
+        logger.info("根据任务分配ID获取沥青任务: {}", taskId);
+        return asphaltTaskRepository.findByAsphaltTaskAssignmentId(taskId);
+    }
+    
+    /**
+     * 更新沥青任务
+     *
+     * @param task 沥青任务
+     * @return 更新后的沥青任务
+     */
+    public AsphaltTask updateAsphaltTask(AsphaltTask task) {
+        logger.info("更新沥青任务: ID={}, 名称={}, 状态={}", 
+                task.getAsphaltExperimentId(), 
+                task.getAsphaltTaskName(), 
+                task.getTaskStatus());
+        
+        return asphaltTaskRepository.save(task);
+    }
+
+    /**
      * 生成沥青任务分配ID
      * 
      * @return 生成的分配ID

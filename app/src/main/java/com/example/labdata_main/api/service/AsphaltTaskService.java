@@ -8,6 +8,7 @@ import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
+import retrofit2.http.POST;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
@@ -50,4 +51,18 @@ public interface AsphaltTaskService {
      */
     @GET("api/asphalt/experiments/detail/{taskId}")
     Call<ApiResponse<AsphaltDetailResponse>> getAsphaltDetailByTaskId(@Path("taskId") String taskId);
+    
+    /**
+     * 接受沥青任务
+     *
+     * @param taskId 任务ID
+     * @param acceptor 接受者
+     * @param acceptTime 接受时间
+     * @return 操作结果响应
+     */
+    @POST("api/asphalt/experiments/accept/{taskId}")
+    Call<ApiResponse<Boolean>> acceptAsphaltTask(
+            @Path("taskId") String taskId,
+            @Query("acceptor") String acceptor,
+            @Query("acceptTime") Long acceptTime);
 }

@@ -28,15 +28,18 @@ import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MaterialItem;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
+import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -153,10 +156,51 @@ public class TaskDetailBottomSheet extends BottomSheetDialogFragment {
         // 设置接受任务按钮点击事件
         ExtendedFloatingActionButton fabAcceptTask = view.findViewById(R.id.fabAcceptTask);
         fabAcceptTask.setOnClickListener(v -> {
-            if (taskAcceptListener != null) {
-                taskAcceptListener.onTaskAccepted(task);
-            }
-            dismiss();
+            // 显示加载提示
+            Toast.makeText(requireContext(), "正在接受任务...", Toast.LENGTH_SHORT).show();
+            
+            // 获取当前用户名
+            SharedPrefsManager sharedPrefsManager = new SharedPrefsManager(requireContext());
+            String acceptor = sharedPrefsManager.getUserName();
+            
+            // 获取当前时间戳
+            long acceptTime = System.currentTimeMillis();
+            
+            Log.d(TAG, "接受任务: " + task.getId() + ", 接受人: " + acceptor + ", 接受时间: " + acceptTime);
+            
+            // 调用API接受任务
+            MixtureTaskService mixtureTaskService = ServiceCreator.createMixtureTaskService();
+            mixtureTaskService.acceptTask(task.getId(), acceptor, acceptTime).enqueue(new Callback<ApiResponse<Boolean>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess() 
+                            && response.body().getData() != null && response.body().getData()) {
+                        Log.d(TAG, "成功接受任务: " + task.getId());
+                        
+                        // 更新本地任务状态
+                        task.setStatus("已接受");
+                        
+                        // 回调通知OverviewFragment更新
+                        if (taskAcceptListener != null) {
+                            taskAcceptListener.onTaskAccepted(task);
+                        }
+                        
+                        // 显示成功消息
+                        Toast.makeText(requireContext(), "成功接受任务", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Log.e(TAG, "接受任务失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                        Toast.makeText(requireContext(), "接受任务失败，请重试", Toast.LENGTH_SHORT).show();
+                    }
+                    dismiss();
+                }
+                
+                @Override
+                public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                    Log.e(TAG, "接受任务请求失败: " + t.getMessage(), t);
+                    Toast.makeText(requireContext(), "网络错误，请重试", Toast.LENGTH_SHORT).show();
+                    dismiss();
+                }
+            });
         });
     }
     

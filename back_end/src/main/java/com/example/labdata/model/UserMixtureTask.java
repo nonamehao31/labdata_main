@@ -57,6 +57,21 @@ public class UserMixtureTask {
     @Column(name = "due_date")
     private String dueDate;
     
+    @Column(name = "acceptor")
+    private String acceptor;
+    
+    @Column(name = "accept_time")
+    private Long acceptTime;
+    
+    @Column(name = "prepare_status", columnDefinition = "varchar(20) default 'unfinished'")
+    private String prepareStatus = "unfinished";
+    
+    @Column(name = "making_status", columnDefinition = "varchar(20) default 'unfinished'")
+    private String makingStatus = "unfinished";
+    
+    @Column(name = "testing_status", columnDefinition = "varchar(20) default 'unfinished'")
+    private String testingStatus = "unfinished";
+
     /**
      * 根据当前任务自动设置任务ID，格式为 MIXTURE_yyyyMMdd_序号
      */
@@ -94,6 +109,9 @@ public class UserMixtureTask {
         task.setTaskName(taskName);
         task.setCreationTime(System.currentTimeMillis());
         task.setStatus("CREATED");
+        task.setPrepareStatus("unfinished");
+        task.setMakingStatus("unfinished");
+        task.setTestingStatus("unfinished");
         // 注意: 这里不设置dueDate，因为需要从Project获取
         return task;
     }
@@ -122,5 +140,85 @@ public class UserMixtureTask {
      */
     public String getDueDate() {
         return dueDate;
+    }
+
+    /**
+     * 设置接受人
+     * @param acceptor 接受人
+     */
+    public void setAcceptor(String acceptor) {
+        this.acceptor = acceptor;
+    }
+
+    /**
+     * 获取接受人
+     * @return 接受人
+     */
+    public String getAcceptor() {
+        return acceptor;
+    }
+
+    /**
+     * 设置接受时间
+     * @param acceptTime 接受时间
+     */
+    public void setAcceptTime(Long acceptTime) {
+        this.acceptTime = acceptTime;
+    }
+
+    /**
+     * 获取接受时间
+     * @return 接受时间
+     */
+    public Long getAcceptTime() {
+        return acceptTime;
+    }
+    
+    /**
+     * 设置准备状态
+     * @param prepareStatus 准备状态
+     */
+    public void setPrepareStatus(String prepareStatus) {
+        this.prepareStatus = prepareStatus;
+    }
+    
+    /**
+     * 获取准备状态
+     * @return 准备状态
+     */
+    public String getPrepareStatus() {
+        return prepareStatus;
+    }
+    
+    /**
+     * 设置制作状态
+     * @param makingStatus 制作状态
+     */
+    public void setMakingStatus(String makingStatus) {
+        this.makingStatus = makingStatus;
+    }
+    
+    /**
+     * 获取制作状态
+     * @return 制作状态
+     */
+    public String getMakingStatus() {
+        return makingStatus;
+    }
+    
+    /**
+     * 设置测试状态
+     * @param testingStatus 测试状态
+     */
+    public void setTestingStatus(String testingStatus) {
+        this.testingStatus = testingStatus;
+    }
+    
+    /**
+     * 获取测试状态
+     * @return 测试状态
+     */
+    public String getTestingStatus() {
+        return testingStatus;
     }
 }
