@@ -2,6 +2,8 @@ package com.example.labdata.repository;
 
 import com.example.labdata.model.UserMixtureTask;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,6 +20,16 @@ public interface UserMixtureTaskRepository extends JpaRepository<UserMixtureTask
      * @return 关联任务列表
      */
     List<UserMixtureTask> findByTaskId(String taskId);
+    
+    /**
+     * 根据任务ID前缀模糊查询所有相关任务
+     * 使用LIKE查询匹配所有以指定前缀开头的task_id
+     * 
+     * @param taskIdPrefix 任务ID前缀
+     * @return 关联任务列表
+     */
+    @Query("SELECT t FROM UserMixtureTask t WHERE t.taskId LIKE :taskIdPrefix%")
+    List<UserMixtureTask> findByTaskIdStartingWith(@Param("taskIdPrefix") String taskIdPrefix);
     
     /**
      * 根据用户ID查找所有任务
@@ -46,4 +58,21 @@ public interface UserMixtureTaskRepository extends JpaRepository<UserMixtureTask
      * @return 配比任务列表
      */
     List<UserMixtureTask> findByMixratioId(Long mixratioId);
+    
+    /**
+     * 根据任务名称和项目ID查找所有任务
+     * @param taskName 任务名称
+     * @param projectId 项目ID
+     * @return 任务列表
+     */
+    List<UserMixtureTask> findByTaskNameAndProjectId(String taskName, String projectId);
+    
+    /**
+     * 根据任务名称、项目ID和任务分配查找所有任务
+     * @param taskName 任务名称
+     * @param projectId 项目ID
+     * @param taskAssignment 任务分配
+     * @return 任务列表
+     */
+    List<UserMixtureTask> findByTaskNameAndProjectIdAndTaskAssignment(String taskName, String projectId, String taskAssignment);
 }

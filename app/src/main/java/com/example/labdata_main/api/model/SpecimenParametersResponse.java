@@ -11,16 +11,19 @@ public class SpecimenParametersResponse {
     private Long id; // 制件方法ID
     
     @SerializedName("mixingTemperature")
-    private Float mixingTemperature; // 拌合温度
+    private Double mixingTemperature; // 拌合温度
     
     @SerializedName("mixingSpeed")
-    private Float mixingSpeed; // 拌合速度
+    private Double mixingSpeed; // 拌合速度
     
     @SerializedName("mixingTime")
     private Integer mixingTime; // 拌合时间
     
     @SerializedName("compactionMethod")
     private String compactionMethod; // 压实方法
+    
+    @SerializedName("mixRatioName")
+    private String mixRatioName; // 添加配比名称
 
     // Getters and Setters
     public Long getId() {
@@ -31,19 +34,19 @@ public class SpecimenParametersResponse {
         this.id = id;
     }
 
-    public Float getMixingTemperature() {
+    public Double getMixingTemperature() {
         return mixingTemperature;
     }
 
-    public void setMixingTemperature(Float mixingTemperature) {
+    public void setMixingTemperature(Double mixingTemperature) {
         this.mixingTemperature = mixingTemperature;
     }
 
-    public Float getMixingSpeed() {
+    public Double getMixingSpeed() {
         return mixingSpeed;
     }
 
-    public void setMixingSpeed(Float mixingSpeed) {
+    public void setMixingSpeed(Double mixingSpeed) {
         this.mixingSpeed = mixingSpeed;
     }
 
@@ -63,6 +66,14 @@ public class SpecimenParametersResponse {
         this.compactionMethod = compactionMethod;
     }
 
+    public String getMixRatioName() {
+        return mixRatioName;
+    }
+
+    public void setMixRatioName(String mixRatioName) {
+        this.mixRatioName = mixRatioName;
+    }
+
     @Override
     public String toString() {
         return "SpecimenParametersResponse{" +
@@ -71,6 +82,7 @@ public class SpecimenParametersResponse {
                 ", mixingSpeed=" + mixingSpeed +
                 ", mixingTime=" + mixingTime +
                 ", compactionMethod='" + compactionMethod + '\'' +
+                ", mixRatioName='" + mixRatioName + '\'' +
                 '}';
     }
 }

@@ -95,7 +95,7 @@ public class MixRatioDetailAdapter extends RecyclerView.Adapter<MixRatioDetailAd
 
                 colorBox.setBackgroundColor(colors[i % colors.length]);
                 name.setText(material.getName());
-                percentage.setText(material.getAmount() + "%");
+                percentage.setText(material.getAmount());
 
                 legendContainer.addView(legendItem);
             }

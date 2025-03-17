@@ -1,10 +1,13 @@
 package com.example.labdata_main.api.service;
 
 import com.example.labdata_main.api.model.ApiResponse;
+import com.example.labdata_main.api.model.MixRatioDetailResponse;
+import com.example.labdata_main.api.model.MixratioSpecimenPair;
 import com.example.labdata_main.api.model.MixtureTaskResponse;
 import com.example.labdata_main.api.model.ProjectNameResponse;
 
 import java.util.List;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -42,4 +45,39 @@ public interface MixtureTaskService {
      */
     @GET("api/mixtureTask/{taskId}/projectName")
     Call<ProjectNameResponse> getProjectNameByTaskId(@Path("taskId") Long taskId);
+    
+    /**
+     * 根据任务ID获取配比和制件方法组合
+     * @param taskId 任务ID
+     * @return 配比和制件方法组合列表
+     */
+    @GET("api/mixtureTask/{taskId}/pairs")
+    Call<ApiResponse<List<MixratioSpecimenPair>>> getMixratioSpecimenPairsByTaskId(@Path("taskId") Long taskId);
+    
+    /**
+     * 根据任务ID获取配比详细信息
+     * 
+     * @param taskId 任务ID
+     * @return 配比详细信息列表
+     */
+    @GET("api/mixtureTask/mixratio-details/{taskId}")
+    Call<ApiResponse<List<MixRatioDetailResponse>>> getMixRatioDetailsByTaskId(@Path("taskId") Long taskId);
+    
+    /**
+     * 根据任务ID获取实验指派信息
+     * 
+     * @param taskId 任务ID
+     * @return 配比ID到实验指派列表的映射
+     */
+    @GET("api/mixtureTask/task-assignments/{taskId}")
+    Call<ApiResponse<Map<Long, List<String>>>> getTaskAssignmentsByTaskId(@Path("taskId") Long taskId);
+    
+    /**
+     * 根据任务ID获取备注信息
+     * 
+     * @param taskId 任务ID
+     * @return 备注信息
+     */
+    @GET("api/mixtureTask/task-remarks/{taskId}")
+    Call<ApiResponse<String>> getTaskRemarksByTaskId(@Path("taskId") Long taskId);
 }

@@ -63,9 +63,14 @@ public class PieChartView extends View {
             Log.d("PieChartView", "Material: " + material.getName() + ", Amount: " + material.getAmount());
             if (material.getAmount() != null && !material.getAmount().trim().isEmpty()) {
                 try {
-                    total += Float.parseFloat(material.getAmount().trim());
+                    String amountStr = material.getAmount().trim();
+                    // 移除百分比符号（如果存在）
+                    if (amountStr.endsWith("%")) {
+                        amountStr = amountStr.substring(0, amountStr.length() - 1);
+                    }
+                    total += Float.parseFloat(amountStr);
                 } catch (NumberFormatException e) {
-                    Log.e("PieChartView", "Invalid amount: " + material.getAmount());
+                    Log.e("PieChartView", "Invalid amount: " + material.getAmount(), e);
                 }
             }
         }
@@ -103,9 +108,14 @@ public class PieChartView extends View {
             
             if (material.getAmount() != null && !material.getAmount().trim().isEmpty()) {
                 try {
-                    sweepAngle = (Float.parseFloat(material.getAmount().trim()) / total) * 360;
+                    String amountStr = material.getAmount().trim();
+                    // 移除百分比符号（如果存在）
+                    if (amountStr.endsWith("%")) {
+                        amountStr = amountStr.substring(0, amountStr.length() - 1);
+                    }
+                    sweepAngle = (Float.parseFloat(amountStr) / total) * 360;
                 } catch (NumberFormatException e) {
-                    Log.e("PieChartView", "Invalid material amount: " + material.getAmount());
+                    Log.e("PieChartView", "Invalid material amount: " + material.getAmount(), e);
                 }
             } else if (material.getPercentage() > 0) {
                 sweepAngle = material.getPercentage() / total * 360;

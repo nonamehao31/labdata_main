@@ -74,11 +74,18 @@ public class DynamicMoldingParametersAdapter extends RecyclerView.Adapter<Dynami
 
         public void bind(SpecimenParametersResponse parameter, MixRatio mixRatio, int index) {
             // 设置配比名称
-            if (mixRatio != null) {
+            if (parameter != null && parameter.getMixRatioName() != null && !parameter.getMixRatioName().isEmpty()) {
+                // 优先使用参数中的配比名称（来自后端）
+                tvMixRatioName.setText(String.format("配比%d：%s", index, parameter.getMixRatioName()));
+                tvMixRatioName.setVisibility(View.VISIBLE);
+            } else if (mixRatio != null) {
+                // 如果参数中没有配比名称，使用本地配比名称
                 tvMixRatioName.setText(String.format("配比%d：%s", index, mixRatio.getName()));
                 tvMixRatioName.setVisibility(View.VISIBLE);
             } else {
-                tvMixRatioName.setVisibility(View.GONE);
+                // 如果都没有，则显示通用配比名称
+                tvMixRatioName.setText(String.format("配比%d", index));
+                tvMixRatioName.setVisibility(View.VISIBLE);
             }
 
             // 设置拌合参数
