@@ -1,5 +1,6 @@
 package com.example.labdata_main.api.service;
 
+import com.example.labdata_main.api.model.AsphaltDetailResponse;
 import com.example.labdata_main.api.model.AsphaltTaskResponse;
 import com.example.labdata_main.api.model.ApiResponse;
 
@@ -40,4 +41,13 @@ public interface AsphaltTaskService {
      */
     @GET("api/asphalt/experiments/byCompany")
     Call<ApiResponse<List<AsphaltTaskResponse>>> getUserAsphaltTasks(@Query("companyId") String companyId);
+    
+    /**
+     * 获取沥青任务详情信息，包括沥青信息和实验指派信息
+     *
+     * @param taskId 任务ID
+     * @return 包含沥青信息和实验指派信息的响应
+     */
+    @GET("api/asphalt/experiments/detail/{taskId}")
+    Call<ApiResponse<AsphaltDetailResponse>> getAsphaltDetailByTaskId(@Path("taskId") String taskId);
 }

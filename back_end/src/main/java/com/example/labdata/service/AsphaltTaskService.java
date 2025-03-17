@@ -3,6 +3,7 @@ package com.example.labdata.service;
 import com.example.labdata.model.AsphaltTask;
 import com.example.labdata.model.TestAsphaltMaterial;
 import com.example.labdata.payload.request.AsphaltExperimentRequest;
+import com.example.labdata.payload.response.AsphaltDetailResponse;
 import com.example.labdata.repository.AsphaltTaskRepository;
 import com.example.labdata.repository.TestAsphaltMaterialRepository;
 import org.slf4j.Logger;
@@ -12,9 +13,14 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 沥青实验任务服务类
@@ -194,6 +200,58 @@ public class AsphaltTaskService {
     public List<AsphaltTask> getAsphaltExperimentsByName(String name) {
         logger.info("根据名称获取沥青实验任务: {}", name);
         return asphaltTaskRepository.findByAsphaltExperimentName(name);
+    }
+
+    /**
+     * 根据任务ID获取沥青任务详情信息
+     * 
+     * @param taskId 任务ID
+     * @return 沥青任务详情响应
+     */
+    public AsphaltDetailResponse getAsphaltDetailByTaskId(String taskId) {
+        logger.info("获取任务ID为{}的沥青任务详情", taskId);
+        
+        List<AsphaltTask> asphaltTasks = asphaltTaskRepository.findByAsphaltTaskAssignmentId(taskId);
+        if (asphaltTasks.isEmpty()) {
+            logger.warn("未找到任务ID为{}的沥青任务", taskId);
+            return new AsphaltDetailResponse(new ArrayList<>(), new HashMap<>());
+        }
+        
+        // 1. 提取所有沥青ID，去重
+        Set<Long> asphaltIds = asphaltTasks.stream()
+                .map(AsphaltTask::getSelectedAsphaltId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        
+        // 2. 获取沥青信息
+        List<AsphaltDetailResponse.AsphaltInfo> asphaltInfoList = new ArrayList<>();
+        for (Long asphaltId : asphaltIds) {
+            Optional<TestAsphaltMaterial> asphaltMaterial = testAsphaltMaterialRepository.findById(asphaltId);
+            if (asphaltMaterial.isPresent()) {
+                TestAsphaltMaterial material = asphaltMaterial.get();
+                asphaltInfoList.add(new AsphaltDetailResponse.AsphaltInfo(
+                        asphaltId,
+                        material.getAsphaltSupplier(),
+                        material.getAsphaltGrade(),
+                        material.getAsphaltCatalog()
+                ));
+            }
+        }
+        
+        // 3. 获取实验指派信息
+        Map<Long, List<String>> experimentAssignments = new HashMap<>();
+        for (AsphaltTask task : asphaltTasks) {
+            Long asphaltId = task.getSelectedAsphaltId();
+            if (asphaltId != null) {
+                String assignment = task.getAsphaltTaskAssignment();
+                if (assignment != null && !assignment.isEmpty()) {
+                    experimentAssignments.computeIfAbsent(asphaltId, k -> new ArrayList<>())
+                            .add(assignment);
+                }
+            }
+        }
+        
+        return new AsphaltDetailResponse(asphaltInfoList, experimentAssignments);
     }
 
     /**

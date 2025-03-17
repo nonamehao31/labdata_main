@@ -28,6 +28,10 @@ public class ExperimentTask implements Parcelable {
     @NonNull
     @ColumnInfo(name = "taskId")
     private String taskId; // 格式：TASK_yyyyMMdd_HHmmss_序号
+
+    @ColumnInfo(name = "taskAssignmentId")
+    private String taskAssignmentId; // UUID格式的任务分配ID，对应后端asphalt_task_assignment_id
+
     private String taskName; // 任务名称
     private long projectId;
     private String projectName;
@@ -78,6 +82,7 @@ public class ExperimentTask implements Parcelable {
     protected ExperimentTask(Parcel in) {
         id = in.readLong();
         taskId = in.readString();
+        taskAssignmentId = in.readString();
         taskName = in.readString();
         projectId = in.readLong();
         projectName = in.readString();
@@ -127,6 +132,7 @@ public class ExperimentTask implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeLong(id);
         dest.writeString(taskId);
+        dest.writeString(taskAssignmentId);
         dest.writeString(taskName);
         dest.writeLong(projectId);
         dest.writeString(projectName);
@@ -187,6 +193,14 @@ public class ExperimentTask implements Parcelable {
 
     public void setTaskId(String taskId) {
         this.taskId = taskId;
+    }
+
+    public String getTaskAssignmentId() {
+        return taskAssignmentId;
+    }
+
+    public void setTaskAssignmentId(String taskAssignmentId) {
+        this.taskAssignmentId = taskAssignmentId;
     }
 
     public String getTaskName() {

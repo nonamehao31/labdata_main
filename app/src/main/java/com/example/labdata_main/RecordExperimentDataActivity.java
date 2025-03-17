@@ -67,12 +67,39 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         setContentView(R.layout.activity_record_experiment_data);
 
         // 获取任务ID和实验类型
-        taskId = getIntent().getLongExtra("taskId", -1);
+        String taskIdString = getIntent().getStringExtra("taskId");
         experimentType = getIntent().getStringExtra("experiment_type");
         
-        Log.d("RecordExperiment", "收到任务ID: " + taskId + ", 实验类型: " + experimentType);
+        Log.d("RecordExperiment", "收到传入的任务ID参数: " + taskIdString + ", 实验类型: " + experimentType);
         
-        if (taskId == -1) {
+        // 判断任务ID是否为UUID格式
+        if (taskIdString != null && !taskIdString.isEmpty()) {
+            // 如果是UUID格式，则直接使用该UUID进行API请求
+            if (taskIdString.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
+                Log.d("RecordExperiment", "检测到UUID格式任务ID: " + taskIdString);
+                // 将UUID保存为字符串ID，后续使用该UUID查询API
+                taskId = -1; // 将数字ID设为-1表示使用UUID
+                // 这里应该保存UUID，但当前应用主要使用数字ID，需要更多修改
+                // TODO: 保存和使用UUID进行API查询
+            } else {
+                // 尝试将其转换为数字ID
+                try {
+                    taskId = Long.parseLong(taskIdString);
+                    Log.d("RecordExperiment", "解析数字任务ID: " + taskId);
+                } catch (NumberFormatException e) {
+                    Log.e("RecordExperiment", "无法解析任务ID: " + taskIdString, e);
+                    Toast.makeText(this, "无效的任务ID格式", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+            }
+        } else {
+            // 获取数字任务ID（后向兼容）
+            taskId = getIntent().getLongExtra("taskId", -1);
+            Log.d("RecordExperiment", "使用数字任务ID: " + taskId);
+        }
+        
+        if (taskId == -1 && (taskIdString == null || taskIdString.isEmpty())) {
             Toast.makeText(this, "无效的任务ID", Toast.LENGTH_SHORT).show();
             finish();
             return;

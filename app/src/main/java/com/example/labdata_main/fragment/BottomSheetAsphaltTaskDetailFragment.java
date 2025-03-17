@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -13,6 +14,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.R;
 import com.example.labdata_main.adapter.AsphaltExperimentAdapter;
+import com.example.labdata_main.api.model.ApiResponse;
+import com.example.labdata_main.api.model.AsphaltDetailResponse;
+import com.example.labdata_main.api.service.AsphaltTaskService;
+import com.example.labdata_main.api.ApiClient;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -25,6 +30,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragment {
     private static final String ARG_TASK = "task";
     private static final String ARG_SHOW_ACCEPT_BUTTON = "show_accept_button";
@@ -32,6 +41,7 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
     private ExperimentTask task;
     private OnTaskActionListener listener;
     private boolean showAcceptButton = true; // 默认显示按钮
+    private AsphaltTaskService asphaltTaskService;
 
     public interface OnTaskActionListener {
         void onTaskAccepted(ExperimentTask task);
@@ -64,6 +74,9 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
             task = getArguments().getParcelable(ARG_TASK);
             showAcceptButton = getArguments().getBoolean(ARG_SHOW_ACCEPT_BUTTON, true);
         }
+        
+        // 初始化API服务
+        asphaltTaskService = ApiClient.getClient().create(AsphaltTaskService.class);
     }
 
     @Nullable
@@ -95,8 +108,20 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
 
         // 设置RecyclerView
         asphaltExperimentRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        AsphaltExperimentAdapter adapter = new AsphaltExperimentAdapter(parseExperimentData());
-        asphaltExperimentRecyclerView.setAdapter(adapter);
+        
+        // 优先使用UUID格式的任务分配ID，如果不存在再尝试使用任务ID
+        if (task.getTaskAssignmentId() != null && !task.getTaskAssignmentId().isEmpty()) {
+            fetchAsphaltDetail(task.getTaskAssignmentId(), asphaltExperimentRecyclerView);
+        } else if (task.getTaskId() != null && !task.getTaskId().isEmpty()) {
+            // 任务分配ID为空时，记录警告并回退到使用本地数据
+            Toast.makeText(requireContext(), "无法获取任务UUID，将使用本地数据", Toast.LENGTH_SHORT).show();
+            AsphaltExperimentAdapter adapter = new AsphaltExperimentAdapter(parseExperimentData());
+            asphaltExperimentRecyclerView.setAdapter(adapter);
+        } else {
+            // 使用本地数据
+            AsphaltExperimentAdapter adapter = new AsphaltExperimentAdapter(parseExperimentData());
+            asphaltExperimentRecyclerView.setAdapter(adapter);
+        }
 
         // 根据 showAcceptButton 参数控制按钮显示
         if (!showAcceptButton) {
@@ -116,6 +141,104 @@ public class BottomSheetAsphaltTaskDetailFragment extends BottomSheetDialogFragm
                 fabAcceptTask.setEnabled(false);
             }
         }
+    }
+
+    private void fetchAsphaltDetail(String taskId, RecyclerView recyclerView) {
+        Call<ApiResponse<AsphaltDetailResponse>> call = asphaltTaskService.getAsphaltDetailByTaskId(taskId);
+        call.enqueue(new Callback<ApiResponse<AsphaltDetailResponse>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<AsphaltDetailResponse>> call, Response<ApiResponse<AsphaltDetailResponse>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
+                    AsphaltDetailResponse detailResponse = response.body().getData();
+                    // 处理详细信息并更新RecyclerView
+                    List<AsphaltExperimentItem> items = parseAsphaltDetail(detailResponse);
+                    AsphaltExperimentAdapter adapter = new AsphaltExperimentAdapter(items);
+                    recyclerView.setAdapter(adapter);
+                } else {
+                    // 处理错误
+                    Toast.makeText(requireContext(), "获取详细信息失败", Toast.LENGTH_SHORT).show();
+                    // 回退到使用本地数据
+                    AsphaltExperimentAdapter adapter = new AsphaltExperimentAdapter(parseExperimentData());
+                    recyclerView.setAdapter(adapter);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<AsphaltDetailResponse>> call, Throwable t) {
+                // 处理错误
+                Toast.makeText(requireContext(), "获取详细信息失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                // 回退到使用本地数据
+                AsphaltExperimentAdapter adapter = new AsphaltExperimentAdapter(parseExperimentData());
+                recyclerView.setAdapter(adapter);
+            }
+        });
+    }
+
+    private List<AsphaltExperimentItem> parseAsphaltDetail(AsphaltDetailResponse detailResponse) {
+        List<AsphaltExperimentItem> items = new ArrayList<>();
+        
+        // 1. 处理沥青信息
+        if (detailResponse.getAsphaltInfoList() != null && !detailResponse.getAsphaltInfoList().isEmpty()) {
+            StringBuilder asphaltInfoBuilder = new StringBuilder();
+            for (AsphaltDetailResponse.AsphaltInfo asphaltInfo : detailResponse.getAsphaltInfoList()) {
+                asphaltInfoBuilder.append("• 供应商: ").append(asphaltInfo.getAsphaltSupplier()).append("\n");
+                asphaltInfoBuilder.append("• 标号: ").append(asphaltInfo.getAsphaltGrade()).append("\n");
+                asphaltInfoBuilder.append("• 类型: ").append(asphaltInfo.getAsphaltCatalog()).append("\n\n");
+            }
+            
+            if (asphaltInfoBuilder.length() > 0) {
+                items.add(new AsphaltExperimentItem(
+                    "沥青信息",
+                    asphaltInfoBuilder.toString().trim()
+                ));
+            }
+        }
+        
+        // 2. 处理实验指派信息
+        if (detailResponse.getExperimentAssignments() != null && !detailResponse.getExperimentAssignments().isEmpty()) {
+            StringBuilder experimentInfoBuilder = new StringBuilder();
+            
+            for (Map.Entry<Long, List<String>> entry : detailResponse.getExperimentAssignments().entrySet()) {
+                Long asphaltId = entry.getKey();
+                List<String> assignments = entry.getValue();
+                
+                if (assignments != null && !assignments.isEmpty()) {
+                    // 找到对应的沥青信息
+                    String asphaltName = "沥青 #" + asphaltId;
+                    if (detailResponse.getAsphaltInfoList() != null) {
+                        for (AsphaltDetailResponse.AsphaltInfo info : detailResponse.getAsphaltInfoList()) {
+                            if (info.getAsphaltId().equals(asphaltId)) {
+                                asphaltName = info.getAsphaltGrade() + " (" + info.getAsphaltSupplier() + ")";
+                                break;
+                            }
+                        }
+                    }
+                    
+                    experimentInfoBuilder.append(asphaltName).append(":\n");
+                    for (String assignment : assignments) {
+                        experimentInfoBuilder.append("• ").append(assignment).append("\n");
+                    }
+                    experimentInfoBuilder.append("\n");
+                }
+            }
+            
+            if (experimentInfoBuilder.length() > 0) {
+                items.add(new AsphaltExperimentItem(
+                    "实验指派",
+                    experimentInfoBuilder.toString().trim()
+                ));
+            }
+        }
+        
+        // 如果没有找到任何数据，添加一个提示信息
+        if (items.isEmpty()) {
+            items.add(new AsphaltExperimentItem(
+                "提示",
+                "暂无实验信息"
+            ));
+        }
+        
+        return items;
     }
 
     private List<AsphaltExperimentItem> parseExperimentData() {

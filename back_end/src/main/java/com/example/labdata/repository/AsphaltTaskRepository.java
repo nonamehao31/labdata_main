@@ -27,4 +27,20 @@ public interface AsphaltTaskRepository extends JpaRepository<AsphaltTask, Long> 
      * @return 沥青实验任务列表
      */
     List<AsphaltTask> findByAsphaltExperimentName(String asphaltExperimentName);
+    
+    /**
+     * 根据任务ID查找沥青实验任务
+     * 
+     * @param taskId 任务ID
+     * @return 沥青实验任务列表
+     */
+    List<AsphaltTask> findByAsphaltTaskAssignmentId(String taskId);
+    
+    /**
+     * 根据沥青ID查找沥青实验任务
+     * 
+     * @param selectedAsphaltId 沥青ID
+     * @return 沥青实验任务列表
+     */
+    List<AsphaltTask> findBySelectedAsphaltId(Long selectedAsphaltId);
 }

@@ -3,6 +3,7 @@ package com.example.labdata.controller;
 import com.example.labdata.model.AsphaltTask;
 import com.example.labdata.payload.request.AsphaltExperimentRequest;
 import com.example.labdata.payload.response.ApiResponse;
+import com.example.labdata.payload.response.AsphaltDetailResponse;
 import com.example.labdata.payload.response.AsphaltExperimentResponse;
 import com.example.labdata.security.CurrentUser;
 import com.example.labdata.security.UserPrincipal;
@@ -198,5 +199,21 @@ public class AsphaltTaskController {
             logger.error("获取公司沥青实验列表失败", e);
             return ResponseEntity.ok(new ApiResponse<>(false, "获取公司沥青实验列表失败", null));
         }
+    }
+
+    /**
+     * 根据任务ID获取沥青任务详情信息
+     *
+     * @param taskId 任务ID
+     * @return 包含沥青信息和实验指派信息的响应
+     */
+    @GetMapping("/detail/{taskId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<AsphaltDetailResponse>> getAsphaltDetailByTaskId(@PathVariable String taskId) {
+        logger.info("获取任务ID为{}的沥青任务详情", taskId);
+        
+        AsphaltDetailResponse detailResponse = asphaltTaskService.getAsphaltDetailByTaskId(taskId);
+        
+        return ResponseEntity.ok(new ApiResponse<>(true, "获取沥青任务详情成功", detailResponse));
     }
 }

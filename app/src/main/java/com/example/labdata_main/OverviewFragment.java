@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -653,6 +654,15 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 设置基本字段
         task.setId(asphaltTask.getAsphaltExperimentId() != null ? asphaltTask.getAsphaltExperimentId() : 0);
         
+        // 设置任务ID和任务分配ID
+        // 注意：首先设置标准格式的任务ID作为taskId
+        String generatedTaskId = generateTaskId();
+        task.setTaskId(generatedTaskId);
+        
+        // 设置UUID格式的任务分配ID，用于API查询
+        // 前端需要保存这个UUID以便后续API调用
+        task.setTaskAssignmentId(asphaltTask.getAsphaltTaskAssignmentId());
+        
         // 任务名称处理 - 首先尝试使用任务名称，如果为空则尝试使用实验名称，都为空则使用默认名称
         // 注意：这里做了多重判断，防止空指针
         String taskName = null;
@@ -725,6 +735,10 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         }
         
         return task;
+    }
+    
+    private String generateTaskId() {
+        return UUID.randomUUID().toString();
     }
     
     private void updateTaskUI(List<ExperimentTask> unacceptedTasks, List<ExperimentTask> acceptedTasks, String experimentType) {
@@ -981,6 +995,13 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
     
     private void showAsphaltTaskDetail(ExperimentTask task) {
+        // 确保传递的任务对象包含UUID格式的任务分配ID
+        if (task.getTaskAssignmentId() == null || task.getTaskAssignmentId().isEmpty()) {
+            Log.w(TAG, "任务缺少UUID格式的任务分配ID，使用任务ID: " + task.getTaskId());
+        } else {
+            Log.d(TAG, "使用UUID格式的任务分配ID: " + task.getTaskAssignmentId());
+        }
+        
         // 直接使用传入的任务对象显示底部弹窗
         BottomSheetAsphaltTaskDetailFragment bottomSheet = 
                 BottomSheetAsphaltTaskDetailFragment.newInstance(task, task.getStatus().equals("未接受"));
@@ -1006,10 +1027,25 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         });
         
         bottomSheet.show(getChildFragmentManager(), "asphalt_task_detail");
+        
+        // 添加任务分配ID的完整日志记录
+        Log.d(TAG, "任务分配ID: " + task.getTaskAssignmentId());
+        Log.d(TAG, "任务ID: " + task.getTaskId());
+        Log.d(TAG, "实验类型: " + task.getExperimentType());
+        Log.d(TAG, "公司ID: " + task.getCompanyId());
+        Log.d(TAG, "任务状态: " + task.getStatus());
+        Log.d(TAG, "截止日期: " + task.getDeadline());
     }
 
     private void showDetailBottomSheet(ExperimentTask task) {
-        // 直接使用传入的任务对象，不从数据库查询
+        // 确保传递的任务对象包含UUID格式的任务分配ID
+        if (task.getTaskAssignmentId() == null || task.getTaskAssignmentId().isEmpty()) {
+            Log.w(TAG, "任务缺少UUID格式的任务分配ID，使用任务ID: " + task.getTaskId());
+        } else {
+            Log.d(TAG, "使用UUID格式的任务分配ID: " + task.getTaskAssignmentId());
+        }
+        
+        // 使用传入的任务对象创建底部弹窗
         BottomSheetAsphaltTaskDetailFragment bottomSheet = 
                 BottomSheetAsphaltTaskDetailFragment.newInstance(task, task.getStatus().equals("未接受"));
         
@@ -1048,7 +1084,18 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void startAsphaltExperiment(ExperimentTask task) {
         // 直接使用传入的任务信息启动实验数据记录活动
         Intent intent = new Intent(requireContext(), RecordExperimentDataActivity.class);
-        intent.putExtra("taskId", task.getId());
+        
+        // 首先检查任务是否有UUID格式的任务分配ID
+        if (task.getTaskAssignmentId() != null && !task.getTaskAssignmentId().isEmpty()) {
+            // 使用任务分配ID
+            Log.d(TAG, "使用UUID任务分配ID启动实验: " + task.getTaskAssignmentId());
+            intent.putExtra("taskId", task.getTaskAssignmentId());
+        } else {
+            // 回退到使用数字ID
+            Log.w(TAG, "UUID任务分配ID缺失，回退使用数字ID: " + task.getId());
+            intent.putExtra("taskId", task.getId());
+        }
+        
         intent.putExtra("experiment_type", "ASPHALT");
         startActivity(intent);
     }
@@ -1127,6 +1174,8 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                     } catch (IOException e) {
                         Log.e(TAG, "无法读取错误响应", e);
                     }
+                    
+                    Log.e(TAG, "API连接测试失败: " + response.code());
                     Toast.makeText(requireContext(), "API连接测试失败: " + response.code(), Toast.LENGTH_SHORT).show();
                 }
             }
