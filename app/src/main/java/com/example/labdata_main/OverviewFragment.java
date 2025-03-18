@@ -74,7 +74,7 @@ import com.google.gson.Gson;
 public class OverviewFragment extends Fragment implements AdapterView.OnItemSelectedListener, 
         ExperimentTaskAdapter.OnTaskClickListener, 
         AsphaltProjectCardAdapter.OnAsphaltTaskActionListener,
-        TaskDetailBottomSheet.TaskAcceptListener {
+        TaskDetailBottomSheet.TaskAcceptListener, BottomSheetMixRatioDetailFragment.OnMaterialCompletedListener {
     private static final String TAG = "OverviewFragment";
     
     private TextView welcomeText;
@@ -1224,10 +1224,25 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     
     // 显示混合料实验信息
     private void showMixtureExperimentInfo(ExperimentTask task) {
-        // 使用BottomSheetMixRatioDetailFragment而不是TaskDetailBottomSheet
-        BottomSheetMixRatioDetailFragment bottomSheet = BottomSheetMixRatioDetailFragment.newInstance(task);
-        
-        bottomSheet.show(getChildFragmentManager(), "mixratio_detail_bottom_sheet");
+        // 检查任务状态，决定显示哪个底部表单
+        if (task.getStatus() != null && 
+            (task.getStatus().equals("已接受") || task.getStatus().equals("ONGOING"))) {
+            // 对于已接受的任务，显示配比详情底部表单
+            BottomSheetMixRatioDetailFragment bottomSheet = BottomSheetMixRatioDetailFragment.newInstance(task);
+            
+            // 设置材料准备完成监听器，当前类已经实现接口
+            bottomSheet.setOnMaterialCompletedListener(this);
+            
+            bottomSheet.show(getChildFragmentManager(), "mixratio_detail_bottom_sheet");
+        } else {
+            // 对于未接受的任务，显示任务详情底部表单
+            TaskDetailBottomSheet bottomSheet = TaskDetailBottomSheet.newInstance(task);
+            
+            // 设置任务接受监听器
+            bottomSheet.setTaskAcceptListener(this);
+            
+            bottomSheet.show(getChildFragmentManager(), "task_detail_bottom_sheet");
+        }
     }
 
     private void startMixtureExperiment(ExperimentTask task) {
@@ -1332,5 +1347,40 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     @Override
     public void onTaskAccepted(ExperimentTask task) {
         handleMixtureTaskAccepted(task);
+    }
+
+    @Override
+    public void onMaterialCompleted(ExperimentTask task) {
+        // 调用API将prepare_status更新为"finished"
+        Log.d(TAG, "更新任务备料状态: " + task.getTaskId());
+        
+        // 显示加载提示
+        Toast.makeText(requireContext(), "正在保存备料状态...", Toast.LENGTH_SHORT).show();
+        
+        // 调用API更新备料状态
+        mixtureTaskService.updatePrepareStatus(task.getTaskId())
+            .enqueue(new Callback<ApiResponse<Boolean>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        Log.d(TAG, "成功更新任务备料状态: " + task.getTaskId());
+                        
+                        // 显示成功消息
+                        Toast.makeText(requireContext(), "备料完成！", Toast.LENGTH_SHORT).show();
+                        
+                        // 刷新任务列表数据
+                        refreshData();
+                    } else {
+                        Log.e(TAG, "更新任务备料状态失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                        Toast.makeText(requireContext(), "更新备料状态失败，请重试", Toast.LENGTH_SHORT).show();
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                    Log.e(TAG, "更新任务备料状态请求失败: " + t.getMessage(), t);
+                    Toast.makeText(requireContext(), "网络错误，请重试", Toast.LENGTH_SHORT).show();
+                }
+            });
     }
 }

@@ -106,19 +106,63 @@ public class BottomSheetMixRatioDetailFragment extends BottomSheetDialogFragment
         
         // 设置悬浮按钮状态
         ExtendedFloatingActionButton fabCompleteMaterial = view.findViewById(R.id.fabCompleteMaterial);
-        if (task.getPreparationTime() > 0) {
-            fabCompleteMaterial.setVisibility(View.GONE);
-        } else {
-            fabCompleteMaterial.setVisibility(View.VISIBLE);
-            fabCompleteMaterial.setOnClickListener(v -> {
-                if (materialCompletedListener != null) {
-                    task.setPreparationTime(System.currentTimeMillis());
-                    materialCompletedListener.onMaterialCompleted(task);
-                    dismiss();
+        
+        // 先默认隐藏按钮，获取prepare_status后再决定是否显示
+        fabCompleteMaterial.setVisibility(View.GONE);
+        
+        // 获取prepare_status，决定按钮显示或隐藏
+        MixtureTaskService mixtureTaskService = ServiceCreator.createMixtureTaskService();
+        mixtureTaskService.getPrepareStatus(task.getTaskId()).enqueue(new Callback<ApiResponse<String>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    String prepareStatus = response.body().getData();
+                    Log.d(TAG, "获取到备料状态: " + prepareStatus);
+                    
+                    if ("finished".equals(prepareStatus)) {
+                        // 如果备料状态为已完成，隐藏按钮
+                        fabCompleteMaterial.setVisibility(View.GONE);
+                    } else {
+                        // 备料状态为未完成，显示按钮并设置点击事件
+                        fabCompleteMaterial.setVisibility(View.VISIBLE);
+                        fabCompleteMaterial.setOnClickListener(v -> {
+                            if (materialCompletedListener != null) {
+                                task.setPreparationTime(System.currentTimeMillis());
+                                materialCompletedListener.onMaterialCompleted(task);
+                                dismiss();
+                            }
+                        });
+                    }
+                } else {
+                    // 如果获取失败，显示错误信息
+                    Log.e(TAG, "获取备料状态失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                    // 默认显示按钮
+                    fabCompleteMaterial.setVisibility(View.VISIBLE);
+                    fabCompleteMaterial.setOnClickListener(v -> {
+                        if (materialCompletedListener != null) {
+                            task.setPreparationTime(System.currentTimeMillis());
+                            materialCompletedListener.onMaterialCompleted(task);
+                            dismiss();
+                        }
+                    });
                 }
-            });
-        }
-
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                Log.e(TAG, "获取备料状态请求失败: " + t.getMessage(), t);
+                // 网络失败时，默认显示按钮
+                fabCompleteMaterial.setVisibility(View.VISIBLE);
+                fabCompleteMaterial.setOnClickListener(v -> {
+                    if (materialCompletedListener != null) {
+                        task.setPreparationTime(System.currentTimeMillis());
+                        materialCompletedListener.onMaterialCompleted(task);
+                        dismiss();
+                    }
+                });
+            }
+        });
+        
         // 设置基本信息
         taskNameTextView.setText(task.getTaskName());
         
@@ -131,7 +175,7 @@ public class BottomSheetMixRatioDetailFragment extends BottomSheetDialogFragment
         if (task.getDeadline() > 0) {
             deadlineTextView.setText("截止日期：" + dateFormat.format(new java.util.Date(task.getDeadline())));
         } else {
-            deadlineTextView.setText("无截止日期");
+            deadlineTextView.setText("截止日期：无");
         }
 
         // 初始化制件参数区域

@@ -251,18 +251,110 @@ public class UserMixtureTaskController {
                     "任务状态不是'未接受'，无法接受任务", false));
             }
             
-            // 更新任务状态
-            task.setStatus("ONGOING");
-            task.setAcceptor(acceptor);
-            task.setAcceptTime(acceptTime);
-            userMixtureTaskRepository.save(task);
+            // 获取该taskId的前缀部分（去掉最后的破折号和数字）
+            String taskIdStr = task.getTaskId();
+            String taskIdPrefix = taskIdStr.substring(0, taskIdStr.lastIndexOf('-'));
             
-            logger.info("成功接受任务，任务ID={}, 新状态=ONGOING", taskId);
+            // 查找所有具有相同task_id前缀的记录
+            List<UserMixtureTask> relatedTasks = userMixtureTaskRepository.findByTaskIdStartingWith(taskIdPrefix);
+            logger.info("找到相关任务{}个，准备全部更新", relatedTasks.size());
+            
+            // 更新所有相关任务
+            for (UserMixtureTask relatedTask : relatedTasks) {
+                if ("CREATED".equals(relatedTask.getStatus())) {
+                    relatedTask.setStatus("ONGOING");
+                    relatedTask.setAcceptor(acceptor);
+                    relatedTask.setAcceptTime(acceptTime);
+                    userMixtureTaskRepository.save(relatedTask);
+                }
+            }
+            
+            logger.info("成功接受任务，任务ID前缀={}, 新状态=ONGOING，更新了{}个任务", taskIdPrefix, relatedTasks.size());
             return ResponseEntity.ok(new ApiResponse<>(true, "成功接受任务", true));
             
         } catch (Exception e) {
             logger.error("接受任务时发生错误", e);
             return ResponseEntity.ok(new ApiResponse<>(false, "接受任务失败: " + e.getMessage(), false));
+        }
+    }
+    
+    /**
+     * 更新任务备料状态为已完成
+     * @param taskId 任务ID
+     * @return 更新结果
+     */
+    @PutMapping("/{taskId}/prepare_status")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Boolean>> updatePrepareStatus(
+            @PathVariable String taskId) {
+        
+        logger.info("接收到更新任务备料状态请求：任务ID={}", taskId);
+        
+        try {
+            // 获取taskId的前缀部分（去掉最后的破折号和数字）
+            String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf('-'));
+            
+            // 查找所有具有相同task_id前缀的记录
+            List<UserMixtureTask> relatedTasks = userMixtureTaskRepository.findByTaskIdStartingWith(taskIdPrefix);
+            logger.info("找到相关任务{}个，准备全部更新备料状态", relatedTasks.size());
+            
+            // 更新所有相关任务的备料状态
+            for (UserMixtureTask relatedTask : relatedTasks) {
+                relatedTask.setPrepareStatus("finished");
+                userMixtureTaskRepository.save(relatedTask);
+            }
+            
+            logger.info("成功更新任务备料状态，任务ID前缀={}, 新备料状态=finished，更新了{}个任务", taskIdPrefix, relatedTasks.size());
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功更新备料状态", true));
+            
+        } catch (Exception e) {
+            logger.error("更新任务备料状态时发生错误", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "更新备料状态失败: " + e.getMessage(), false));
+        }
+    }
+    
+    /**
+     * 获取任务的备料状态
+     * @param taskId 任务ID
+     * @return 备料状态
+     */
+    @GetMapping("/{taskId}/prepare_status")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<String>> getPrepareStatus(
+            @PathVariable String taskId) {
+        
+        logger.info("接收到获取任务备料状态请求：任务ID={}", taskId);
+        
+        try {
+            // 获取taskId的前缀部分（去掉最后的破折号和数字）
+            String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf('-'));
+            
+            // 查找所有具有相同task_id前缀的记录
+            List<UserMixtureTask> relatedTasks = userMixtureTaskRepository.findByTaskIdStartingWith(taskIdPrefix);
+            
+            if (relatedTasks.isEmpty()) {
+                logger.warn("找不到任务ID前缀为{}的任务", taskIdPrefix);
+                return ResponseEntity.ok(new ApiResponse<>(false, "任务不存在", null));
+            }
+            
+            // 检查所有相关任务是否都已完成备料
+            boolean allFinished = true;
+            for (UserMixtureTask task : relatedTasks) {
+                if (!"finished".equals(task.getPrepareStatus())) {
+                    allFinished = false;
+                    break;
+                }
+            }
+            
+            // 如果所有任务都已完成备料，则返回finished，否则返回not_finished
+            String status = allFinished ? "finished" : "not_finished";
+            
+            logger.info("任务备料状态: {}, 任务ID前缀={}", status, taskIdPrefix);
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功获取备料状态", status));
+            
+        } catch (Exception e) {
+            logger.error("获取任务备料状态时发生错误", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "获取备料状态失败: " + e.getMessage(), null));
         }
     }
 }

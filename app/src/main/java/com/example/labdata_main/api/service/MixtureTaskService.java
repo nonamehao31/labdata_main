@@ -96,4 +96,26 @@ public interface MixtureTaskService {
         @Query("acceptor") String acceptor,
         @Query("acceptTime") Long acceptTime
     );
+
+    /**
+     * 更新任务的备料状态为"已完成"
+     *
+     * @param taskId 任务ID
+     * @return 更新结果
+     */
+    @PUT("api/mixture-tasks/{taskId}/prepare_status")
+    Call<ApiResponse<Boolean>> updatePrepareStatus(
+            @Path("taskId") String taskId
+    );
+    
+    /**
+     * 获取任务的备料状态
+     *
+     * @param taskId 任务ID
+     * @return 任务备料状态
+     */
+    @GET("api/mixture-tasks/{taskId}/prepare_status")
+    Call<ApiResponse<String>> getPrepareStatus(
+            @Path("taskId") String taskId
+    );
 }
