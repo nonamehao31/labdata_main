@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 20,
-    "identityHash": "603a7422cbab6f90f7cc5ca35c1b3d1c",
+    "identityHash": "ff3a438bbc3bc65487ee5ac69db04b8f",
     "entities": [
       {
         "tableName": "mix_ratios",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` INTEGER NOT NULL, `materials` TEXT, `total_amount` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` TEXT, `materials` TEXT, `total_amount` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -35,8 +35,8 @@
           {
             "fieldPath": "projectId",
             "columnName": "project_id",
-            "affinity": "INTEGER",
-            "notNull": true
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "materials",
@@ -963,7 +963,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '603a7422cbab6f90f7cc5ca35c1b3d1c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ff3a438bbc3bc65487ee5ac69db04b8f')"
     ]
   }
 }

@@ -1,14 +1,16 @@
 package com.example.labdata_main.adapter;
 
+import android.animation.ValueAnimator;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.card.MaterialCardView;
 
 import com.example.labdata_main.R;
 import com.example.labdata_main.model.DeviceInfo;
@@ -111,11 +113,11 @@ public class SpecimenMethodAdapter extends RecyclerView.Adapter<SpecimenMethodAd
 
         // 设置拌合参数
         holder.tvMixingTemp.setText(String.format(Locale.getDefault(), 
-            "温度：%.1f℃", method.getMixingTemperature()));
+            "%.1f℃", method.getMixingTemperature()));
         holder.tvMixingSpeed.setText(String.format(Locale.getDefault(), 
-            "速度：%.1f rpm", method.getMixingSpeed()));
+            "%.1frpm", method.getMixingSpeed()));
         holder.tvMixingTime.setText(String.format(Locale.getDefault(), 
-            "时间：%.1f min", method.getMixingTime()));
+            "%.1fmin", method.getMixingTime()));
 
         // 设置压实方法
         holder.tvCompactionMethod.setText(method.getCompactionMethod());
@@ -140,9 +142,22 @@ public class SpecimenMethodAdapter extends RecyclerView.Adapter<SpecimenMethodAd
         }
 
         // 设置选中状态
-        holder.cardView.setCardBackgroundColor(position == selectedPosition ? 
+        boolean isSelected = position == selectedPosition;
+        int backgroundColor = isSelected ? 
             holder.itemView.getContext().getResources().getColor(R.color.selected_card_background) : 
-            holder.itemView.getContext().getResources().getColor(android.R.color.white));
+            holder.itemView.getContext().getResources().getColor(android.R.color.white);
+        
+        // 应用卡片背景颜色
+        if (isSelected) {
+            holder.cardView.setCardElevation(6f); // 稍微降低选中时的阴影高度
+            holder.cardView.setBackground(holder.itemView.getContext().getResources().getDrawable(R.drawable.bg_specimen_card_selected));
+            holder.cardView.setStrokeWidth(0); // 移除默认边框，使用背景drawable的边框
+        } else {
+            holder.cardView.setCardElevation(2f); // 与XML中定义的相匹配
+            holder.cardView.setCardBackgroundColor(backgroundColor);
+            holder.cardView.setBackground(null);
+            holder.cardView.setStrokeWidth(0); // 移除默认边框
+        }
 
         // 设置点击事件
         final MixRatio finalMixRatio = mixRatio;
@@ -151,8 +166,31 @@ public class SpecimenMethodAdapter extends RecyclerView.Adapter<SpecimenMethodAd
             selectedPosition = holder.getAdapterPosition();
             
             // 更新之前选中项和新选中项的视图
-            notifyItemChanged(previousPosition);
-            notifyItemChanged(selectedPosition);
+            if (previousPosition != RecyclerView.NO_POSITION) {
+                notifyItemChanged(previousPosition);
+            }
+            
+            if (selectedPosition != RecyclerView.NO_POSITION) {
+                // 添加选中动画效果
+                if (previousPosition != selectedPosition) {
+                    // 缩放动画
+                    ValueAnimator scaleAnimator = ValueAnimator.ofFloat(1.0f, 1.05f, 1.0f);
+                    scaleAnimator.setDuration(300);
+                    scaleAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
+                    scaleAnimator.addUpdateListener(animation -> {
+                        float scale = (float) animation.getAnimatedValue();
+                        holder.cardView.setScaleX(scale);
+                        holder.cardView.setScaleY(scale);
+                    });
+                    scaleAnimator.start();
+                    
+                    // 立即应用背景变化，不等待notifyItemChanged
+                    holder.cardView.setCardElevation(6f);
+                    holder.cardView.setBackground(holder.itemView.getContext().getResources().getDrawable(R.drawable.bg_specimen_card_selected));
+                }
+                
+                notifyItemChanged(selectedPosition);
+            }
             
             // 通知监听器
             if (onMethodSelectedListener != null) {
@@ -171,7 +209,7 @@ public class SpecimenMethodAdapter extends RecyclerView.Adapter<SpecimenMethodAd
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        CardView cardView;
+        MaterialCardView cardView;
         TextView tvMixRatioName;
         TextView tvMixingTemp;
         TextView tvMixingSpeed;
@@ -182,7 +220,7 @@ public class SpecimenMethodAdapter extends RecyclerView.Adapter<SpecimenMethodAd
 
         ViewHolder(View itemView) {
             super(itemView);
-            cardView = (CardView) itemView;
+            cardView = (MaterialCardView) itemView;
             tvMixRatioName = itemView.findViewById(R.id.tvMixRatioName);
             tvMixingTemp = itemView.findViewById(R.id.tvMixingTemp);
             tvMixingSpeed = itemView.findViewById(R.id.tvMixingSpeed);

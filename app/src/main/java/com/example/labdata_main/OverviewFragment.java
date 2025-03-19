@@ -958,7 +958,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
     // 处理混合料任务的接受
     private void handleMixtureTaskAccepted(ExperimentTask task) {
-        Log.d(TAG, "处理混合料任务接受: " + task.getTaskName() + ", ID: " + task.getId());
+        Log.d(TAG, "处理混合料任务接受: " + task.getTaskName() + ", ID: " + task.getTaskId());
         
         // 更新任务状态为"已接受"
         task.setStatus("已接受");
@@ -973,7 +973,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 从未接受列表中移除任务
         for (Iterator<ExperimentTask> iterator = apiMixtureUnacceptedTasks.iterator(); iterator.hasNext();) {
             ExperimentTask t = iterator.next();
-            if (t.getId() == task.getId()) {
+            if (t.getTaskId().equals(task.getTaskId())) {
                 iterator.remove();
                 Log.d(TAG, "从未接受列表中移除任务: " + t.getTaskName());
                 break;
@@ -983,7 +983,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 添加到已接受列表
         boolean alreadyInList = false;
         for (ExperimentTask t : apiMixtureAcceptedTasks) {
-            if (t.getId() == task.getId()) {
+            if (t.getTaskId().equals(task.getTaskId())) {
                 alreadyInList = true;
                 t.setStatus("已接受");
                 t.setExperimenter(task.getExperimenter());
@@ -1213,9 +1213,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             Log.d(TAG, "使用UUID任务分配ID启动实验: " + task.getTaskAssignmentId());
             intent.putExtra("taskId", task.getTaskAssignmentId());
         } else {
-            // 回退到使用数字ID
-            Log.w(TAG, "UUID任务分配ID缺失，回退使用数字ID: " + task.getId());
-            intent.putExtra("taskId", task.getId());
+            // 回退到使用任务ID
+            Log.w(TAG, "UUID任务分配ID缺失，回退使用任务ID: " + task.getTaskId());
+            intent.putExtra("taskId", task.getTaskId());
         }
         
         intent.putExtra("experiment_type", "ASPHALT");
@@ -1247,7 +1247,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
     private void startMixtureExperiment(ExperimentTask task) {
         Intent intent = new Intent(requireContext(), RecordExperimentDataActivity.class);
-        intent.putExtra("taskId", task.getId());  // 这里也需要修改为 "taskId"
+        intent.putExtra("taskId", task.getTaskId());  // 这里也需要修改为 "taskId"
         intent.putExtra("experiment_type", "MIXTURE");
         startActivity(intent);
     }

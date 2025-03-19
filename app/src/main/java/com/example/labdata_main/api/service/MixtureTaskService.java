@@ -118,4 +118,58 @@ public interface MixtureTaskService {
     Call<ApiResponse<String>> getPrepareStatus(
             @Path("taskId") String taskId
     );
+    
+    /**
+     * 根据任务ID前缀获取所有具有相同前缀的任务状态
+     * 
+     * @param taskIdPrefix 任务ID前缀
+     * @return 任务状态列表
+     */
+    @GET("api/mixture-tasks/status/{taskIdPrefix}")
+    Call<ApiResponse<List<Map<String, String>>>> getTaskStatusByPrefix(@Path("taskIdPrefix") String taskIdPrefix);
+    
+    /**
+     * 根据任务ID前缀获取试件制作方法和配比信息
+     *
+     * @param taskIdPrefix 任务ID前缀
+     * @return 包含配比和试件制作方法的列表
+     */
+    @GET("api/mixture-tasks/specimen-methods/{taskIdPrefix}")
+    Call<ApiResponse<List<Map<String, Object>>>> getSpecimenMethodsByTaskPrefix(@Path("taskIdPrefix") String taskIdPrefix);
+    
+    /**
+     * 提交设备信息
+     * 
+     * @param taskId 任务ID
+     * @param deviceType 设备类型
+     * @param deviceModel 设备型号
+     * @return 已保存的设备信息
+     */
+    @PUT("api/mixtureTask/{taskId}/device")
+    Call<ApiResponse<Map<String, String>>> saveDeviceInfo(
+        @Path("taskId") String taskId,
+        @Query("deviceType") String deviceType,
+        @Query("deviceModel") String deviceModel
+    );
+    
+    /**
+     * 获取试件制备所需的方法、配比和设备信息
+     */
+    @GET("api/mixture-tasks/{taskId}/specimen-data")
+    Call<ApiResponse<Map<String, Object>>> getSpecimenData(@Path("taskId") String taskId);
+    
+    /**
+     * 根据任务ID获取任务详细信息
+     */
+    @GET("api/mixtureTask/{taskId}")
+    Call<ApiResponse<Map<String, Object>>> getMixtureTaskByTaskId(@Path("taskId") String taskId);
+    
+    /**
+     * 更新任务的制件状态为"已完成"
+     *
+     * @param taskIdPrefix 任务ID前缀
+     * @return 更新结果
+     */
+    @PUT("api/mixture-tasks/{taskIdPrefix}/making_status/finished")
+    Call<ApiResponse<Boolean>> updateMakingStatusToFinished(@Path("taskIdPrefix") String taskIdPrefix);
 }

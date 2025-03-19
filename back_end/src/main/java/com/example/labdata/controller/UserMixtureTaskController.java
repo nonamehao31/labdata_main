@@ -23,8 +23,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -355,6 +359,115 @@ public class UserMixtureTaskController {
         } catch (Exception e) {
             logger.error("获取任务备料状态时发生错误", e);
             return ResponseEntity.ok(new ApiResponse<>(false, "获取备料状态失败: " + e.getMessage(), null));
+        }
+    }
+    
+    /**
+     * 获取任务状态信息
+     * @param taskIdPrefix 任务ID前缀
+     * @return 所有相关任务的状态信息列表
+     */
+    @GetMapping("/status/{taskIdPrefix}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<List<Map<String, String>>>> getTaskStatusByPrefix(
+            @PathVariable String taskIdPrefix) {
+        
+        logger.info("接收到获取任务状态请求：任务ID前缀={}", taskIdPrefix);
+        
+        try {
+            // 查找所有具有相同task_id前缀的记录
+            List<UserMixtureTask> relatedTasks = userMixtureTaskRepository.findByTaskIdStartingWith(taskIdPrefix);
+            
+            if (relatedTasks.isEmpty()) {
+                logger.warn("找不到任务ID前缀为{}的任务", taskIdPrefix);
+                return ResponseEntity.ok(new ApiResponse<>(false, "任务不存在", null));
+            }
+            
+            // 构建任务状态信息列表
+            List<Map<String, String>> statusList = new ArrayList<>();
+            for (UserMixtureTask task : relatedTasks) {
+                Map<String, String> statusMap = new HashMap<>();
+                statusMap.put("taskId", task.getTaskId());
+                statusMap.put("prepareStatus", task.getPrepareStatus());
+                statusMap.put("makingStatus", task.getMakingStatus());
+                statusMap.put("testingStatus", task.getTestingStatus());
+                statusList.add(statusMap);
+            }
+            
+            logger.info("成功获取任务状态信息，任务ID前缀={}，找到{}个任务", taskIdPrefix, statusList.size());
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功获取任务状态信息", statusList));
+            
+        } catch (Exception e) {
+            logger.error("获取任务状态信息时发生错误", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "获取任务状态信息失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 获取试件制作方法和配比信息
+     * @param taskIdPrefix 任务ID前缀
+     * @return 包含配比和试件制作方法的列表
+     */
+    @GetMapping("/specimen-methods/{taskIdPrefix}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getSpecimenMethodsByTaskPrefix(
+            @PathVariable String taskIdPrefix) {
+        
+        logger.info("接收到获取试件制作方法和配比信息请求：任务ID前缀={}", taskIdPrefix);
+        
+        try {
+            // 查找所有具有相同task_id前缀的记录
+            List<UserMixtureTask> relatedTasks = userMixtureTaskRepository.findByTaskIdStartingWith(taskIdPrefix);
+            
+            if (relatedTasks.isEmpty()) {
+                logger.warn("找不到任务ID前缀为{}的任务", taskIdPrefix);
+                return ResponseEntity.ok(new ApiResponse<>(false, "任务不存在", null));
+            }
+            
+            // 收集所有唯一的specimen_id和mixratio_id
+            Set<Long> specimenIds = new HashSet<>();
+            Set<Long> mixratioIds = new HashSet<>();
+            
+            for (UserMixtureTask task : relatedTasks) {
+                specimenIds.add(task.getSpecimenId());
+                mixratioIds.add(task.getMixratioId());
+            }
+            
+            logger.info("找到{}个唯一的试件ID和{}个唯一的配比ID", specimenIds.size(), mixratioIds.size());
+            
+            // 查询所有相关的试件和配比信息
+            List<Specimen> specimens = specimenRepository.findAllById(specimenIds);
+            List<MixRatio> mixRatios = mixRatioRepository.findAllById(mixratioIds);
+            
+            // 构建结果数据
+            List<Map<String, Object>> resultList = new ArrayList<>();
+            
+            // 为每对specimen和mixratio创建一个条目
+            for (Specimen specimen : specimens) {
+                for (MixRatio mixRatio : mixRatios) {
+                    // 验证这对specimen和mixRatio在任务中是否配对
+                    boolean isPaired = relatedTasks.stream()
+                            .anyMatch(task -> task.getSpecimenId().equals(specimen.getId()) && 
+                                    task.getMixratioId().equals(mixRatio.getId()));
+                    
+                    if (isPaired) {
+                        Map<String, Object> methodInfo = new HashMap<>();
+                        methodInfo.put("mixName", mixRatio.getMixName());
+                        methodInfo.put("mixingTemperature", specimen.getMixingTemperature());
+                        methodInfo.put("mixingSpeed", specimen.getMixingSpeed());
+                        methodInfo.put("mixingTime", specimen.getMixingTime());
+                        methodInfo.put("compactionMethod", specimen.getCompactionMethod());
+                        resultList.add(methodInfo);
+                    }
+                }
+            }
+            
+            logger.info("成功获取试件制作方法和配比信息，任务ID前缀={}，找到{}个制件方法", taskIdPrefix, resultList.size());
+            return ResponseEntity.ok(new ApiResponse<>(true, "成功获取试件制作方法和配比信息", resultList));
+            
+        } catch (Exception e) {
+            logger.error("获取试件制作方法和配比信息时发生错误", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "获取试件制作方法和配比信息失败: " + e.getMessage(), null));
         }
     }
 }

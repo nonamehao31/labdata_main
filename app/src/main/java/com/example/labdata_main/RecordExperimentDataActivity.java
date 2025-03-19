@@ -45,6 +45,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
     private long taskId;
     private String experimentType;
     private int currentScanPosition = -1;
+    private String taskIdString;
     private SharedPrefsManager sharedPrefsManager;
 
     private final ActivityResultLauncher<Intent> scanDeviceLauncher = registerForActivityResult(
@@ -67,7 +68,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         setContentView(R.layout.activity_record_experiment_data);
 
         // 获取任务ID和实验类型
-        String taskIdString = getIntent().getStringExtra("taskId");
+        taskIdString = getIntent().getStringExtra("taskId");
         experimentType = getIntent().getStringExtra("experiment_type");
         
         Log.d("RecordExperiment", "收到传入的任务ID参数: " + taskIdString + ", 实验类型: " + experimentType);
@@ -117,9 +118,17 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
 
         // 验证任务是否存在
         executor.execute(() -> {
-            ExperimentTask task = database.experimentTaskDao().getFullTaskById(taskId);
+            ExperimentTask task = null;
+            if (taskId != -1) {
+                // 使用数字ID查询
+                task = database.experimentTaskDao().getFullTaskById(taskId);
+            } else if (taskIdString != null && !taskIdString.isEmpty()) {
+                // 使用字符串任务ID查询
+                task = database.experimentTaskDao().getFullTaskByTaskId(taskIdString);
+            }
+            
             if (task == null) {
-                Log.e("RecordExperiment", "在数据库中未找到任务: " + taskId);
+                Log.e("RecordExperiment", "在数据库中未找到任务: " + (taskId != -1 ? taskId : taskIdString));
                 runOnUiThread(() -> {
                     Toast.makeText(this, "未找到任务", Toast.LENGTH_SHORT).show();
                     finish();
@@ -165,9 +174,17 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                 Log.d("SetupAsphalt", "开始加载沥青实验类型...");
                 
                 // 先获取任务信息
-                ExperimentTask task = database.experimentTaskDao().getFullTaskById(taskId);
+                ExperimentTask task = null;
+                if (taskId != -1) {
+                    // 使用数字ID查询
+                    task = database.experimentTaskDao().getFullTaskById(taskId);
+                } else if (taskIdString != null && !taskIdString.isEmpty()) {
+                    // 使用字符串任务ID查询
+                    task = database.experimentTaskDao().getFullTaskByTaskId(taskIdString);
+                }
+                
                 if (task == null) {
-                    Log.e("SetupAsphalt", "未找到任务: " + taskId);
+                    Log.e("SetupAsphalt", "未找到任务: " + (taskId != -1 ? taskId : taskIdString));
                     runOnUiThread(() -> {
                         Toast.makeText(this, "未找到任务", Toast.LENGTH_SHORT).show();
                         finish();

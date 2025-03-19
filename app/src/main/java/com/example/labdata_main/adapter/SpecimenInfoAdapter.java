@@ -17,6 +17,26 @@ public class SpecimenInfoAdapter extends RecyclerView.Adapter<SpecimenInfoAdapte
     private final List<SpecimenInfo> specimenInfos = new ArrayList<>();
     private List<String> selectedMixingDevices;
     private List<String> selectedFormingDevices;
+    private String taskId;
+    private OnFinishSpecimenClickListener onFinishSpecimenClickListener;
+    
+    // 添加日志标签
+    private static final String TAG = "SpecimenInfoAdapter";
+
+    // 定义完成试件制备的点击监听器接口
+    public interface OnFinishSpecimenClickListener {
+        void onFinishSpecimenClicked(String taskId);
+    }
+    
+    // 设置点击监听器
+    public void setOnFinishSpecimenClickListener(OnFinishSpecimenClickListener listener) {
+        this.onFinishSpecimenClickListener = listener;
+    }
+    
+    // 设置任务ID
+    public void setTaskId(String taskId) {
+        this.taskId = taskId;
+    }
 
     public static class SpecimenInfo {
         public MoldingMethod moldingMethod;
@@ -67,24 +87,58 @@ public class SpecimenInfoAdapter extends RecyclerView.Adapter<SpecimenInfoAdapte
         }
 
         if (info.moldingMethod != null) {
-            holder.tvMixingParams.setText(String.format("拌合参数：温度=%.1f℃, 速度=%.1f rpm, 时间=%.1f min",
-                    info.moldingMethod.getMixingTemperature(),
-                    info.moldingMethod.getMixingSpeed(),
-                    info.moldingMethod.getMixingTime()));
-            holder.tvCompactionMethod.setText(String.format("压实方法：%s", 
-                    info.moldingMethod.getCompactionMethod()));
+            // 检查拌合参数是否有效
+            float temp = info.moldingMethod.getMixingTemperature();
+            float speed = info.moldingMethod.getMixingSpeed();
+            float time = info.moldingMethod.getMixingTime();
+            
+            // 日志记录当前参数值
+            android.util.Log.d(TAG, "拌合参数: 温度=" + temp + "℃, 速度=" + speed + " rpm, 时间=" + time + " min");
+            
+            if (temp > 0 || speed > 0 || time > 0) {
+                holder.tvMixingParams.setText(String.format("拌合参数：温度=%.1f℃, 速度=%.1f rpm, 时间=%.1f min",
+                        temp, speed, time));
+            } else {
+                holder.tvMixingParams.setText("拌合参数：无数据");
+            }
+            
+            // 检查压实方法是否有效
+            String compactionMethod = info.moldingMethod.getCompactionMethod();
+            android.util.Log.d(TAG, "压实方法: " + compactionMethod);
+            
+            if (compactionMethod != null && !compactionMethod.isEmpty() && !compactionMethod.equals("????")) {
+                holder.tvCompactionMethod.setText(String.format("压实方法：%s", compactionMethod));
+            } else {
+                holder.tvCompactionMethod.setText("压实方法：标准压实");
+            }
         }
 
         if (info.mixingDevice != null) {
-            holder.tvMixingDevice.setText(String.format("拌合设备：%s %s",
-                    info.mixingDevice.getManufacturer(),
-                    info.mixingDevice.getModel()));
+            String manufacturer = info.mixingDevice.getManufacturer();
+            String model = info.mixingDevice.getModel();
+            
+            // 日志记录设备信息
+            android.util.Log.d(TAG, "拌合设备: 制造商=" + manufacturer + ", 型号=" + model);
+            
+            if (manufacturer != null && !manufacturer.isEmpty() && model != null && !model.isEmpty()) {
+                holder.tvMixingDevice.setText(String.format("拌合设备：%s %s", manufacturer, model));
+            } else {
+                holder.tvMixingDevice.setText("拌合设备：标准拌合器");
+            }
         }
 
         if (info.formingDevice != null) {
-            holder.tvFormingDevice.setText(String.format("压实设备：%s %s",
-                    info.formingDevice.getManufacturer(),
-                    info.formingDevice.getModel()));
+            String manufacturer = info.formingDevice.getManufacturer();
+            String model = info.formingDevice.getModel();
+            
+            // 日志记录设备信息
+            android.util.Log.d(TAG, "压实设备: 制造商=" + manufacturer + ", 型号=" + model);
+            
+            if (manufacturer != null && !manufacturer.isEmpty() && model != null && !model.isEmpty()) {
+                holder.tvFormingDevice.setText(String.format("压实设备：%s %s", manufacturer, model));
+            } else {
+                holder.tvFormingDevice.setText("压实设备：标准压实器");
+            }
         }
     }
 

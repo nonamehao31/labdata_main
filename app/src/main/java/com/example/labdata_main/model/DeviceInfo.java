@@ -108,6 +108,15 @@ public class DeviceInfo implements Parcelable {
     public void setType(String type) {
         this.type = type;
     }
+    
+    // 添加deviceType的别名方法，兼容后端数据格式
+    public void setDeviceType(String deviceType) {
+        this.type = deviceType;
+    }
+    
+    public String getDeviceType() {
+        return this.type;
+    }
 
     public String getManufacturer() {
         return manufacturer;

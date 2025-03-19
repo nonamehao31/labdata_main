@@ -360,6 +360,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void loadTasksFromDatabase() {
+        loadTasks();
+    }
+
     // 启动制件码生成活动时使用
     private void startGenerateSpecimenCode() {
         Intent intent = new Intent(this, GenerateSpecimenCodeActivity.class);
@@ -370,6 +374,45 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         executorService.shutdown();
+    }
+
+    /**
+     * 处理从其他Activity返回时的Intent
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        // 检查是否需要刷新数据
+        processRefreshDataFlag();
+    }
+
+    /**
+     * 处理Activity恢复时的逻辑
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 检查是否需要刷新数据
+        processRefreshDataFlag();
+    }
+    
+    /**
+     * 处理刷新数据标志
+     */
+    private void processRefreshDataFlag() {
+        Intent intent = getIntent();
+        if (intent != null && intent.getBooleanExtra("refreshData", false)) {
+            Log.d("MainActivity", "刷新数据标志已设置，正在刷新UI...");
+            // 清除标志，避免重复刷新
+            intent.removeExtra("refreshData");
+            
+            // 刷新实验任务列表
+            loadTasks();
+            
+            // 可能需要刷新其他UI组件
+            Toast.makeText(this, "数据已更新", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**

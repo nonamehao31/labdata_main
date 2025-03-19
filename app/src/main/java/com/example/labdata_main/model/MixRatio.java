@@ -27,7 +27,7 @@ public class MixRatio implements Parcelable {
     private long creationTime;
 
     @ColumnInfo(name = "project_id")
-    private long projectId;
+    private String projectId;
 
     @TypeConverters(Converters.class)
     @ColumnInfo(name = "materials")
@@ -45,7 +45,7 @@ public class MixRatio implements Parcelable {
         name = in.readString();
         description = in.readString();
         creationTime = in.readLong();
-        projectId = in.readLong();
+        projectId = in.readString();
         materials = in.createTypedArrayList(MaterialItem.CREATOR);
         totalAmount = in.readString();
     }
@@ -73,7 +73,7 @@ public class MixRatio implements Parcelable {
         dest.writeString(name);
         dest.writeString(description);
         dest.writeLong(creationTime);
-        dest.writeLong(projectId);
+        dest.writeString(projectId);
         dest.writeTypedList(materials);
         dest.writeString(totalAmount);
     }
@@ -110,11 +110,11 @@ public class MixRatio implements Parcelable {
         this.creationTime = creationTime;
     }
 
-    public long getProjectId() {
+    public String getProjectId() {
         return projectId;
     }
 
-    public void setProjectId(long projectId) {
+    public void setProjectId(String projectId) {
         this.projectId = projectId;
     }
 

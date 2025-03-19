@@ -61,4 +61,7 @@ public interface ExperimentTaskDao {
 
     @Query("SELECT * FROM experiment_tasks WHERE id = :taskId")
     ExperimentTask getFullTaskById(long taskId);
+    
+    @Query("SELECT * FROM experiment_tasks WHERE taskId = :taskId")
+    ExperimentTask getFullTaskByTaskId(String taskId);
 }

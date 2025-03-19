@@ -11,11 +11,11 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.PrePersist;
 
 @Entity
-@Table(name = "support_mixture_task")
+@Table(name = "mixture_task")
 public class MixtureTask {
     @Id
     @Column(name = "task_id")
-    private Long taskId;
+    private String taskId;
     
     @Column(name = "task_name")
     private String taskName;
@@ -23,8 +23,8 @@ public class MixtureTask {
     @Column(name = "task_type")
     private String taskType;
     
-    @Column(name = "project_id")
-    private Long projectId;
+    @Column(name = "project_id", columnDefinition = "varchar(255)")
+    private String projectId;
     
     @Column(name = "prepare_status")
     private String prepareStatus;
@@ -34,6 +34,24 @@ public class MixtureTask {
     
     @Column(name = "testing_status")
     private String testingStatus;
+    
+    @Column(name = "assigned_mixing_equipment")
+    private String assignedMixingEquipment;
+    
+    @Column(name = "assigned_forming_equipment")
+    private String assignedFormingEquipment;
+    
+    @Column(name = "assigned_testing_equipment")
+    private String assignedTestingEquipment;
+    
+    @Column(name = "mixing_equipment_manufacturer")
+    private String mixingEquipmentManufacturer;
+    
+    @Column(name = "forming_equipment_manufacturer")
+    private String formingEquipmentManufacturer;
+    
+    @Column(name = "testing_equipment_manufacturer")
+    private String testingEquipmentManufacturer;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", insertable = false, updatable = false)
@@ -49,7 +67,7 @@ public class MixtureTask {
         this.testingStatus = "unfinished";
     }
 
-    public MixtureTask(Long taskId, String taskName, String taskType) {
+    public MixtureTask(String taskId, String taskName, String taskType) {
         this.taskId = taskId;
         this.taskName = taskName;
         this.taskType = taskType;
@@ -66,11 +84,11 @@ public class MixtureTask {
     }
     
     // Getters and Setters
-    public Long getTaskId() {
+    public String getTaskId() {
         return taskId;
     }
     
-    public void setTaskId(Long taskId) {
+    public void setTaskId(String taskId) {
         this.taskId = taskId;
     }
     
@@ -90,11 +108,11 @@ public class MixtureTask {
         this.taskType = taskType;
     }
     
-    public Long getProjectId() {
+    public String getProjectId() {
         return projectId;
     }
     
-    public void setProjectId(Long projectId) {
+    public void setProjectId(String projectId) {
         this.projectId = projectId;
     }
     
@@ -120,6 +138,54 @@ public class MixtureTask {
     
     public void setTestingStatus(String testingStatus) {
         this.testingStatus = testingStatus;
+    }
+    
+    public String getAssignedMixingEquipment() {
+        return assignedMixingEquipment;
+    }
+    
+    public void setAssignedMixingEquipment(String assignedMixingEquipment) {
+        this.assignedMixingEquipment = assignedMixingEquipment;
+    }
+    
+    public String getAssignedFormingEquipment() {
+        return assignedFormingEquipment;
+    }
+    
+    public void setAssignedFormingEquipment(String assignedFormingEquipment) {
+        this.assignedFormingEquipment = assignedFormingEquipment;
+    }
+    
+    public String getAssignedTestingEquipment() {
+        return assignedTestingEquipment;
+    }
+    
+    public void setAssignedTestingEquipment(String assignedTestingEquipment) {
+        this.assignedTestingEquipment = assignedTestingEquipment;
+    }
+    
+    public String getMixingEquipmentManufacturer() {
+        return mixingEquipmentManufacturer;
+    }
+    
+    public void setMixingEquipmentManufacturer(String mixingEquipmentManufacturer) {
+        this.mixingEquipmentManufacturer = mixingEquipmentManufacturer;
+    }
+    
+    public String getFormingEquipmentManufacturer() {
+        return formingEquipmentManufacturer;
+    }
+    
+    public void setFormingEquipmentManufacturer(String formingEquipmentManufacturer) {
+        this.formingEquipmentManufacturer = formingEquipmentManufacturer;
+    }
+    
+    public String getTestingEquipmentManufacturer() {
+        return testingEquipmentManufacturer;
+    }
+    
+    public void setTestingEquipmentManufacturer(String testingEquipmentManufacturer) {
+        this.testingEquipmentManufacturer = testingEquipmentManufacturer;
     }
     
     public Project getProject() {

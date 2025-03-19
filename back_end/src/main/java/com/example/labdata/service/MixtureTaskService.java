@@ -19,6 +19,7 @@ import com.example.labdata.repository.MixRatioStoneRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ public class MixtureTaskService {
     private final MixRatioAsphaltRepository mixRatioAsphaltRepository;
     private final MixRatioSandRepository mixRatioSandRepository;
     private final MixRatioStoneRepository mixRatioStoneRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(MixtureTaskService.class);
 
@@ -49,7 +51,8 @@ public class MixtureTaskService {
                              MixRatioRepository mixRatioRepository,
                              MixRatioAsphaltRepository mixRatioAsphaltRepository,
                              MixRatioSandRepository mixRatioSandRepository,
-                             MixRatioStoneRepository mixRatioStoneRepository) {
+                             MixRatioStoneRepository mixRatioStoneRepository,
+                             JdbcTemplate jdbcTemplate) {
         this.userMixtureTaskRepository = userMixtureTaskRepository;
         this.mixtureTaskRepository = mixtureTaskRepository;
         this.projectRepository = projectRepository;
@@ -57,6 +60,7 @@ public class MixtureTaskService {
         this.mixRatioAsphaltRepository = mixRatioAsphaltRepository;
         this.mixRatioSandRepository = mixRatioSandRepository;
         this.mixRatioStoneRepository = mixRatioStoneRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public List<MixtureTask> getAllMixtureTasks() {
@@ -355,17 +359,24 @@ public class MixtureTaskService {
     private void setProjectNamesForTasks(List<MixtureTask> tasks) {
         for (MixtureTask task : tasks) {
             if (task.getProjectId() != null) {
-                Optional<Project> projectOpt = projectRepository.findById(task.getProjectId());
-                if (projectOpt.isPresent()) {
-                    Project project = projectOpt.get();
-                    task.setProject(project);
-                    task.setProjectName(project.getName());
-                } else {
-                    // 如果找不到项目，设置一个默认名称
-                    task.setProjectName("未知项目");
+                try {
+                    // 将projectId从String转换为Long
+                    Long projectIdLong = Long.parseLong(task.getProjectId());
+                    Optional<Project> projectOpt = projectRepository.findById(projectIdLong);
+                    if (projectOpt.isPresent()) {
+                        Project project = projectOpt.get();
+                        task.setProject(project);
+                        task.setProjectName(project.getName());
+                    } else {
+                        // 如果找不到项目，设置一个默认名称
+                        task.setProjectName("未知项目");
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warn("无法解析项目ID: {}", task.getProjectId());
+                    task.setProjectName("无效项目ID");
                 }
             } else {
-                task.setProjectName("未分配项目");
+                task.setProjectName("无项目");
             }
         }
     }
@@ -488,6 +499,354 @@ public class MixtureTaskService {
         } catch (Exception e) {
             logger.error("获取任务备注信息时出错: {}", e.getMessage(), e);
             return "无备注";
+        }
+    }
+
+    /**
+     * 保存设备信息
+     * 
+     * @param taskId 任务ID
+     * @param deviceType 设备类型
+     * @param deviceModel 设备型号
+     * @param manufacturer 设备厂家，可能为null
+     * @return 设备信息和类型
+     */
+    public Map<String, String> saveDeviceInfo(String taskId, String deviceType, String deviceModel, String manufacturer) {
+        logger.info("保存设备信息，任务ID: {}, 设备类型: {}, 设备型号: {}, 厂家: {}", 
+                     taskId, deviceType, deviceModel, manufacturer);
+        
+        // 提取任务ID前缀（去掉"-0"、"-1"等后缀）
+        String taskIdPrefix = extractTaskIdPrefix(taskId);
+        logger.info("提取的任务ID前缀: {}", taskIdPrefix);
+        
+        // 使用JDBC Template直接执行更新，避免JPA的懒加载问题
+        try {
+            // 查询所有匹配前缀的任务ID
+            String searchPattern = taskIdPrefix + "%";
+            String findSql = "SELECT task_id FROM mixture_task WHERE task_id LIKE ?";
+            
+            List<String> taskIds = jdbcTemplate.query(findSql, (rs, rowNum) -> rs.getString("task_id"), searchPattern);
+            
+            if (taskIds.isEmpty()) {
+                logger.warn("未找到任务ID前缀: {}", taskIdPrefix);
+                throw new RuntimeException("未找到任务: " + taskId);
+            }
+            
+            logger.info("找到{}个匹配前缀{}的任务记录", taskIds.size(), taskIdPrefix);
+            
+            // 准备更新语句
+            String equipmentColumn;
+            String manufacturerColumn;
+            switch (deviceType.toUpperCase()) {
+                case "MIXING":
+                    equipmentColumn = "assigned_mixing_equipment";
+                    manufacturerColumn = "mixing_equipment_manufacturer";
+                    break;
+                case "FORMING":
+                    equipmentColumn = "assigned_forming_equipment";
+                    manufacturerColumn = "forming_equipment_manufacturer";
+                    break;
+                case "TESTING":
+                    equipmentColumn = "assigned_testing_equipment";
+                    manufacturerColumn = "testing_equipment_manufacturer";
+                    break;
+                default:
+                    logger.warn("不支持的设备类型: {}", deviceType);
+                    throw new RuntimeException("不支持的设备类型: " + deviceType);
+            }
+            
+            // 对所有匹配的任务ID执行更新
+            int totalUpdatedRows = 0;
+            for (String foundTaskId : taskIds) {
+                String updateSql;
+                int updatedRows;
+                
+                if (manufacturer != null && !manufacturer.trim().isEmpty()) {
+                    // 同时更新设备型号和厂家
+                    updateSql = "UPDATE mixture_task SET " + equipmentColumn + " = ?, " + manufacturerColumn + " = ? WHERE task_id = ?";
+                    updatedRows = jdbcTemplate.update(updateSql, deviceModel, manufacturer, foundTaskId);
+                } else {
+                    // 只更新设备型号
+                    updateSql = "UPDATE mixture_task SET " + equipmentColumn + " = ? WHERE task_id = ?";
+                    updatedRows = jdbcTemplate.update(updateSql, deviceModel, foundTaskId);
+                }
+                
+                totalUpdatedRows += updatedRows;
+                logger.info("更新任务 {}: {} 行受影响", foundTaskId, updatedRows);
+            }
+            
+            if (totalUpdatedRows == 0) {
+                logger.warn("未成功更新任何任务");
+                throw new RuntimeException("未能更新设备信息");
+            }
+            
+            logger.info("成功更新了{}个任务的设备信息", totalUpdatedRows);
+            
+            // 返回结果
+            Map<String, String> result = new HashMap<>();
+            result.put("type", deviceType.toUpperCase());
+            result.put("model", deviceModel);
+            if (manufacturer != null && !manufacturer.trim().isEmpty()) {
+                result.put("manufacturer", manufacturer);
+            }
+            return result;
+            
+        } catch (Exception e) {
+            if (!(e instanceof RuntimeException)) {
+                logger.error("保存设备信息时发生错误", e);
+                throw new RuntimeException("保存设备信息失败: " + e.getMessage(), e);
+            }
+            throw e;
+        }
+    }
+    
+    /**
+     * 为了保持向后兼容，增加一个不带厂家参数的重载方法
+     */
+    public Map<String, String> saveDeviceInfo(String taskId, String deviceType, String deviceModel) {
+        return saveDeviceInfo(taskId, deviceType, deviceModel, null);
+    }
+    
+    /**
+     * 提取任务ID前缀（去掉-后面的数字后缀）
+     * 例如: "58c3d798-89bc-4e91-81b0-7dee2ae4fae5-0" -> "58c3d798-89bc-4e91-81b0-7dee2ae4fae5"
+     */
+    private String extractTaskIdPrefix(String taskId) {
+        if (taskId == null || taskId.isEmpty()) {
+            return taskId;
+        }
+        
+        int lastDashIndex = taskId.lastIndexOf("-");
+        if (lastDashIndex > 0) {
+            // 检查破折号后面是否都是数字
+            String suffix = taskId.substring(lastDashIndex + 1);
+            if (suffix.matches("\\d+")) {
+                return taskId.substring(0, lastDashIndex);
+            }
+        }
+        
+        return taskId;
+    }
+
+    /**
+     * 获取试件制备所需的方法、配比和设备信息
+     * 
+     * @param taskIdPrefix 任务ID前缀
+     * @return 包含制件方法、设备信息的Map
+     */
+    public Map<String, Object> getSpecimenData(String taskId) {
+        // 从taskId中提取前缀部分（去掉最后的-数字后缀）
+        String taskIdPrefix = taskId;
+        if (taskId.matches(".*-\\d+$")) {
+            taskIdPrefix = taskId.substring(0, taskId.lastIndexOf('-'));
+        }
+        
+        logger.info("获取任务ID前缀: {} 的试件制备数据", taskIdPrefix);
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // 1. 使用原生SQL查询获取相关任务，避免Hibernate的类型转换问题
+            List<Map<String, Object>> mixtureTasks = mixtureTaskRepository.findAllByTaskIdPrefixNative(taskIdPrefix);
+            if (mixtureTasks.isEmpty()) {
+                logger.warn("未找到匹配前缀: {} 的任务", taskIdPrefix);
+                return result;
+            }
+            
+            // 2. 直接使用原生SQL查询与任务前缀相关的specimen_id
+            List<Long> specimenIds = new ArrayList<>();
+            try {
+                String specimenIdQuery = "SELECT DISTINCT CAST(specimen_id AS BIGINT) FROM mixture_task " +
+                                       "WHERE task_id LIKE ? AND specimen_id IS NOT NULL";
+                specimenIds = jdbcTemplate.queryForList(specimenIdQuery, Long.class, taskIdPrefix + "%");
+                logger.info("为任务前缀 {} 找到 {} 个试件ID", taskIdPrefix, specimenIds.size());
+            } catch (Exception e) {
+                logger.error("查询specimen_id时出错: {}", e.getMessage(), e);
+                // 尝试使用文本格式查询
+                try {
+                    String altQuery = "SELECT DISTINCT specimen_id::text FROM mixture_task " +
+                                     "WHERE task_id LIKE ? AND specimen_id IS NOT NULL";
+                    List<String> idStrings = jdbcTemplate.queryForList(altQuery, String.class, taskIdPrefix + "%");
+                    for (String idStr : idStrings) {
+                        try {
+                            specimenIds.add(Long.parseLong(idStr));
+                        } catch (NumberFormatException nfe) {
+                            logger.warn("无法解析试件ID: {}", idStr);
+                        }
+                    }
+                    logger.info("使用备选查询方式为任务前缀 {} 找到 {} 个试件ID", taskIdPrefix, specimenIds.size());
+                } catch (Exception ex) {
+                    logger.error("备选查询方式也失败: {}", ex.getMessage(), ex);
+                }
+            }
+            
+            if (specimenIds.isEmpty()) {
+                logger.warn("任务前缀: {} 对应的任务没有关联的试件", taskIdPrefix);
+                return result;
+            }
+            
+            // 3. 根据specimenIds从specimens表获取制件方法信息
+            List<Map<String, Object>> methodsAndRatios = new ArrayList<>();
+            for (Long specimenId : specimenIds) {
+                try {
+                    // 从specimens表获取试件信息，确保compaction_method不为空
+                    String sql = "SELECT id, " +
+                               "mixing_temperature, " + 
+                               "mixing_speed, " + 
+                               "mixing_time, " + 
+                               "COALESCE(compaction_method, '标准压实') as compaction_method " + 
+                               "FROM specimens WHERE id = ?";
+                    List<Map<String, Object>> specimens = jdbcTemplate.queryForList(sql, specimenId);
+                    
+                    if (specimens.isEmpty()) {
+                        // 如果未找到specimen记录，记录警告
+                        logger.warn("未找到specimen ID {} 的记录", specimenId);
+                    } else {
+                        // 记录找到的compaction_method
+                        for (Map<String, Object> specimen : specimens) {
+                            logger.info("获取到specimen ID {} 的压实方法: {}", 
+                                specimenId, specimen.get("compaction_method"));
+                        }
+                        methodsAndRatios.addAll(specimens);
+                    }
+                } catch (Exception e) {
+                    logger.error("查询specimen ID {} 的信息时出错: {}", specimenId, e.getMessage());
+                }
+            }
+            
+            // 从mixture_task表直接获取project_id
+            String projectId = "";
+            try {
+                String projectIdQuery = "SELECT project_id FROM mixture_task WHERE task_id LIKE ? AND project_id IS NOT NULL LIMIT 1";
+                projectId = jdbcTemplate.queryForObject(projectIdQuery, String.class, taskIdPrefix + "%");
+                logger.info("从mixture_task表获取project_id: {}", projectId);
+            } catch (Exception ex) {
+                logger.error("从mixture_task表获取project_id失败: {}", ex.getMessage());
+                projectId = "";
+            }
+            
+            // 应用project_id到所有方法数据中
+            for (Map<String, Object> method : methodsAndRatios) {
+                method.put("project_id", projectId);
+            }
+            
+            // 获取配比信息
+            try {
+                // 从mixture_task表获取mixratio_id
+                String mixratioIdQuery = "SELECT DISTINCT mixratio_id FROM mixture_task WHERE task_id LIKE ? AND mixratio_id IS NOT NULL";
+                List<Long> mixratioIds = jdbcTemplate.queryForList(mixratioIdQuery, Long.class, taskIdPrefix + "%");
+                logger.info("为任务前缀 {} 找到 {} 个配比ID", taskIdPrefix, mixratioIds.size());
+                
+                // 根据mixratio_id从mixratio表获取配比名称
+                if (!mixratioIds.isEmpty()) {
+                    StringBuilder inClause = new StringBuilder();
+                    for (int i = 0; i < mixratioIds.size(); i++) {
+                        inClause.append("?");
+                        if (i < mixratioIds.size() - 1) {
+                            inClause.append(",");
+                        }
+                    }
+                    
+                    // 注意：这里我们不再从mixratio表获取project_id，因为我们已经从mixture_task表直接获取了
+                    String mixratioQuery = "SELECT id, mix_name FROM mixratio WHERE id IN (" + inClause.toString() + ")";
+                    
+                    // 转换参数为Object数组
+                    Object[] params = mixratioIds.toArray();
+                    
+                    List<Map<String, Object>> mixratios = jdbcTemplate.queryForList(mixratioQuery, params);
+                    logger.info("查询到 {} 个配比信息", mixratios.size());
+                    
+                    // 将配比信息添加到方法数据中
+                    for (Map<String, Object> method : methodsAndRatios) {
+                        if (!mixratios.isEmpty()) {
+                            method.put("mix_name", mixratios.get(0).get("mix_name"));
+                        } else {
+                            method.put("mix_name", "标准配比");
+                        }
+                    }
+                } else {
+                    // 设置默认配比名称
+                    for (Map<String, Object> method : methodsAndRatios) {
+                        method.put("mix_name", "标准配比");
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("查询配比信息时出错: {}", e.getMessage(), e);
+                // 设置默认配比名称
+                for (Map<String, Object> method : methodsAndRatios) {
+                    method.put("mix_name", "标准配比");
+                }
+            }
+            
+            result.put("methodsAndRatios", methodsAndRatios);
+            
+            // 4. 获取混合设备信息
+            try {
+                List<Map<String, Object>> mixingEquipment = jdbcTemplate.queryForList(
+                    "SELECT DISTINCT assigned_mixing_equipment as deviceId, " +
+                    "COALESCE(mixing_equipment_manufacturer, '标准制造商') as manufacturer, " +
+                    "'mixing' as deviceType, " + 
+                    "assigned_mixing_equipment as model " +
+                    "FROM mixture_task WHERE task_id LIKE ? OR task_id = ? AND assigned_mixing_equipment IS NOT NULL",
+                    taskIdPrefix + "%", taskIdPrefix
+                );
+                
+                result.put("mixingEquipment", mixingEquipment);
+            } catch (Exception e) {
+                logger.error("查询混合设备信息时出错: {}", e.getMessage());
+                result.put("mixingEquipment", new ArrayList<>());
+            }
+            
+            // 5. 获取成型设备信息
+            try {
+                List<Map<String, Object>> formingEquipment = jdbcTemplate.queryForList(
+                    "SELECT DISTINCT assigned_forming_equipment as deviceId, " +
+                    "COALESCE(forming_equipment_manufacturer, '标准制造商') as manufacturer, " +
+                    "'forming' as deviceType, " +
+                    "assigned_forming_equipment as model " +
+                    "FROM mixture_task WHERE task_id LIKE ? OR task_id = ? AND assigned_forming_equipment IS NOT NULL",
+                    taskIdPrefix + "%", taskIdPrefix
+                );
+                
+                result.put("formingEquipment", formingEquipment);
+            } catch (Exception e) {
+                logger.error("查询成型设备信息时出错: {}", e.getMessage());
+                result.put("formingEquipment", new ArrayList<>());
+            }
+            
+            logger.info("成功获取任务前缀: {} 的试件制备数据", taskIdPrefix);
+            return result;
+        } catch (Exception e) {
+            logger.error("获取试件制备数据时出错: {}", e.getMessage(), e);
+            return result;
+        }
+    }
+
+    /**
+     * 更新指定前缀任务ID的制件状态为"已完成"
+     * 
+     * @param taskIdPrefix 任务ID前缀
+     * @return 更新成功返回true，否则返回false
+     */
+    public boolean updateMakingStatusToFinished(String taskIdPrefix) {
+        try {
+            logger.info("准备更新任务ID前缀为{}的所有任务制件状态为'已完成'", taskIdPrefix);
+            
+            // 方法1: 使用自定义查询方法更新
+            int updatedCount = mixtureTaskRepository.updateMakingStatusByTaskIdPrefix(taskIdPrefix, "finished");
+            
+            // 或者使用 JDBC 原生 SQL 更新
+            if (updatedCount == 0) {
+                logger.info("使用原生SQL更新任务制件状态");
+                String sql = "UPDATE mixture_task SET making_status = 'finished' WHERE task_id LIKE ? OR task_id = ?";
+                updatedCount = jdbcTemplate.update(sql, taskIdPrefix + "%", taskIdPrefix);
+                logger.info("使用原生SQL更新结果: {} 条记录", updatedCount);
+            }
+            
+            logger.info("更新了{}条记录", updatedCount);
+            return updatedCount > 0;
+        } catch (Exception e) {
+            logger.error("更新任务制件状态时出错: {}", e.getMessage(), e);
+            return false;
         }
     }
 }

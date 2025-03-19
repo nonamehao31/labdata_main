@@ -38,4 +38,14 @@ public class ServiceCreator {
     public static MixtureTaskService createMixtureTaskService() {
         return ApiClient.getClient().create(MixtureTaskService.class);
     }
+    
+    /**
+     * 通用服务创建方法
+     * @param serviceClass 服务类
+     * @param <T> 服务类泛型
+     * @return 服务实例
+     */
+    public static <T> T create(Class<T> serviceClass) {
+        return ApiClient.getClient().create(serviceClass);
+    }
 }

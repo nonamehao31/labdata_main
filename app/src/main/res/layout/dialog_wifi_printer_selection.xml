@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvDiscoveryStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="正在搜索网络打印机..."
+        android:textSize="14sp"
+        android:paddingBottom="8dp" />
+
+    <ProgressBar
+        android:id="@+id/progressDiscovery"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="visible" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvPrinters"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:maxHeight="200dp" />
+
+    <Button
+        android:id="@+id/btnAddManually"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="手动添加打印机" />
+
+</LinearLayout>

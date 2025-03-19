@@ -112,6 +112,144 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         return deviceData.get(String.valueOf(mixRatioId));
     }
 
+    /**
+     * 更新试件制备信息（拌合参数、压实方法、设备信息）
+     * @param specimenData 包含试件制备信息的Map
+     */
+    public void updateSpecimenData(Map<String, Object> specimenData) {
+        if (specimenData == null) return;
+        
+        android.util.Log.d("MixtureAdapter", "收到试件数据: " + specimenData.toString());
+        
+        // 处理拌合参数和压实方法信息
+        if (specimenData.containsKey("methodsAndRatios")) {
+            try {
+                List<Map<String, Object>> methodsData = (List<Map<String, Object>>) specimenData.get("methodsAndRatios");
+                if (methodsData != null && !methodsData.isEmpty()) {
+                    // 打印接收到的数据以便调试
+                    android.util.Log.d("MixtureAdapter", "方法和配比数据: " + methodsData.toString());
+                    
+                    // 存储每个试件ID对应的拌合参数和压实方法
+                    Map<Long, Map<String, Object>> specimenParams = new HashMap<>();
+                    
+                    for (Map<String, Object> method : methodsData) {
+                        if (method.containsKey("id")) {
+                            Long specimenId = ((Number) method.get("id")).longValue();
+                            specimenParams.put(specimenId, method);
+                        }
+                    }
+                    
+                    // 存储到experimentData中
+                    for (Long mixRatioId : experimentAssignments.keySet()) {
+                        List<String> experiments = experimentAssignments.get(mixRatioId);
+                        if (experiments != null) {
+                            for (String experiment : experiments) {
+                                // 查找对应的试件参数
+                                for (Long specimenId : specimenParams.keySet()) {
+                                    Map<String, Object> params = specimenParams.get(specimenId);
+                                    Map<String, String> existingData = experimentData.getOrDefault(
+                                            experiment, new HashMap<>());
+                                    
+                                    // 添加拌合参数 - 使用下划线命名与后端匹配
+                                    if (params.containsKey("mixing_temperature")) {
+                                        Object tempObj = params.get("mixing_temperature");
+                                        double mixingTemp = tempObj instanceof Number ? ((Number) tempObj).doubleValue() : 0;
+                                        existingData.put("mixingTemperature", String.valueOf(mixingTemp));
+                                    }
+                                    
+                                    if (params.containsKey("mixing_speed")) {
+                                        Object speedObj = params.get("mixing_speed");
+                                        double mixingSpeed = speedObj instanceof Number ? ((Number) speedObj).doubleValue() : 0;
+                                        existingData.put("mixingSpeed", String.valueOf(mixingSpeed));
+                                    }
+                                    
+                                    if (params.containsKey("mixing_time")) {
+                                        Object timeObj = params.get("mixing_time");
+                                        double mixingTime = timeObj instanceof Number ? ((Number) timeObj).doubleValue() : 0;
+                                        existingData.put("mixingTime", String.valueOf(mixingTime));
+                                    }
+                                    
+                                    // 添加压实方法
+                                    if (params.containsKey("compaction_method")) {
+                                        String compactionMethod = (String) params.get("compaction_method");
+                                        existingData.put("compactionMethod", compactionMethod);
+                                    }
+                                    
+                                    experimentData.put(experiment, existingData);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.e("MixtureAdapter", "处理方法数据时出错", e);
+            }
+        }
+        
+        // 处理拌合设备信息
+        if (specimenData.containsKey("mixingEquipment")) {
+            try {
+                List<Map<String, Object>> equipmentList = (List<Map<String, Object>>) specimenData.get("mixingEquipment");
+                if (equipmentList != null && !equipmentList.isEmpty()) {
+                    android.util.Log.d("MixtureAdapter", "拌合设备数据: " + equipmentList.toString());
+                    
+                    for (Map<String, Object> equipment : equipmentList) {
+                        if (equipment.containsKey("deviceId") && equipment.containsKey("manufacturer")) {
+                            String deviceId = (String) equipment.get("deviceId");
+                            String manufacturer = (String) equipment.get("manufacturer");
+                            
+                            if (deviceId != null) {
+                                DeviceInfo deviceInfo = new DeviceInfo();
+                                deviceInfo.setDeviceId(deviceId);
+                                deviceInfo.setManufacturer(manufacturer != null ? manufacturer : "未知");
+                                // 如果没有型号信息，使用设备ID作为型号
+                                deviceInfo.setModel(deviceId);
+                                deviceInfo.setDeviceType("mixing");
+                                
+                                deviceData.put(deviceId, deviceInfo);
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.e("MixtureAdapter", "处理拌合设备数据时出错", e);
+            }
+        }
+        
+        // 处理成型设备信息
+        if (specimenData.containsKey("formingEquipment")) {
+            try {
+                List<Map<String, Object>> equipmentList = (List<Map<String, Object>>) specimenData.get("formingEquipment");
+                if (equipmentList != null && !equipmentList.isEmpty()) {
+                    android.util.Log.d("MixtureAdapter", "成型设备数据: " + equipmentList.toString());
+                    
+                    for (Map<String, Object> equipment : equipmentList) {
+                        if (equipment.containsKey("deviceId") && equipment.containsKey("manufacturer")) {
+                            String deviceId = (String) equipment.get("deviceId");
+                            String manufacturer = (String) equipment.get("manufacturer");
+                            
+                            if (deviceId != null) {
+                                DeviceInfo deviceInfo = new DeviceInfo();
+                                deviceInfo.setDeviceId(deviceId);
+                                deviceInfo.setManufacturer(manufacturer != null ? manufacturer : "未知");
+                                // 如果没有型号信息，使用设备ID作为型号
+                                deviceInfo.setModel(deviceId);
+                                deviceInfo.setDeviceType("forming");
+                                
+                                deviceData.put(deviceId, deviceInfo);
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.e("MixtureAdapter", "处理成型设备数据时出错", e);
+            }
+        }
+        
+        // 通知适配器数据已更新
+        notifyDataSetChanged();
+    }
+
     class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvExperimentName;
         TextView tvDeviceInfo;
@@ -138,19 +276,19 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                     addMixtureBendingFields(mixRatioId);
                     break;
                 case "理论最大相对密度试验":
-                    addSingleInputField("理论最大相对密度", "g/cm³", experimentName, mixRatioId);
+                    addSingleInputField("理论最大相对密度", "g/cm³", experimentName + "_max_density", mixRatioId);
                     break;
                 case "体积密度试验":
-                    addSingleInputField("体积密度", "g/cm³", experimentName, mixRatioId);
+                    addSingleInputField("体积密度", "g/cm³", experimentName + "_volume_density", mixRatioId);
                     break;
                 case "空隙率试验":
-                    addSingleInputField("空隙率", "%", experimentName, mixRatioId);
+                    addSingleInputField("空隙率", "%", experimentName + "_void_ratio", mixRatioId);
                     break;
                 case "飞散试验":
-                    addSingleInputField("飞散损失率", "%", experimentName, mixRatioId);
+                    addSingleInputField("飞散损失率", "%", experimentName + "_flakiness_ratio", mixRatioId);
                     break;
                 case "动稳定度试验":
-                    addSingleInputField("动稳定度", "次/mm", experimentName, mixRatioId);
+                    addSingleInputField("动稳定度", "次/mm", experimentName + "_dynamic_stability", mixRatioId);
                     break;
                 case "动态模量试验":
                     addDynamicModulusFields(mixRatioId);
