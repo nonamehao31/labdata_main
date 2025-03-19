@@ -34,6 +34,9 @@ public interface MixtureTaskRepository extends JpaRepository<MixtureTask, String
            nativeQuery = true)
     List<Map<String, Object>> findAllByTaskIdPrefixNative(@Param("taskIdPrefix") String taskIdPrefix);
     
+    // 通过任务ID精确查找任务
+    Optional<MixtureTask> findByTaskId(String taskId);
+    
     // 更新指定任务ID前缀的making_status字段
     @Modifying
     @Transactional

@@ -1,6 +1,7 @@
 package com.example.labdata.controller;
 
 import com.example.labdata.model.MixtureTask;
+import com.example.labdata.model.SupportMixtureTask;
 import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.payload.response.MixratioSpecimenPairResponse;
 import com.example.labdata.payload.response.MixRatioDetailResponse;
@@ -39,6 +40,16 @@ public class MixtureTaskController {
     @GetMapping("/mixtureTask/listByType")
     public ResponseEntity<List<MixtureTask>> getMixtureTasksByType(@RequestParam String taskType) {
         return ResponseEntity.ok(mixtureTaskService.getMixtureTasksByType(taskType));
+    }
+    
+    /**
+     * 获取支持的混合料任务类型列表
+     * @param taskType 任务类型
+     * @return 支持的任务类型列表
+     */
+    @GetMapping("/mixtureTask/supportedTasks")
+    public ResponseEntity<List<SupportMixtureTask>> getSupportedMixtureTasks(@RequestParam String taskType) {
+        return ResponseEntity.ok(mixtureTaskService.getSupportedMixtureTasks(taskType));
     }
     
     /**
@@ -188,6 +199,30 @@ public class MixtureTaskController {
             logger.error("获取试件制备数据时出错: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "获取试件数据失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 根据任务ID获取任务详细信息
+     * 
+     * @param taskId 任务ID
+     * @return 任务详细信息
+     */
+    @GetMapping("/mixtureTask/{taskId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMixtureTaskByTaskId(@PathVariable String taskId) {
+        logger.info("接收到获取任务详情请求，任务ID: {}", taskId);
+        try {
+            Map<String, Object> taskData = mixtureTaskService.getMixtureTaskDataByTaskId(taskId);
+            if (taskData == null || taskData.isEmpty()) {
+                logger.warn("未找到任务ID={}的详细信息", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(false, "未找到任务详情", null));
+            }
+            logger.info("成功获取任务ID={}的详细信息", taskId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取任务详情成功", taskData));
+        } catch (Exception e) {
+            logger.error("获取任务详情时出错: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取任务详情失败: " + e.getMessage(), null));
         }
     }
 

@@ -246,6 +246,46 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             }
         }
         
+        // 处理任务指派信息
+        if (specimenData.containsKey("taskAssignments")) {
+            try {
+                List<Map<String, Object>> assignments = (List<Map<String, Object>>) specimenData.get("taskAssignments");
+                if (assignments != null && !assignments.isEmpty()) {
+                    android.util.Log.d("MixtureAdapter", "任务指派数据: " + assignments.toString());
+                    
+                    // 处理任务指派信息
+                    for (Map<String, Object> assignment : assignments) {
+                        String taskId = (String) assignment.get("task_id");
+                        String assignedTo = (String) assignment.get("assigned_to");
+                        String status = (String) assignment.get("status");
+                        String taskAssignment = (String) assignment.get("task_assignment");
+                        
+                        android.util.Log.d("MixtureAdapter", "任务指派: taskId=" + taskId + 
+                                ", assignedTo=" + assignedTo + ", status=" + status + 
+                                ", taskAssignment=" + taskAssignment);
+                        
+                        // 将任务指派信息添加到所有实验数据中
+                        for (String experiment : experimentData.keySet()) {
+                            Map<String, String> existingData = experimentData.get(experiment);
+                            if (existingData != null) {
+                                existingData.put("assignedTo", assignedTo != null ? assignedTo : "未指派");
+                                existingData.put("status", status != null ? status : "未开始");
+                                if (taskAssignment != null && !taskAssignment.isEmpty()) {
+                                    existingData.put("taskAssignment", taskAssignment);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    android.util.Log.w("MixtureAdapter", "未找到任务指派信息");
+                }
+            } catch (Exception e) {
+                android.util.Log.e("MixtureAdapter", "处理任务指派数据时出错", e);
+            }
+        } else {
+            android.util.Log.w("MixtureAdapter", "返回数据中不包含任务指派信息");
+        }
+        
         // 通知适配器数据已更新
         notifyDataSetChanged();
     }
@@ -448,6 +488,120 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             setupBendingCalculation(mixRatioId, specimenId, experimentName, flexuralStrengthText, maxStrainText, stiffnessModulusText);
         }
 
+        private void setupBendingCalculation(long mixRatioId, int specimenId, String experimentName, 
+                                           TextView flexuralStrengthText, TextView maxStrainText, TextView stiffnessModulusText) {
+            // 获取数据键
+            String spanLengthKey = experimentName + "_span_length";
+            String widthKey = experimentName + "_width_" + specimenId;
+            String heightKey = experimentName + "_height_" + specimenId;
+            String maxLoadKey = experimentName + "_max_load_" + specimenId;
+            String deflectionKey = experimentName + "_deflection_" + specimenId;
+            String flexuralStrengthKey = experimentName + "_flexural_strength_" + specimenId;
+            String maxStrainKey = experimentName + "_max_strain_" + specimenId;
+            String stiffnessModulusKey = experimentName + "_stiffness_modulus_" + specimenId;
+
+            // 创建计算结果更新器
+            Runnable updateCalculation = () -> {
+                // 获取该配比的数据Map
+                Map<String, String> mixRatioData = experimentData.computeIfAbsent(
+                        String.valueOf(mixRatioId),
+                        k -> new HashMap<>()
+                );
+                if (mixRatioData == null) {
+                    return;
+                }
+
+                // 获取输入值
+                String spanLengthStr = mixRatioData.get(spanLengthKey);
+                String widthStr = mixRatioData.get(widthKey);
+                String heightStr = mixRatioData.get(heightKey);
+                String maxLoadStr = mixRatioData.get(maxLoadKey);
+                String deflectionStr = mixRatioData.get(deflectionKey);
+
+                // 计算结果
+                try {
+                    // 检查所有输入是否都有效
+                    if (spanLengthStr != null && !spanLengthStr.isEmpty() &&
+                        widthStr != null && !widthStr.isEmpty() &&
+                        heightStr != null && !heightStr.isEmpty() &&
+                        maxLoadStr != null && !maxLoadStr.isEmpty() &&
+                        deflectionStr != null && !deflectionStr.isEmpty()) {
+
+                        double spanLength = Double.parseDouble(spanLengthStr);
+                        double width = Double.parseDouble(widthStr);
+                        double height = Double.parseDouble(heightStr);
+                        double maxLoad = Double.parseDouble(maxLoadStr);
+                        double deflection = Double.parseDouble(deflectionStr);
+
+                        // 计算抗弯拉强度 Rb = 3LPb/(2bh^2)
+                        double flexuralStrength = (3 * spanLength * maxLoad) / (2 * width * height * height);
+                        // 转换为MPa
+                        flexuralStrength = flexuralStrength / 1000;
+
+                        // 计算最大弯拉应变 εb = 6hd/L^2
+                        double maxStrain = (6 * height * deflection) / (spanLength * spanLength);
+                        // 转换为με (微应变)
+                        maxStrain = maxStrain * 1000000;
+
+                        // 计算弯曲劲度模量 Sb = Rb/εb
+                        double stiffnessModulus = flexuralStrength / (maxStrain / 1000000);
+
+                        // 更新结果显示
+                        flexuralStrengthText.setText("抗弯拉强度Rb (MPa): " + String.format("%.2f", flexuralStrength));
+                        maxStrainText.setText("最大弯拉应变εb (με): " + String.format("%.2f", maxStrain));
+                        stiffnessModulusText.setText("弯曲劲度模量Sb (MPa): " + String.format("%.2f", stiffnessModulus));
+
+                        // 保存计算结果到数据中
+                        mixRatioData.put(flexuralStrengthKey, String.valueOf(flexuralStrength));
+                        mixRatioData.put(maxStrainKey, String.valueOf(maxStrain));
+                        mixRatioData.put(stiffnessModulusKey, String.valueOf(stiffnessModulus));
+                    }
+                } catch (NumberFormatException e) {
+                    // 输入无效，清空结果
+                    flexuralStrengthText.setText("抗弯拉强度Rb (MPa): ");
+                    maxStrainText.setText("最大弯拉应变εb (με): ");
+                    stiffnessModulusText.setText("弯曲劲度模量Sb (MPa): ");
+
+                    // 从数据中移除结果
+                    mixRatioData.remove(flexuralStrengthKey);
+                    mixRatioData.remove(maxStrainKey);
+                    mixRatioData.remove(stiffnessModulusKey);
+                }
+            };
+
+            // 为所有相关字段添加数据变化监听
+            TextWatcher textWatcher = new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    // 触发计算更新
+                    updateCalculation.run();
+                }
+            };
+
+            // 为每个输入字段添加监听器
+            for (int i = 0; i < layoutInputs.getChildCount(); i++) {
+                View child = layoutInputs.getChildAt(i);
+                if (child instanceof TextInputLayout) {
+                    View editText = ((TextInputLayout) child).getEditText();
+                    if (editText != null) {
+                        String hint = ((TextInputLayout) child).getHint().toString();
+                        if (hint.contains("跨径长度L") || 
+                            (hint.contains("试件宽度b") && i > layoutInputs.getChildCount() - 20) || 
+                            (hint.contains("试件高度h") && i > layoutInputs.getChildCount() - 20) || 
+                            (hint.contains("最大荷载Pb") && i > layoutInputs.getChildCount() - 20) || 
+                            (hint.contains("跨中挠度d") && i > layoutInputs.getChildCount() - 20)) {
+                            ((TextInputEditText) editText).addTextChangedListener(textWatcher);
+                        }
+                    }
+                }
+            }
+        }
 
         private void addMixSplittingFields(long mixRatioId) {
             String experimentName = "沥青混合料劈裂试验";
@@ -459,9 +613,6 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             basicInfoTitle.setTypeface(null, android.graphics.Typeface.BOLD);
             basicInfoTitle.setPadding(0, 16, 0, 16);
             layoutInputs.addView(basicInfoTitle);
-
-            // 添加测试温度输入字段
-            addSingleInputField("测试温度", "°C", experimentName + "_temperature", mixRatioId);
 
             // 创建试件数量控制区域
             LinearLayout specimenControlLayout = new LinearLayout(itemView.getContext());
@@ -522,7 +673,6 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             // 添加泊松比参考表
             addPoissonRatioReferenceTable();
         }
-
 
         private void addMixSplittingSpecimen(long mixRatioId, String experimentName, int specimenId) {
             // 创建试件分组标题
@@ -871,8 +1021,6 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             // Run initial calculation
             updateCalculation.run();
         }
-
-
 
         private void addStrengthDataInputs(long mixRatioId, String experimentName, int specimenId) {
             // 创建P值输入区域
@@ -1279,121 +1427,6 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             tableLayout.addView(dataRow);
 
             layoutInputs.addView(tableLayout);
-        }
-
-        private void setupBendingCalculation(long mixRatioId, int specimenId, String experimentName, 
-                                           TextView flexuralStrengthText, TextView maxStrainText, TextView stiffnessModulusText) {
-            // 获取数据键
-            String spanLengthKey = experimentName + "_span_length";
-            String widthKey = experimentName + "_width_" + specimenId;
-            String heightKey = experimentName + "_height_" + specimenId;
-            String maxLoadKey = experimentName + "_max_load_" + specimenId;
-            String deflectionKey = experimentName + "_deflection_" + specimenId;
-            String flexuralStrengthKey = experimentName + "_flexural_strength_" + specimenId;
-            String maxStrainKey = experimentName + "_max_strain_" + specimenId;
-            String stiffnessModulusKey = experimentName + "_stiffness_modulus_" + specimenId;
-
-            // 创建计算结果更新器
-            Runnable updateCalculation = () -> {
-                // 获取该配比的数据Map
-                Map<String, String> mixRatioData = experimentData.computeIfAbsent(
-                        String.valueOf(mixRatioId),
-                        k -> new HashMap<>()
-                );
-                if (mixRatioData == null) {
-                    return;
-                }
-
-                // 获取输入值
-                String spanLengthStr = mixRatioData.get(spanLengthKey);
-                String widthStr = mixRatioData.get(widthKey);
-                String heightStr = mixRatioData.get(heightKey);
-                String maxLoadStr = mixRatioData.get(maxLoadKey);
-                String deflectionStr = mixRatioData.get(deflectionKey);
-
-                // 计算结果
-                try {
-                    // 检查所有输入是否都有效
-                    if (spanLengthStr != null && !spanLengthStr.isEmpty() &&
-                        widthStr != null && !widthStr.isEmpty() &&
-                        heightStr != null && !heightStr.isEmpty() &&
-                        maxLoadStr != null && !maxLoadStr.isEmpty() &&
-                        deflectionStr != null && !deflectionStr.isEmpty()) {
-
-                        double spanLength = Double.parseDouble(spanLengthStr);
-                        double width = Double.parseDouble(widthStr);
-                        double height = Double.parseDouble(heightStr);
-                        double maxLoad = Double.parseDouble(maxLoadStr);
-                        double deflection = Double.parseDouble(deflectionStr);
-
-                        // 计算抗弯拉强度 Rb = 3LPb/(2bh^2)
-                        double flexuralStrength = (3 * spanLength * maxLoad) / (2 * width * height * height);
-                        // 转换为MPa
-                        flexuralStrength = flexuralStrength / 1000;
-
-                        // 计算最大弯拉应变 εb = 6hd/L^2
-                        double maxStrain = (6 * height * deflection) / (spanLength * spanLength);
-                        // 转换为με (微应变)
-                        maxStrain = maxStrain * 1000000;
-
-                        // 计算弯曲劲度模量 Sb = Rb/εb
-                        double stiffnessModulus = flexuralStrength / (maxStrain / 1000000);
-
-                        // 更新结果显示
-                        flexuralStrengthText.setText("抗弯拉强度Rb (MPa): " + String.format("%.2f", flexuralStrength));
-                        maxStrainText.setText("最大弯拉应变εb (με): " + String.format("%.2f", maxStrain));
-                        stiffnessModulusText.setText("弯曲劲度模量Sb (MPa): " + String.format("%.2f", stiffnessModulus));
-
-                        // 保存计算结果到数据中
-                        mixRatioData.put(flexuralStrengthKey, String.valueOf(flexuralStrength));
-                        mixRatioData.put(maxStrainKey, String.valueOf(maxStrain));
-                        mixRatioData.put(stiffnessModulusKey, String.valueOf(stiffnessModulus));
-                    }
-                } catch (NumberFormatException e) {
-                    // 输入无效，清空结果
-                    flexuralStrengthText.setText("抗弯拉强度Rb (MPa): ");
-                    maxStrainText.setText("最大弯拉应变εb (με): ");
-                    stiffnessModulusText.setText("弯曲劲度模量Sb (MPa): ");
-
-                    // 从数据中移除结果
-                    mixRatioData.remove(flexuralStrengthKey);
-                    mixRatioData.remove(maxStrainKey);
-                    mixRatioData.remove(stiffnessModulusKey);
-                }
-            };
-
-            // 为所有相关字段添加数据变化监听
-            TextWatcher textWatcher = new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-                @Override
-                public void afterTextChanged(Editable s) {
-                    // 触发计算更新
-                    updateCalculation.run();
-                }
-            };
-
-            // 为每个输入字段添加监听器
-            for (int i = 0; i < layoutInputs.getChildCount(); i++) {
-                View child = layoutInputs.getChildAt(i);
-                if (child instanceof TextInputLayout) {
-                    View editText = ((TextInputLayout) child).getEditText();
-                    if (editText != null) {
-                        String hint = ((TextInputLayout) child).getHint().toString();
-                        if (hint.contains("跨径长度L") || 
-                            (hint.contains("试件宽度b") && i > layoutInputs.getChildCount() - 20) || 
-                            (hint.contains("试件高度h") && i > layoutInputs.getChildCount() - 20) || 
-                            (hint.contains("最大荷载Pb") && i > layoutInputs.getChildCount() - 20) || 
-                            (hint.contains("跨中挠度d") && i > layoutInputs.getChildCount() - 20)) {
-                            ((TextInputEditText) editText).addTextChangedListener(textWatcher);
-                        }
-                    }
-                }
-            }
         }
 
         private void addDynamicModulusFields(long mixRatioId) {

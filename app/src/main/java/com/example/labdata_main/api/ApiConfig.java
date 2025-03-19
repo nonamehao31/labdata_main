@@ -68,6 +68,7 @@ public class ApiConfig {
     public static final String GET_COMPANY_MIXTURE_TASKS_URL = "api/mixture-tasks/company";
     public static final String GET_ALL_MIXTURE_TASKS_URL = "api/mixtureTask/list";
     public static final String GET_MIXTURE_TASKS_BY_TYPE_URL = "api/mixtureTask/listByType";
+    public static final String GET_SUPPORTED_MIXTURE_TASKS_URL = "api/mixtureTask/supportedTasks";
 
     /**
      * JSON媒体类型

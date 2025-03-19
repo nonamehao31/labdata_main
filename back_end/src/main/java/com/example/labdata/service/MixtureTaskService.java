@@ -6,6 +6,7 @@ import com.example.labdata.model.MixRatioAsphalt;
 import com.example.labdata.model.MixRatioSand;
 import com.example.labdata.model.MixRatioStone;
 import com.example.labdata.model.Project;
+import com.example.labdata.model.SupportMixtureTask;
 import com.example.labdata.model.UserMixtureTask;
 import com.example.labdata.payload.response.MixratioSpecimenPairResponse;
 import com.example.labdata.payload.response.MixRatioDetailResponse;
@@ -16,6 +17,7 @@ import com.example.labdata.repository.UserMixtureTaskRepository;
 import com.example.labdata.repository.MixRatioAsphaltRepository;
 import com.example.labdata.repository.MixRatioSandRepository;
 import com.example.labdata.repository.MixRatioStoneRepository;
+import com.example.labdata.repository.SupportMixtureTaskRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,7 @@ public class MixtureTaskService {
     private final MixRatioAsphaltRepository mixRatioAsphaltRepository;
     private final MixRatioSandRepository mixRatioSandRepository;
     private final MixRatioStoneRepository mixRatioStoneRepository;
+    private final SupportMixtureTaskRepository supportMixtureTaskRepository;
     private final JdbcTemplate jdbcTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(MixtureTaskService.class);
@@ -52,6 +55,7 @@ public class MixtureTaskService {
                              MixRatioAsphaltRepository mixRatioAsphaltRepository,
                              MixRatioSandRepository mixRatioSandRepository,
                              MixRatioStoneRepository mixRatioStoneRepository,
+                             SupportMixtureTaskRepository supportMixtureTaskRepository,
                              JdbcTemplate jdbcTemplate) {
         this.userMixtureTaskRepository = userMixtureTaskRepository;
         this.mixtureTaskRepository = mixtureTaskRepository;
@@ -60,6 +64,7 @@ public class MixtureTaskService {
         this.mixRatioAsphaltRepository = mixRatioAsphaltRepository;
         this.mixRatioSandRepository = mixRatioSandRepository;
         this.mixRatioStoneRepository = mixRatioStoneRepository;
+        this.supportMixtureTaskRepository = supportMixtureTaskRepository;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -70,6 +75,7 @@ public class MixtureTaskService {
         return tasks;
     }
     
+    // 记录当前的 getMixtureTasksByType 方法，稍后修改
     public List<MixtureTask> getMixtureTasksByType(String taskType) {
         List<MixtureTask> tasks = mixtureTaskRepository.findByTaskType(taskType);
         // 查询并设置每个任务的项目名称
@@ -813,6 +819,28 @@ public class MixtureTaskService {
                 result.put("formingEquipment", new ArrayList<>());
             }
             
+            // 6. 获取任务指派信息
+            try {
+                // 查询当前任务的指派信息 - 从mixture_task表获取，而不是mixture_task_assignment
+                String assignmentQuery = "SELECT task_id, acceptor as assigned_to, status, task_assignment " +
+                    "FROM mixture_task WHERE (task_id LIKE ? OR task_id = ?) AND acceptor IS NOT NULL";
+                List<Map<String, Object>> assignments = jdbcTemplate.queryForList(
+                    assignmentQuery,
+                    taskIdPrefix + "%", taskIdPrefix
+                );
+                
+                if (!assignments.isEmpty()) {
+                    result.put("taskAssignments", assignments);
+                    logger.info("成功获取任务指派信息: {}", assignments.size());
+                } else {
+                    logger.warn("未找到任务ID前缀: {} 的任务指派信息", taskIdPrefix);
+                    result.put("taskAssignments", new ArrayList<>());
+                }
+            } catch (Exception e) {
+                logger.error("查询任务指派信息时出错: {}", e.getMessage(), e);
+                result.put("taskAssignments", new ArrayList<>());
+            }
+            
             logger.info("成功获取任务前缀: {} 的试件制备数据", taskIdPrefix);
             return result;
         } catch (Exception e) {
@@ -848,5 +876,106 @@ public class MixtureTaskService {
             logger.error("更新任务制件状态时出错: {}", e.getMessage(), e);
             return false;
         }
+    }
+
+    /**
+     * 获取指定任务ID的详细信息
+     * 
+     * @param taskId 任务ID
+     * @return 任务详细信息Map
+     */
+    public Map<String, Object> getMixtureTaskDataByTaskId(String taskId) {
+        try {
+            logger.info("获取任务ID为{}的详细信息", taskId);
+            
+            // 从taskId提取前缀部分（如果有后缀）
+            String taskIdPrefix = taskId;
+            if (taskId.matches(".*-\\d+$")) {
+                taskIdPrefix = taskId.substring(0, taskId.lastIndexOf('-'));
+                logger.info("从任务ID中提取前缀: {}", taskIdPrefix);
+            }
+            
+            // 查询条件：精确匹配传入的taskId或匹配前缀下的所有任务
+            String sql = "SELECT * FROM mixture_task WHERE task_id = ? OR task_id LIKE ?";
+            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, taskId, taskIdPrefix + "-%");
+            
+            if (results.isEmpty()) {
+                logger.warn("未找到任务ID={}或前缀={}的数据", taskId, taskIdPrefix);
+                return new HashMap<>();
+            }
+            
+            logger.info("找到{}条相关任务记录", results.size());
+            
+            // 格式化JDBC返回的结果
+            Map<String, Object> result = new HashMap<>();
+            Map<String, Object> taskDetails = results.get(0); // 使用第一条记录的基础信息
+            
+            // 添加基本任务信息
+            for (Map.Entry<String, Object> entry : taskDetails.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                result.put(camelCase(key), value);
+            }
+            
+            // 添加所有匹配的任务指派信息
+            List<Map<String, Object>> taskAssignments = new ArrayList<>();
+            for (Map<String, Object> task : results) {
+                Map<String, Object> assignment = new HashMap<>();
+                assignment.put("task_id", task.get("task_id"));
+                assignment.put("assigned_to", task.get("acceptor"));
+                assignment.put("status", task.get("status"));
+                assignment.put("task_assignment", task.get("task_assignment"));
+                
+                // 只添加有指派人的任务
+                if (task.get("acceptor") != null) {
+                    taskAssignments.add(assignment);
+                }
+            }
+            
+            // 如果存在任务指派信息，添加到结果中
+            if (!taskAssignments.isEmpty()) {
+                result.put("taskAssignments", taskAssignments);
+                logger.info("添加了{}条任务指派信息", taskAssignments.size());
+            }
+            
+            logger.info("成功获取任务数据");
+            return result;
+        } catch (Exception e) {
+            logger.error("获取任务详细信息时出错: {}", e.getMessage(), e);
+            return new HashMap<>();
+        }
+    }
+    
+    /**
+     * 将下划线分隔的字符串转换为驼峰命名
+     */
+    private String camelCase(String input) {
+        StringBuilder result = new StringBuilder();
+        boolean nextUpper = false;
+        
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == '_') {
+                nextUpper = true;
+            } else if (nextUpper) {
+                result.append(Character.toUpperCase(c));
+                nextUpper = false;
+            } else {
+                result.append(c);
+            }
+        }
+        
+        return result.toString();
+    }
+
+    /**
+     * 获取支持的混合料任务类型列表
+     * @param taskType 任务类型
+     * @return 支持的任务类型列表
+     */
+    public List<SupportMixtureTask> getSupportedMixtureTasks(String taskType) {
+        // 从support_mixture_task表中查询指定类型的任务
+        logger.info("获取类型为 {} 的支持任务列表", taskType);
+        return supportMixtureTaskRepository.findByTaskType(taskType);
     }
 }

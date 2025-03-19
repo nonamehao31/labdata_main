@@ -23,6 +23,7 @@ import com.example.labdata_main.model.ExperimentAssignment;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MixtureTaskModel;
 import com.example.labdata_main.model.MoldingMethod;
+import com.example.labdata_main.model.SupportMixtureTaskModel;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
@@ -174,16 +175,17 @@ public class ExperimentAssignmentFragment extends Fragment {
         
         // 从API获取实验类型
         ApiService apiService = ApiClient.getInstance();
-        apiService.getMixtureTasksByType("MINTURE").enqueue(new Callback<List<MixtureTaskModel>>() {
+        // 使用新的API调用从support_mixture_task表获取数据
+        apiService.getSupportedMixtureTasks("MINTURE").enqueue(new Callback<List<SupportMixtureTaskModel>>() {
             @Override
-            public void onResponse(Call<List<MixtureTaskModel>> call, 
-                                  Response<List<MixtureTaskModel>> response) {
+            public void onResponse(Call<List<SupportMixtureTaskModel>> call, 
+                                  Response<List<SupportMixtureTaskModel>> response) {
                 if (getContext() == null) return; // Fragment已分离
                 
                 if (response.isSuccessful() && response.body() != null) {
-                    List<MixtureTaskModel> experimentTypes = response.body();
+                    List<SupportMixtureTaskModel> experimentTypes = response.body();
                     
-                    for (MixtureTaskModel type : experimentTypes) {
+                    for (SupportMixtureTaskModel type : experimentTypes) {
                         Chip chip = new Chip(requireContext());
                         chip.setText(type.getName());
                         chip.setCheckable(true);
@@ -221,7 +223,7 @@ public class ExperimentAssignmentFragment extends Fragment {
             }
             
             @Override
-            public void onFailure(Call<List<MixtureTaskModel>> call, Throwable t) {
+            public void onFailure(Call<List<SupportMixtureTaskModel>> call, Throwable t) {
                 if (getContext() == null) return; // Fragment已分离
                 
                 // 请求失败，使用默认的实验类型列表作为备用

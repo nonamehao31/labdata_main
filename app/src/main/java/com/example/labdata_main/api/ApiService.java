@@ -19,6 +19,7 @@ import com.example.labdata_main.api.response.StoneMaterialResponse;
 import com.example.labdata_main.api.response.SupportedDeviceResponse;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixtureTaskModel;
+import com.example.labdata_main.model.SupportMixtureTaskModel;
 
 import java.util.List;
 
@@ -276,6 +277,14 @@ public interface ApiService {
      */
     @GET(ApiConfig.GET_MIXTURE_TASKS_BY_TYPE_URL)
     Call<List<MixtureTaskModel>> getMixtureTasksByType(@Query("taskType") String taskType);
+
+    /**
+     * 获取支持的混合料任务类型列表
+     * @param taskType 任务类型
+     * @return 支持的混合料任务类型列表
+     */
+    @GET(ApiConfig.GET_SUPPORTED_MIXTURE_TASKS_URL)
+    Call<List<SupportMixtureTaskModel>> getSupportedMixtureTasks(@Query("taskType") String taskType);
 
     /**
      * 保存用户混合料任务
