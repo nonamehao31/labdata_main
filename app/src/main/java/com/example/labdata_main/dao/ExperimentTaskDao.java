@@ -64,4 +64,11 @@ public interface ExperimentTaskDao {
     
     @Query("SELECT * FROM experiment_tasks WHERE taskId = :taskId")
     ExperimentTask getFullTaskByTaskId(String taskId);
+
+    @Query("SELECT * FROM experiment_tasks WHERE companyId = :companyId AND task_status = '已完成' " +
+            "AND creationTime >= :startTimeMillis AND creationTime <= :endTimeMillis ORDER BY creationTime DESC")
+    List<ExperimentTask> getCompletedTasksByCompanyAndTime(String companyId, long startTimeMillis, long endTimeMillis);
+
+    @Query("SELECT * FROM experiment_tasks WHERE taskId = :taskId")
+    ExperimentTask findByTaskId(String taskId);
 }

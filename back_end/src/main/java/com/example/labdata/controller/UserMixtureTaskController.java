@@ -110,41 +110,94 @@ public class UserMixtureTaskController {
             List<UserMixtureTask> savedTasks = new ArrayList<>();
             int counter = 0; // 用于确保每个任务ID都是唯一的
             
-            for (UserMixtureTaskRequest.MixratioSpecimenPair pair : request.getMixratioSpecimenPairs()) {
-                // 验证混合比ID是否存在
-                if (!mixRatioRepository.existsById(pair.getMixratioId())) {
-                    logger.warn("找不到混合比ID={}", pair.getMixratioId());
-                    return ResponseEntity.ok(new ApiResponse<>(false, "混合比不存在，ID: " + pair.getMixratioId(), null));
-                }
-                
-                // 验证试件ID是否存在
-                if (!specimenRepository.existsById(pair.getSpecimenId())) {
-                    logger.warn("找不到试件ID={}", pair.getSpecimenId());
-                    return ResponseEntity.ok(new ApiResponse<>(false, "试件不存在，ID: " + pair.getSpecimenId(), null));
-                }
+            // 检查请求中是否包含特定配比-实验的映射关系
+            Map<Long, List<String>> mixratioToAssignments = request.getMixratioAssignments();
+            boolean useSpecificMapping = mixratioToAssignments != null && !mixratioToAssignments.isEmpty();
             
-                // 如果没有任务指派，至少创建一个任务记录
-                if (request.getTaskAssignments() == null || request.getTaskAssignments().isEmpty()) {
-                    // 使用计数器生成唯一的taskId
-                    String taskId = mainTaskId + "-" + (counter++);
+            if (useSpecificMapping) {
+                logger.info("使用特定配比-实验映射创建任务，映射数量: {}", mixratioToAssignments.size());
+                
+                // 遍历每个配比-制件对
+                for (UserMixtureTaskRequest.MixratioSpecimenPair pair : request.getMixratioSpecimenPairs()) {
+                    // 验证混合比ID是否存在
+                    if (!mixRatioRepository.existsById(pair.getMixratioId())) {
+                        logger.warn("找不到混合比ID={}", pair.getMixratioId());
+                        return ResponseEntity.ok(new ApiResponse<>(false, "混合比不存在，ID: " + pair.getMixratioId(), null));
+                    }
                     
-                    UserMixtureTask task = UserMixtureTask.createTask(
-                            taskId, 
-                            String.valueOf(user.getOrganizationId()), 
-                            user.getId(), 
-                            projectIdValue,
-                            pair.getMixratioId(),
-                            pair.getSpecimenId(),
-                            null,
-                            request.getRemarks(),
-                            request.getTaskName()
-                    );
-                    // 设置截止日期
-                    task.setDueDate(projectDueDate);
-                    savedTasks.add(userMixtureTaskRepository.save(task));
-                } else {
-                    // 为每个任务指派创建一条记录
-                    for (String assignment : request.getTaskAssignments()) {
+                    // 验证试件ID是否存在
+                    if (!specimenRepository.existsById(pair.getSpecimenId())) {
+                        logger.warn("找不到试件ID={}", pair.getSpecimenId());
+                        return ResponseEntity.ok(new ApiResponse<>(false, "试件不存在，ID: " + pair.getSpecimenId(), null));
+                    }
+                    
+                    // 获取当前配比ID对应的实验任务
+                    List<String> specificAssignments = mixratioToAssignments.get(pair.getMixratioId());
+                    
+                    if (specificAssignments != null && !specificAssignments.isEmpty()) {
+                        logger.info("配比ID {} 指定了 {} 个实验任务", pair.getMixratioId(), specificAssignments.size());
+                        
+                        // 为每个指定的实验任务创建记录
+                        for (String assignment : specificAssignments) {
+                            // 使用计数器生成唯一的taskId
+                            String taskId = mainTaskId + "-" + (counter++);
+                            
+                            UserMixtureTask task = UserMixtureTask.createTask(
+                                    taskId, 
+                                    String.valueOf(user.getOrganizationId()), 
+                                    user.getId(), 
+                                    projectIdValue,
+                                    pair.getMixratioId(),
+                                    pair.getSpecimenId(),
+                                    assignment,
+                                    request.getRemarks(),
+                                    request.getTaskName()
+                            );
+                            // 设置截止日期
+                            task.setDueDate(projectDueDate);
+                            savedTasks.add(userMixtureTaskRepository.save(task));
+                            logger.info("已创建配比ID {} 的实验任务: {}", pair.getMixratioId(), assignment);
+                        }
+                    } else {
+                        logger.warn("配比ID {} 没有指定实验任务，将创建空任务", pair.getMixratioId());
+                        // 创建一个没有实验指派的记录
+                        String taskId = mainTaskId + "-" + (counter++);
+                        
+                        UserMixtureTask task = UserMixtureTask.createTask(
+                                taskId, 
+                                String.valueOf(user.getOrganizationId()), 
+                                user.getId(), 
+                                projectIdValue,
+                                pair.getMixratioId(),
+                                pair.getSpecimenId(),
+                                null, // 没有实验指派
+                                request.getRemarks(),
+                                request.getTaskName()
+                        );
+                        // 设置截止日期
+                        task.setDueDate(projectDueDate);
+                        savedTasks.add(userMixtureTaskRepository.save(task));
+                    }
+                }
+            } else {
+                // 兼容旧式请求，但增加警告
+                logger.warn("未提供特定配比-实验映射，使用旧式处理方法可能导致实验指派错误！");
+                
+                for (UserMixtureTaskRequest.MixratioSpecimenPair pair : request.getMixratioSpecimenPairs()) {
+                    // 验证混合比ID是否存在
+                    if (!mixRatioRepository.existsById(pair.getMixratioId())) {
+                        logger.warn("找不到混合比ID={}", pair.getMixratioId());
+                        return ResponseEntity.ok(new ApiResponse<>(false, "混合比不存在，ID: " + pair.getMixratioId(), null));
+                    }
+                    
+                    // 验证试件ID是否存在
+                    if (!specimenRepository.existsById(pair.getSpecimenId())) {
+                        logger.warn("找不到试件ID={}", pair.getSpecimenId());
+                        return ResponseEntity.ok(new ApiResponse<>(false, "试件不存在，ID: " + pair.getSpecimenId(), null));
+                    }
+                
+                    // 如果没有任务指派，至少创建一个任务记录
+                    if (request.getTaskAssignments() == null || request.getTaskAssignments().isEmpty()) {
                         // 使用计数器生成唯一的taskId
                         String taskId = mainTaskId + "-" + (counter++);
                         
@@ -155,13 +208,34 @@ public class UserMixtureTaskController {
                                 projectIdValue,
                                 pair.getMixratioId(),
                                 pair.getSpecimenId(),
-                                assignment,
+                                null,
                                 request.getRemarks(),
                                 request.getTaskName()
                         );
                         // 设置截止日期
                         task.setDueDate(projectDueDate);
                         savedTasks.add(userMixtureTaskRepository.save(task));
+                    } else {
+                        // 为每个任务指派创建一条记录
+                        for (String assignment : request.getTaskAssignments()) {
+                            // 使用计数器生成唯一的taskId
+                            String taskId = mainTaskId + "-" + (counter++);
+                            
+                            UserMixtureTask task = UserMixtureTask.createTask(
+                                    taskId, 
+                                    String.valueOf(user.getOrganizationId()), 
+                                    user.getId(), 
+                                    projectIdValue,
+                                    pair.getMixratioId(),
+                                    pair.getSpecimenId(),
+                                    assignment,
+                                    request.getRemarks(),
+                                    request.getTaskName()
+                            );
+                            // 设置截止日期
+                            task.setDueDate(projectDueDate);
+                            savedTasks.add(userMixtureTaskRepository.save(task));
+                        }
                     }
                 }
             }

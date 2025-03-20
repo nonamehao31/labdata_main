@@ -393,17 +393,44 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
         // 添加所有制件信息到适配器
         if (moldingMethods != null && mixRatios != null && 
             mixingDevices != null && formingDevices != null) {
-            for (int i = 0; i < moldingMethods.size(); i++) {
+            
+            // 记录各列表长度，用于调试
+            Log.d(TAG, "列表大小 - 制件方法: " + moldingMethods.size() + 
+                  ", 配比: " + mixRatios.size() + 
+                  ", 拌合设备: " + mixingDevices.size() + 
+                  ", 压实设备: " + formingDevices.size());
+                  
+            // 计算可安全迭代的最大数量
+            int maxIterations = Math.min(
+                moldingMethods.size(),
+                Math.min(
+                    mixingDevices.size(),
+                    formingDevices.size()
+                )
+            );
+            
+            Log.d(TAG, "将处理 " + maxIterations + " 条记录");
+            
+            // 使用安全的循环范围
+            for (int i = 0; i < maxIterations; i++) {
                 MoldingMethod method = moldingMethods.get(i);
+                // 使用取模操作确保不会超出mixRatios的范围
                 MixRatio ratio = mixRatios.get(i % mixRatios.size());
                 DeviceInfo mixingDevice = mixingDevices.get(i);
                 DeviceInfo formingDevice = formingDevices.get(i);
                 
                 specimenInfoAdapter.addSpecimenInfo(method, ratio, mixingDevice, formingDevice);
+                Log.d(TAG, "添加了第 " + (i+1) + " 条试件信息");
             }
             
             // 初始化时就生成二维码
             generateQRCodes();
+        } else {
+            // 记录哪些数据为空
+            Log.w(TAG, "部分数据为空 - 制件方法: " + (moldingMethods != null) + 
+                  ", 配比: " + (mixRatios != null) + 
+                  ", 拌合设备: " + (mixingDevices != null) + 
+                  ", 压实设备: " + (formingDevices != null));
         }
     }
 
@@ -412,7 +439,25 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
             Log.d(TAG, "Starting QR code generation");
             qrCodePagerAdapter.clearQRCodes();
             
-            for (int i = 0; i < moldingMethods.size(); i++) {
+            // 记录各列表长度，用于调试
+            Log.d(TAG, "QR码生成 - 列表大小 - 制件方法: " + moldingMethods.size() + 
+                  ", 配比: " + mixRatios.size() + 
+                  ", 拌合设备: " + mixingDevices.size() + 
+                  ", 压实设备: " + formingDevices.size());
+                  
+            // 计算可安全迭代的最大数量
+            int maxIterations = Math.min(
+                moldingMethods.size(),
+                Math.min(
+                    mixingDevices.size(),
+                    formingDevices.size()
+                )
+            );
+            
+            Log.d(TAG, "将生成 " + maxIterations + " 个QR码");
+            
+            // 使用安全的循环范围
+            for (int i = 0; i < maxIterations; i++) {
                 Log.d(TAG, "Generating QR code for method " + (i + 1));
                 
                 // 获取当前方法对象
@@ -426,7 +471,7 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
                     Log.d(TAG, "二维码使用压实方法: " + compactionMethod);
                 }
                 
-                // 获取配比对象
+                // 获取配比对象 - 使用取模操作确保不会超出mixRatios的范围
                 MixRatio ratio = mixRatios.get(i % mixRatios.size());
                 String projectId = ratio.getProjectId();
                 String mixName = ratio.getName();
@@ -442,7 +487,7 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
                     Log.d(TAG, "为二维码设置默认配比名称: 标准配比");
                 }
                 
-                // 获取设备对象
+                // 获取设备对象 - 由于我们使用安全循环范围，这里不需要额外检查
                 DeviceInfo mixingDevice = mixingDevices.get(i);
                 DeviceInfo formingDevice = formingDevices.get(i);
                 
@@ -487,54 +532,79 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
                 mixRatioJson.addProperty("projectId", projectId);
                 manualJson.add("mixRatio", mixRatioJson);
                 
-                // 仅添加必要的mixingDevice字段
+                // 添加设备信息
                 JsonObject mixingDeviceJson = new JsonObject();
                 mixingDeviceJson.addProperty("manufacturer", mixingManufacturer);
                 mixingDeviceJson.addProperty("model", mixingDevice.getModel());
-                mixingDeviceJson.addProperty("deviceId", mixingDevice.getDeviceId());
                 mixingDeviceJson.addProperty("type", mixingDevice.getType());
                 manualJson.add("mixingDevice", mixingDeviceJson);
                 
-                // 仅添加必要的formingDevice字段
                 JsonObject formingDeviceJson = new JsonObject();
                 formingDeviceJson.addProperty("manufacturer", formingManufacturer);
                 formingDeviceJson.addProperty("model", formingDevice.getModel());
-                formingDeviceJson.addProperty("deviceId", formingDevice.getDeviceId());
                 formingDeviceJson.addProperty("type", formingDevice.getType());
                 manualJson.add("formingDevice", formingDeviceJson);
                 
-                // 使用手动构建的JSON
+                // 手动生成编号
+                String specimenNumber = taskId + "_" + (i + 1);
+                manualJson.addProperty("specimenNumber", specimenNumber);
+                Log.d(TAG, "试件编号: " + specimenNumber);
+                
+                // 将JSON对象转换为字符串
                 String jsonContent = manualJson.toString();
-                Log.d(TAG, "手动构建的最终JSON (用于二维码): " + jsonContent);
-
+                
                 // 生成二维码
-                MultiFormatWriter writer = new MultiFormatWriter();
-                BitMatrix bitMatrix = writer.encode(jsonContent, BarcodeFormat.QR_CODE, QR_CODE_SIZE, QR_CODE_SIZE);
-                int width = bitMatrix.getWidth();
-                int height = bitMatrix.getHeight();
-                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
-                
-                for (int x = 0; x < width; x++) {
-                    for (int y = 0; y < height; y++) {
-                        bitmap.setPixel(x, y, bitMatrix.get(x, y) ? 0xFF000000 : 0xFFFFFFFF);
-                    }
-                }
-
-                Log.d(TAG, "QR code bitmap generated with size: " + width + "x" + height);
-                
-                // 添加到适配器 - 确保适配器没有再次修改数据
-                qrCodePagerAdapter.addQRCode(bitmap);
-                Log.d(TAG, "Added QR code to adapter, total count: " + qrCodePagerAdapter.getItemCount());
+                Bitmap qrCodeBitmap = generateQRCodeBitmap(jsonContent, QR_CODE_SIZE);
+                qrCodePagerAdapter.addQRCode(qrCodeBitmap, jsonContent);
+                Log.d(TAG, "二维码内容: " + jsonContent);
             }
-
-            // 更新页面指示器
-            updatePageIndicator(0);
-            Log.d(TAG, "QR code generation completed successfully");
             
-        } catch (WriterException e) {
-            Log.e(TAG, "Error generating QR codes", e);
-            Toast.makeText(this, "生成二维码失败", Toast.LENGTH_SHORT).show();
+            // 更新UI
+            if (qrCodePagerAdapter.getItemCount() > 0) {
+                Log.d(TAG, "更新ViewPager，QR码数量: " + qrCodePagerAdapter.getItemCount());
+                viewPagerQRCodes.setAdapter(qrCodePagerAdapter);
+                updatePageIndicator(0);
+                viewPagerQRCodes.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+                    @Override
+                    public void onPageSelected(int position) {
+                        Log.d(TAG, "QR码页面选择: " + position);
+                        updatePageIndicator(position);
+                    }
+                });
+            } else {
+                Log.w(TAG, "没有生成任何QR码");
+                Toast.makeText(this, "无法生成二维码，请检查数据完整性", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "生成二维码时发生错误", e);
+            Toast.makeText(this, "生成二维码失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
+    }
+
+    /**
+     * 生成二维码位图
+     * @param content 二维码内容
+     * @param size 二维码大小
+     * @return 二维码位图
+     * @throws WriterException 如果生成二维码时发生错误
+     */
+    private Bitmap generateQRCodeBitmap(String content, int size) throws WriterException {
+        Log.d(TAG, "生成二维码: " + content);
+        
+        MultiFormatWriter writer = new MultiFormatWriter();
+        BitMatrix bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size);
+        int width = bitMatrix.getWidth();
+        int height = bitMatrix.getHeight();
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+        
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                bitmap.setPixel(x, y, bitMatrix.get(x, y) ? 0xFF000000 : 0xFFFFFFFF);
+            }
+        }
+        
+        Log.d(TAG, "二维码位图已生成，尺寸: " + width + "x" + height);
+        return bitmap;
     }
 
     private void completeSpecimenGeneration() {

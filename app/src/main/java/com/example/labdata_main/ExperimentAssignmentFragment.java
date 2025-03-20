@@ -357,36 +357,87 @@ public class ExperimentAssignmentFragment extends Fragment {
             Log.d("MixtureTask", "设置任务名称: " + taskName);
         }
         
-        // 获取所有选中的实验类型
-        List<String> allTaskAssignments = new ArrayList<>();
+        // 获取各配比的实验指派
         Map<Long, List<String>> experimentAssignments = getExperimentAssignments();
-        for (List<String> assignments : experimentAssignments.values()) {
-            allTaskAssignments.addAll(assignments);
-        }
-        request.setTaskAssignments(allTaskAssignments);
+        Log.d("MixtureTask", "获取到各配比的实验指派: " + experimentAssignments.size() + "个配比");
+        
+        // 设置配比ID到实验类型的映射
+        request.setMixratioAssignments(experimentAssignments);
+        Log.d("MixtureTask", "设置配比ID到实验类型的映射: " + experimentAssignments);
         
         // 创建配比与制件方式的配对
         List<MixtureTaskRequest.MixratioSpecimenPair> pairs = new ArrayList<>();
         
-        // 添加调试日志
-        Log.d("MixtureTask", "开始创建配比与制件方式配对");
-        Log.d("MixtureTask", "已选择配比数量: " + selectedMixRatios.size());
-        Log.d("MixtureTask", "已选择制件方式数量: " + selectedMoldingMethods.size());
+        // 为了向后兼容，我们仍然收集所有实验指派
+        List<String> allTaskAssignments = new ArrayList<>();
         
-        for (MixRatio mixRatio : selectedMixRatios) {
-            Log.d("MixtureTask", "处理配比ID: " + mixRatio.getId());
+        // 检查每个制件方法是否已经关联了配比
+        for (MoldingMethod method : selectedMoldingMethods) {
+            Long mixRatioId = method.getMixRatioId();
+            Log.d("MixtureTask", "制件方式ID: " + method.getId() + ", 已关联配比ID: " + mixRatioId);
             
-            for (MoldingMethod method : selectedMoldingMethods) {
-                Log.d("MixtureTask", "处理制件方式: " + method.getCompactionMethod() + ", ID: " + method.getId());
-                
-                // 移除了严格的关联条件判断，允许任意配比与任意制件方式搭配
+            // 如果制件方法已关联了配比ID
+            if (mixRatioId != null && mixRatioId > 0) {
+                // 创建配对
                 MixtureTaskRequest.MixratioSpecimenPair pair = 
-                    new MixtureTaskRequest.MixratioSpecimenPair(mixRatio.getId(), method.getId());
+                    new MixtureTaskRequest.MixratioSpecimenPair(mixRatioId, method.getId());
                 pairs.add(pair);
-                
                 Log.d("MixtureTask", "创建配对 - 配比ID: " + pair.getMixratioId() + ", 制件方法ID: " + pair.getSpecimenId());
+                
+                // 添加该配比对应的实验指派到allTaskAssignments (仅为向后兼容)
+                List<String> assignments = experimentAssignments.get(mixRatioId);
+                if (assignments != null && !assignments.isEmpty()) {
+                    Log.d("MixtureTask", "添加配比ID " + mixRatioId + " 的 " + assignments.size() + " 个实验指派");
+                    for (String assignment : assignments) {
+                        if (!allTaskAssignments.contains(assignment)) {
+                            allTaskAssignments.add(assignment);
+                        }
+                    }
+                }
+            } else {
+                // 如果制件方法没有关联配比ID，记录警告
+                Log.w("MixtureTask", "制件方式ID: " + method.getId() + " 没有关联配比ID");
+                
+                // 为了保持向后兼容，将此制件方法与第一个配比关联
+                if (!selectedMixRatios.isEmpty()) {
+                    Long firstMixRatioId = selectedMixRatios.get(0).getId();
+                    MixtureTaskRequest.MixratioSpecimenPair pair = 
+                        new MixtureTaskRequest.MixratioSpecimenPair(firstMixRatioId, method.getId());
+                    pairs.add(pair);
+                    Log.d("MixtureTask", "默认创建配对 - 配比ID: " + pair.getMixratioId() + ", 制件方法ID: " + pair.getSpecimenId());
+                }
             }
         }
+        
+        if (pairs.isEmpty()) {
+            Log.w("MixtureTask", "没有创建有效的配比-制件方法配对，回退到旧方法");
+            // 如果没有有效配对，回退到旧的方法，但只为每个配比选择一个制件方法
+            for (MixRatio mixRatio : selectedMixRatios) {
+                if (!selectedMoldingMethods.isEmpty()) {
+                    MoldingMethod firstMethod = selectedMoldingMethods.get(0);
+                    MixtureTaskRequest.MixratioSpecimenPair pair = 
+                        new MixtureTaskRequest.MixratioSpecimenPair(mixRatio.getId(), firstMethod.getId());
+                    pairs.add(pair);
+                    Log.d("MixtureTask", "回退创建配对 - 配比ID: " + pair.getMixratioId() + ", 制件方法ID: " + pair.getSpecimenId());
+                    
+                    // 添加该配比对应的实验指派
+                    List<String> assignments = experimentAssignments.get(mixRatio.getId());
+                    if (assignments != null && !assignments.isEmpty()) {
+                        Log.d("MixtureTask", "回退时添加配比ID " + mixRatio.getId() + " 的 " + assignments.size() + " 个实验指派");
+                        for (String assignment : assignments) {
+                            if (!allTaskAssignments.contains(assignment)) {
+                                allTaskAssignments.add(assignment);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 设置所有任务指派，确保不会重复添加 (仅为向后兼容)
+        request.setTaskAssignments(allTaskAssignments);
+        Log.d("MixtureTask", "最终添加的实验指派数量: " + allTaskAssignments.size());
+        
         request.setMixratioSpecimenPairs(pairs);
         
         // 发送保存请求

@@ -1,6 +1,7 @@
 package com.example.labdata_main.api.request;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 混合料任务保存请求
@@ -12,6 +13,14 @@ public class MixtureTaskRequest {
     private String remarks;
     private List<MixratioSpecimenPair> mixratioSpecimenPairs;
     private List<String> taskAssignments;
+    
+    /**
+     * 配比ID到实验类型的映射
+     * key: 配比ID
+     * value: 该配比ID对应的实验类型列表
+     * 用于精确控制每个配比ID分配哪些实验，避免创建错误的组合
+     */
+    private Map<Long, List<String>> mixratioAssignments;
     
     /**
      * 配比与制件方式的组合
@@ -61,6 +70,18 @@ public class MixtureTaskRequest {
         this.taskAssignments = taskAssignments;
     }
     
+    public MixtureTaskRequest(String projectId, String taskName, String remarks, 
+                             List<MixratioSpecimenPair> mixratioSpecimenPairs, 
+                             List<String> taskAssignments,
+                             Map<Long, List<String>> mixratioAssignments) {
+        this.projectId = projectId;
+        this.taskName = taskName;
+        this.remarks = remarks;
+        this.mixratioSpecimenPairs = mixratioSpecimenPairs;
+        this.taskAssignments = taskAssignments;
+        this.mixratioAssignments = mixratioAssignments;
+    }
+    
     // Getters and Setters
     public String getProjectId() {
         return projectId;
@@ -100,5 +121,13 @@ public class MixtureTaskRequest {
     
     public void setTaskAssignments(List<String> taskAssignments) {
         this.taskAssignments = taskAssignments;
+    }
+    
+    public Map<Long, List<String>> getMixratioAssignments() {
+        return mixratioAssignments;
+    }
+    
+    public void setMixratioAssignments(Map<Long, List<String>> mixratioAssignments) {
+        this.mixratioAssignments = mixratioAssignments;
     }
 }

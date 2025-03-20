@@ -10,11 +10,14 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.labdata_main.R;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class QRCodePagerAdapter extends RecyclerView.Adapter<QRCodePagerAdapter.ViewHolder> {
     private static final String TAG = "QRCodePagerAdapter";
     private final List<Bitmap> qrCodes = new ArrayList<>();
+    private final Map<Integer, String> qrContents = new HashMap<>();
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivQRCode;
@@ -58,31 +61,47 @@ public class QRCodePagerAdapter extends RecyclerView.Adapter<QRCodePagerAdapter.
     public void setQRCodes(List<Bitmap> qrCodes) {
         Log.d(TAG, "Setting " + (qrCodes != null ? qrCodes.size() : 0) + " QR codes");
         this.qrCodes.clear();
+        this.qrContents.clear();
         if (qrCodes != null) {
             this.qrCodes.addAll(qrCodes);
         }
         notifyDataSetChanged();
     }
 
-    public void addQRCode(Bitmap qrCode) {
+    public void addQRCode(Bitmap qrCode, String content) {
         if (qrCode != null) {
-            Log.d(TAG, "Adding new QR code, current size: " + qrCodes.size());
+            int position = qrCodes.size();
+            Log.d(TAG, "Adding new QR code at position " + position + ", content: " + content);
             qrCodes.add(qrCode);
-            notifyItemInserted(qrCodes.size() - 1);
+            qrContents.put(position, content);
+            notifyItemInserted(position);
         } else {
             Log.e(TAG, "Attempted to add null QR code");
         }
+    }
+    
+    // 保留旧方法以兼容现有代码
+    public void addQRCode(Bitmap qrCode) {
+        addQRCode(qrCode, null);
     }
 
     public void clearQRCodes() {
         Log.d(TAG, "Clearing all QR codes");
         qrCodes.clear();
+        qrContents.clear();
         notifyDataSetChanged();
     }
 
     public Bitmap getQRCode(int position) {
         if (position >= 0 && position < qrCodes.size()) {
             return qrCodes.get(position);
+        }
+        return null;
+    }
+    
+    public String getQRContent(int position) {
+        if (position >= 0 && position < qrCodes.size()) {
+            return qrContents.get(position);
         }
         return null;
     }

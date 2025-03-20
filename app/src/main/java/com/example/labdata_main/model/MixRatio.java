@@ -147,4 +147,28 @@ public class MixRatio implements Parcelable {
         }
         return ids;
     }
+    
+    // 骨料含量百分比
+    @ColumnInfo(name = "aggregate_percentage")
+    private double aggregatePercentage;
+    
+    // 沥青含量百分比
+    @ColumnInfo(name = "asphalt_percentage")
+    private double asphaltPercentage;
+    
+    public double getAggregatePercentage() {
+        return aggregatePercentage;
+    }
+    
+    public void setAggregatePercentage(double aggregatePercentage) {
+        this.aggregatePercentage = aggregatePercentage;
+    }
+    
+    public double getAsphaltPercentage() {
+        return asphaltPercentage;
+    }
+    
+    public void setAsphaltPercentage(double asphaltPercentage) {
+        this.asphaltPercentage = asphaltPercentage;
+    }
 }

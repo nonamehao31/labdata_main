@@ -464,7 +464,7 @@ public class MixtureTaskService {
                 }
             }
             
-            logger.info("任务ID: {} 的实验指派信息获取成功，共 {} 个配比有实验指派", 
+            logger.info("任务ID: {} 的实验指派信息获取成功，共 {} 个配比ID", 
                        taskId, assignmentsMap.size());
             return assignmentsMap;
         } catch (Exception e) {
@@ -658,6 +658,9 @@ public class MixtureTaskService {
                 return result;
             }
             
+            // 添加主任务ID
+            result.put("mainTaskId", taskIdPrefix);
+            
             // 2. 直接使用原生SQL查询与任务前缀相关的specimen_id
             List<Long> specimenIds = new ArrayList<>();
             try {
@@ -692,6 +695,27 @@ public class MixtureTaskService {
             
             // 3. 根据specimenIds从specimens表获取制件方法信息
             List<Map<String, Object>> methodsAndRatios = new ArrayList<>();
+            
+            // 首先获取specimen_id和mixratio_id的映射关系
+            Map<Long, Long> specimenToMixratioMap = new HashMap<>();
+            try {
+                String mapQuery = "SELECT specimen_id, mixratio_id FROM mixture_task WHERE task_id LIKE ? AND specimen_id IS NOT NULL AND mixratio_id IS NOT NULL";
+                List<Map<String, Object>> mappings = jdbcTemplate.queryForList(mapQuery, taskIdPrefix + "%");
+                logger.info("查询到 {} 条specimen_id和mixratio_id的映射关系", mappings.size());
+                
+                for (Map<String, Object> mapping : mappings) {
+                    if(mapping.get("specimen_id") instanceof Number && mapping.get("mixratio_id") instanceof Number) {
+                        Long specimenId = ((Number)mapping.get("specimen_id")).longValue();
+                        Long mixratioId = ((Number)mapping.get("mixratio_id")).longValue();
+                        specimenToMixratioMap.put(specimenId, mixratioId);
+                        logger.info("映射关系: specimen_id={}, mixratio_id={}", specimenId, mixratioId);
+                    }
+                }
+                logger.info("建立了 {} 个specimen_id到mixratio_id的映射", specimenToMixratioMap.size());
+            } catch (Exception e) {
+                logger.error("查询specimen_id和mixratio_id映射关系时出错: {}", e.getMessage(), e);
+            }
+            
             for (Long specimenId : specimenIds) {
                 try {
                     // 从specimens表获取试件信息，确保compaction_method不为空
@@ -711,6 +735,15 @@ public class MixtureTaskService {
                         for (Map<String, Object> specimen : specimens) {
                             logger.info("获取到specimen ID {} 的压实方法: {}", 
                                 specimenId, specimen.get("compaction_method"));
+                            
+                            // 记录该specimen_id对应的mixratio_id
+                            Long mixratioId = specimenToMixratioMap.get(specimenId);
+                            if (mixratioId != null) {
+                                specimen.put("mixratio_id", mixratioId);
+                                logger.info("该specimen ID {} 对应的mixratio_id: {}", specimenId, mixratioId);
+                            } else {
+                                logger.warn("未找到specimen ID {} 对应的mixratio_id", specimenId);
+                            }
                         }
                         methodsAndRatios.addAll(specimens);
                     }
@@ -719,28 +752,11 @@ public class MixtureTaskService {
                 }
             }
             
-            // 从mixture_task表直接获取project_id
-            String projectId = "";
-            try {
-                String projectIdQuery = "SELECT project_id FROM mixture_task WHERE task_id LIKE ? AND project_id IS NOT NULL LIMIT 1";
-                projectId = jdbcTemplate.queryForObject(projectIdQuery, String.class, taskIdPrefix + "%");
-                logger.info("从mixture_task表获取project_id: {}", projectId);
-            } catch (Exception ex) {
-                logger.error("从mixture_task表获取project_id失败: {}", ex.getMessage());
-                projectId = "";
-            }
-            
-            // 应用project_id到所有方法数据中
-            for (Map<String, Object> method : methodsAndRatios) {
-                method.put("project_id", projectId);
-            }
-            
             // 获取配比信息
             try {
-                // 从mixture_task表获取mixratio_id
-                String mixratioIdQuery = "SELECT DISTINCT mixratio_id FROM mixture_task WHERE task_id LIKE ? AND mixratio_id IS NOT NULL";
-                List<Long> mixratioIds = jdbcTemplate.queryForList(mixratioIdQuery, Long.class, taskIdPrefix + "%");
-                logger.info("为任务前缀 {} 找到 {} 个配比ID", taskIdPrefix, mixratioIds.size());
+                // 从mixture_task表获取mixratio_id - 这个已经不再需要，前面已经获取了映射关系
+                Set<Long> mixratioIds = new HashSet<>(specimenToMixratioMap.values());
+                logger.info("通过映射关系找到 {} 个配比ID", mixratioIds.size());
                 
                 // 根据mixratio_id从mixratio表获取配比名称
                 if (!mixratioIds.isEmpty()) {
@@ -761,12 +777,37 @@ public class MixtureTaskService {
                     List<Map<String, Object>> mixratios = jdbcTemplate.queryForList(mixratioQuery, params);
                     logger.info("查询到 {} 个配比信息", mixratios.size());
                     
-                    // 将配比信息添加到方法数据中
+                    // 创建mixratio_id到mix_name的映射
+                    Map<Long, String> mixratioToNameMap = new HashMap<>();
+                    for (Map<String, Object> mixratio : mixratios) {
+                        if(mixratio.get("id") instanceof Number) {
+                            Long mixratioId = ((Number)mixratio.get("id")).longValue();
+                            String mixName = (String)mixratio.get("mix_name");
+                            mixratioToNameMap.put(mixratioId, mixName);
+                            logger.info("配比ID {} 的名称: {}", mixratioId, mixName);
+                        }
+                    }
+                    logger.info("建立了 {} 个mixratio_id到mix_name的映射", mixratioToNameMap.size());
+                    
+                    // 为每个method分配正确的配比名称
                     for (Map<String, Object> method : methodsAndRatios) {
-                        if (!mixratios.isEmpty()) {
-                            method.put("mix_name", mixratios.get(0).get("mix_name"));
+                        if (method.get("id") instanceof Number) {
+                            Long specimenId = ((Number)method.get("id")).longValue();
+                            Long mixratioId = (Long)method.get("mixratio_id"); // 使用前面添加的mixratio_id
+                            
+                            if (mixratioId != null && mixratioToNameMap.containsKey(mixratioId)) {
+                                method.put("mix_name", mixratioToNameMap.get(mixratioId));
+                                method.put("mixratio_id", mixratioId); // 确保输出包含mixratio_id
+                                logger.info("为specimen_id {} 分配配比ID {} 的名称: {}", 
+                                          specimenId, mixratioId, mixratioToNameMap.get(mixratioId));
+                            } else {
+                                method.put("mix_name", "标准配比");
+                                logger.info("未找到specimen_id {} 对应的配比ID {} 的名称，使用默认名称: 标准配比", 
+                                          specimenId, mixratioId);
+                            }
                         } else {
                             method.put("mix_name", "标准配比");
+                            logger.warn("specimen_id不是数字类型，使用默认名称: 标准配比");
                         }
                     }
                 } else {
@@ -822,23 +863,146 @@ public class MixtureTaskService {
             // 6. 获取任务指派信息
             try {
                 // 查询当前任务的指派信息 - 从mixture_task表获取，而不是mixture_task_assignment
-                String assignmentQuery = "SELECT task_id, acceptor as assigned_to, status, task_assignment " +
-                    "FROM mixture_task WHERE (task_id LIKE ? OR task_id = ?) AND acceptor IS NOT NULL";
-                List<Map<String, Object>> assignments = jdbcTemplate.queryForList(
-                    assignmentQuery,
-                    taskIdPrefix + "%", taskIdPrefix
+                List<Map<String, Object>> taskAssignments = jdbcTemplate.queryForList(
+                    "SELECT task_id, task_assignment, acceptor as assigned_to, status, " +
+                    "mixratio_id, specimen_id " +  // 添加mixratio_id和specimen_id字段
+                    "FROM mixture_task " +
+                    "WHERE task_id LIKE ? AND acceptor IS NOT NULL AND task_assignment IS NOT NULL",
+                    taskIdPrefix + "%"
                 );
                 
-                if (!assignments.isEmpty()) {
-                    result.put("taskAssignments", assignments);
-                    logger.info("成功获取任务指派信息: {}", assignments.size());
-                } else {
-                    logger.warn("未找到任务ID前缀: {} 的任务指派信息", taskIdPrefix);
-                    result.put("taskAssignments", new ArrayList<>());
+                // 处理结果，确保所有字段都是标准格式
+                List<Map<String, Object>> processedAssignments = new ArrayList<>();
+                for (Map<String, Object> assignment : taskAssignments) {
+                    Map<String, Object> processedAssignment = new HashMap<>();
+                    processedAssignment.put("task_id", assignment.get("task_id"));
+                    processedAssignment.put("task_assignment", assignment.get("task_assignment"));
+                    processedAssignment.put("assigned_to", assignment.get("assigned_to"));
+                    processedAssignment.put("status", assignment.get("status"));
+                    
+                    // 确保mixratio_id和specimen_id字段存在并格式正确
+                    if (assignment.containsKey("mixratio_id") && assignment.get("mixratio_id") != null) {
+                        processedAssignment.put("mixratio_id", assignment.get("mixratio_id"));
+                    }
+                    
+                    if (assignment.containsKey("specimen_id") && assignment.get("specimen_id") != null) {
+                        processedAssignment.put("specimen_id", assignment.get("specimen_id"));
+                    }
+                    
+                    processedAssignments.add(processedAssignment);
                 }
+                
+                result.put("taskAssignments", processedAssignments);
+                logger.info("获取了 {} 条任务指派记录", processedAssignments.size());
             } catch (Exception e) {
-                logger.error("查询任务指派信息时出错: {}", e.getMessage(), e);
+                logger.error("获取任务指派信息时出错: {}", e.getMessage(), e);
                 result.put("taskAssignments", new ArrayList<>());
+            }
+            
+            // 构建配比ID到实验类型的映射
+            try {
+                // 从mixture_task表获取mixratio_id, specimen_id和task_assignment的关系
+                List<Map<String, Object>> mixtureAssignments = jdbcTemplate.queryForList(
+                    "SELECT mixratio_id, specimen_id, task_assignment FROM mixture_task " +
+                    "WHERE task_id LIKE ? AND mixratio_id IS NOT NULL AND task_assignment IS NOT NULL",
+                    taskIdPrefix + "%"
+                );
+                
+                logger.info("获取到 {} 条原始任务指派记录", mixtureAssignments.size());
+                
+                // 创建一个临时结构来存储mixratio_id, specimen_id和对应的实验类型
+                Map<String, Map<String, Set<String>>> ratioSpecimenExperiments = new HashMap<>();
+                
+                // 先收集所有数据来分析
+                for (Map<String, Object> assignment : mixtureAssignments) {
+                    Object mixratioIdObj = assignment.get("mixratio_id");
+                    Object specimenIdObj = assignment.get("specimen_id");
+                    String taskAssignment = (String) assignment.get("task_assignment");
+                    
+                    if (mixratioIdObj != null && taskAssignment != null) {
+                        // 将mixratio_id转换为字符串
+                        String mixratioIdStr;
+                        if (mixratioIdObj instanceof Number) {
+                            mixratioIdStr = String.valueOf(((Number) mixratioIdObj).longValue());
+                        } else {
+                            mixratioIdStr = String.valueOf(mixratioIdObj);
+                        }
+                        
+                        // 获取specimen_id（如果存在）
+                        String specimenIdStr = "unknown";
+                        if (specimenIdObj != null) {
+                            if (specimenIdObj instanceof Number) {
+                                specimenIdStr = String.valueOf(((Number) specimenIdObj).longValue());
+                            } else {
+                                specimenIdStr = String.valueOf(specimenIdObj);
+                            }
+                        }
+                        
+                        // 将mixratio_id和specimen_id添加到临时结构中
+                        if (!ratioSpecimenExperiments.containsKey(mixratioIdStr)) {
+                            ratioSpecimenExperiments.put(mixratioIdStr, new HashMap<>());
+                        }
+                        
+                        if (!ratioSpecimenExperiments.get(mixratioIdStr).containsKey(specimenIdStr)) {
+                            ratioSpecimenExperiments.get(mixratioIdStr).put(specimenIdStr, new HashSet<>());
+                        }
+                        
+                        // 添加task_assignment到对应的集合中
+                        ratioSpecimenExperiments.get(mixratioIdStr).get(specimenIdStr).add(taskAssignment);
+                    }
+                }
+                
+                // 分析并构建最终的实验指派映射
+                Map<String, List<String>> ratioToExperiments = new HashMap<>();
+                
+                // 分析数据，找出每个配比正确的实验指派
+                for (String mixratioId : ratioSpecimenExperiments.keySet()) {
+                    Map<String, Set<String>> specimenExperiments = ratioSpecimenExperiments.get(mixratioId);
+                    
+                    // 创建一个实验计数器，用于确定哪些实验是有效的
+                    Map<String, Integer> experimentCounts = new HashMap<>();
+                    
+                    // 统计每个实验在这个配比下出现的次数
+                    for (Set<String> experiments : specimenExperiments.values()) {
+                        for (String experiment : experiments) {
+                            experimentCounts.put(experiment, experimentCounts.getOrDefault(experiment, 0) + 1);
+                        }
+                    }
+                    
+                    // 找出这个配比最常分配到的实验（出现频率最高的）
+                    Set<String> validExperiments = new HashSet<>();
+                    for (Map.Entry<String, Integer> entry : experimentCounts.entrySet()) {
+                        // 暂定规则：如果一个实验被分配给了至少一个试件，就认为是有效的
+                        if (entry.getValue() > 0) {
+                            validExperiments.add(entry.getKey());
+                        }
+                    }
+                    
+                    // 将结果保存到最终映射中
+                    if (!validExperiments.isEmpty()) {
+                        ratioToExperiments.put(mixratioId, new ArrayList<>(validExperiments));
+                        logger.info("配比ID {} 有效的实验指派: {}", mixratioId, validExperiments);
+                    }
+                    
+                    // 为了兼容性，同时添加复合键映射
+                    for (String specimenId : specimenExperiments.keySet()) {
+                        if (!"unknown".equals(specimenId)) {
+                            String compositeKey = mixratioId + "_" + specimenId;
+                            Set<String> experiments = specimenExperiments.get(specimenId);
+                            if (experiments != null && !experiments.isEmpty()) {
+                                ratioToExperiments.put(compositeKey, new ArrayList<>(experiments));
+                                logger.info("复合键 {} 的实验指派: {}", compositeKey, experiments);
+                            }
+                        }
+                    }
+                }
+                
+                // 将映射添加到结果中
+                result.put("experimentAssignments", ratioToExperiments);
+                logger.info("成功构建配比ID到实验类型的映射: 共 {} 个配比ID", ratioToExperiments.size());
+            } catch (Exception e) {
+                logger.error("构建配比ID到实验类型映射时出错: {}", e.getMessage(), e);
+                result.put("experimentAssignments", new HashMap<>());
             }
             
             logger.info("成功获取任务前缀: {} 的试件制备数据", taskIdPrefix);
