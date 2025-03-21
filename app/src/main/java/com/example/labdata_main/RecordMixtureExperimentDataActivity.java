@@ -39,12 +39,14 @@ import org.json.JSONObject;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.Set;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -1130,6 +1132,19 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             continue;
                         }
 
+                        // 检查是否有动态模量试验数据
+                        boolean hasDynamicModulusData = false;
+                        for (String key : experiments.keySet()) {
+                            if (key.startsWith("动态模量试验_")) {
+                                hasDynamicModulusData = true;
+                                break;
+                            }
+                        }
+                        
+                        if (hasDynamicModulusData) {
+                            saveDynamicModulusTestData(mixRatioId, experiments);
+                        }
+
                         // 检查是否有马歇尔稳定度试验数据需要保存
                         if (assignedExperiments.contains("马歇尔稳定度试验") && !processedMarshallTests.containsKey(mixRatioId)) {
                             // 提取并保存马歇尔试验数据
@@ -1433,6 +1448,201 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             Log.e(TAG, "保存沥青混合料弯曲试验数据时出错", e);
         }
     }
+
+/**
+ * 保存动态模量试验数据到后端
+ * 
+ * @param mixRatioId 配比ID
+ * @param experiments 实验数据Map
+ */
+private void saveDynamicModulusTestData(String mixRatioId, Map<String, String> experiments) {
+    // 创建请求数据
+    Map<String, Object> requestData = new HashMap<>();
+    requestData.put("taskId", currentTask.getTaskId());
+    requestData.put("mixRatioId", mixRatioId);
+    
+    // 确定试件数量和ID列表
+    Set<Integer> specimenIds = new HashSet<>();
+    String experimentName = "动态模量试验";
+    
+    // 通过分析key值提取所有试件ID
+    for (String key : experiments.keySet()) {
+        Log.d(TAG, "分析key: " + key);
+        if (key.startsWith(experimentName + "_") && key.contains("_diameter_")) {
+            Log.d(TAG, "匹配到key: " + key);
+            String[] parts = key.split("_");
+            //Log.d(TAG, "key的拆分结果: " + Arrays.toString(parts));
+            if (parts.length >= 4) {
+                try {
+                    int specimenId = Integer.parseInt(parts[3]);
+                    specimenIds.add(specimenId);
+                } catch (NumberFormatException e) {
+                    Log.e(TAG, "解析试件ID出错: " + key, e);
+                }
+            }
+        }
+    }
+    
+    int specimenCount = specimenIds.size();
+    
+    // 如果没有试件数据，添加一个默认试件
+    if (specimenIds.isEmpty()) {
+        // 添加一个默认试件ID
+        Integer defaultSpecimenId = 1;
+        specimenIds.add(defaultSpecimenId);
+        
+        // 设置默认试件的直径和高度数据
+        //experiments.put(experimentName + "_diameter_" + defaultSpecimenId, "100.0");  // 默认直径100mm
+        //experiments.put(experimentName + "_height_" + defaultSpecimenId, "150.0");    // 默认高度150mm
+        
+        // 更新试件数量
+        specimenCount = 1;
+        
+        Log.d(TAG, "添加了默认试件数据，ID: " + defaultSpecimenId);
+    }
+    
+    requestData.put("specimenCount", specimenCount);
+    // 在准备试件数据前添加日志
+    Log.d(TAG, "开始处理试件数据，specimenIds: " + specimenIds);
+    Log.d(TAG, "experiments map包含的键: " + experiments.keySet());
+    // 准备试件数据列表
+    List<Map<String, Object>> specimens = new ArrayList<>();
+    
+    // 处理每个试件的数据
+    for (Integer specimenId : specimenIds) {
+        Map<String, Object> specimen = new HashMap<>();
+        specimen.put("specimenNumber", specimenId);
+        
+        // 获取试件基本信息
+        Float diameter = parseFloatSafely(experiments.get(experimentName + "_diameter_" + specimenId));
+        Float height = parseFloatSafely(experiments.get(experimentName + "_height_" + specimenId));
+
+        // 记录每个试件的键
+        String diameterKey = experimentName + "_diameter_" + specimenId;
+        String heightKey = experimentName + "_height_" + specimenId;
+        Log.d(TAG, "试件" + specimenId + "的直径键: " + diameterKey + ", 值: " + experiments.get(diameterKey));
+        Log.d(TAG, "试件" + specimenId + "的高度键: " + heightKey + ", 值: " + experiments.get(heightKey));
+        
+        specimen.put("diameter", diameter);
+        specimen.put("height", height);
+
+        // 记录解析后的直径和高度
+        Log.d(TAG, "试件" + specimenId + "解析后的直径: " + diameter + ", 高度: " + height);
+        
+        // 计算体积密度和空隙率 (如果有这些数据)
+        Float bulkDensity = parseFloatSafely(experiments.get(experimentName + "_bulk_density_" + specimenId));
+        Float airVoidContent = parseFloatSafely(experiments.get(experimentName + "_air_void_" + specimenId));
+        
+        if (bulkDensity != null) {
+            specimen.put("bulkDensity", bulkDensity);
+        }
+        if (airVoidContent != null) {
+            specimen.put("airVoidContent", airVoidContent);
+        }
+        
+        specimens.add(specimen);
+
+        // 记录已添加的试件
+        Log.d(TAG, "已添加试件: " + specimen);
+    }
+    
+    // 记录 specimens 列表
+    Log.d(TAG, " specimens 列表: " + specimens);
+    
+    requestData.put("specimens", specimens);
+    
+    // 准备温度数据列表
+    List<Map<String, Object>> temperatures = new ArrayList<>();
+    String[] tempValues = {"-10", "4.4", "21.1", "37.8", "54"};
+    
+    // 添加温度数据
+    int tempOrder = 1;
+    for (String temp : tempValues) {
+        // 检查该温度是否有数据
+        boolean hasTempData = false;
+        for (String key : experiments.keySet()) {
+            if (key.contains("_" + temp + "_") && experiments.get(key) != null && !experiments.get(key).isEmpty()) {
+                hasTempData = true;
+                break;
+            }
+        }
+        
+        if (hasTempData) {
+            Map<String, Object> tempData = new HashMap<>();
+            tempData.put("temperature", parseFloatSafely(temp));
+            tempData.put("temperatureOrder", tempOrder++);
+            temperatures.add(tempData);
+        }
+    }
+    
+    requestData.put("temperatures", temperatures);
+    
+    // 准备测量数据列表
+    List<Map<String, Object>> measurements = new ArrayList<>();
+    String[] frequencies = {"25", "10", "5", "1", "0.5", "0.1"};
+    String[] cycles = {"200", "200", "100", "20", "15", "15"};
+    
+    // 收集测量数据
+    for (Integer specimenId : specimenIds) {
+        for (String temp : tempValues) {
+            for (int i = 0; i < frequencies.length; i++) {
+                String freq = frequencies[i];
+                String cycle = cycles[i];
+                
+                // 基础键
+                String baseKey = experimentName + "_" + specimenId + "_" + temp + "_" + freq + "_";
+                
+                // 获取实验数据
+                Float modulus = parseFloatSafely(experiments.get(baseKey + "modulus"));
+                Float phase = parseFloatSafely(experiments.get(baseKey + "phase"));
+                Float stress = parseFloatSafely(experiments.get(baseKey + "stress"));
+                Float strain = parseFloatSafely(experiments.get(baseKey + "strain"));
+                Float permStrain = parseFloatSafely(experiments.get(baseKey + "perm_strain"));
+                
+                // 检查是否有至少一个有效值
+                if (modulus != null || phase != null || stress != null || strain != null || permStrain != null) {
+                    Map<String, Object> measurement = new HashMap<>();
+                    measurement.put("specimenId", specimenId);
+                    measurement.put("temperature", parseFloatSafely(temp));
+                    measurement.put("frequency", parseFloatSafely(freq));
+                    measurement.put("cycleCount", Integer.parseInt(cycle));
+                    
+                    if (modulus != null) measurement.put("dynamicModulus", modulus);
+                    if (phase != null) measurement.put("phaseAngle", phase);
+                    if (stress != null) measurement.put("axialStress", stress);
+                    if (strain != null) measurement.put("axialStrain", strain);
+                    if (permStrain != null) measurement.put("permanentDeformation", permStrain);
+                    
+                    measurements.add(measurement);
+                }
+            }
+        }
+    }
+    
+    requestData.put("measurements", measurements);
+    
+    // 发送请求到API
+    try {
+        Log.i(TAG, "正在保存配比 " + mixRatioId + " 的动态模量试验数据");
+        
+        MixtureTaskService apiService = ServiceCreator.createMixtureTaskService();
+        Call<ApiResponse<Map<String, Object>>> call = apiService.saveDynamicModulusTest(requestData);
+        
+        Response<ApiResponse<Map<String, Object>>> response = call.execute();
+        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+            Log.i(TAG, "成功保存配比 " + mixRatioId + " 的动态模量试验数据");
+        } else {
+            String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
+            Log.e(TAG, "保存动态模量试验数据失败: " + errorMsg);
+            if (response.errorBody() != null) {
+                String errorBody = response.errorBody().string();
+                Log.e(TAG, "错误详情: " + errorBody);
+            }
+        }
+    } catch (Exception e) {
+        Log.e(TAG, "保存动态模量试验数据时出错", e);
+    }
+}
     
     /**
      * 安全地将字符串解析为Float

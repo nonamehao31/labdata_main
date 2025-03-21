@@ -14,10 +14,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.HashMap;
 import java.util.List;
@@ -248,6 +252,37 @@ public class MixtureTaskController {
             logger.error("更新制件状态时出错: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "更新制件状态失败: " + e.getMessage(), false));
+        }
+    }
+
+
+    /**
+     * 保存动态模量试验数据
+     * 
+     * @param requestData 请求数据
+     * @return 保存结果
+     */
+    @PostMapping("/mixtureTask/saveDynamicModulusTest")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> saveDynamicModulusTest(@RequestBody Map<String, Object> requestData) {
+        try {
+            logger.info("接收到保存动态模量试验数据请求: {}", requestData);
+            
+            String taskId = (String) requestData.get("taskId");
+            String mixRatioId = (String) requestData.get("mixRatioId");
+            
+            if (taskId == null || mixRatioId == null) {
+                logger.error("缺少必要参数: taskId={}, mixRatioId={}", taskId, mixRatioId);
+                return ResponseEntity.badRequest().body(new ApiResponse<>(false, "缺少必要参数"));
+            }
+            
+            // 调用服务层方法保存数据
+            Map<String, Object> result = mixtureTaskService.saveDynamicModulusTest(requestData);
+            
+            return ResponseEntity.ok(new ApiResponse<>(true, "保存成功", result));
+        } catch (Exception e) {
+            logger.error("保存动态模量试验数据时出错: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "保存动态模量试验数据失败: " + e.getMessage()));
         }
     }
 }

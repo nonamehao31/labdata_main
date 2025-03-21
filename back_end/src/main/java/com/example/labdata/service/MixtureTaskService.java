@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.sql.Timestamp;
 
 @Service
 public class MixtureTaskService {
@@ -1142,4 +1144,181 @@ public class MixtureTaskService {
         logger.info("获取类型为 {} 的支持任务列表", taskType);
         return supportMixtureTaskRepository.findByTaskType(taskType);
     }
+
+    /**
+     * 保存动态模量试验数据
+     * 
+     * @param requestData 包含试验数据的请求Map
+     * @return 保存结果
+     */
+    @Transactional
+    public Map<String, Object> saveDynamicModulusTest(Map<String, Object> requestData) {
+        try {
+            Map<String, Object> result = new HashMap<>();
+            
+            String taskId = (String) requestData.get("taskId");
+            String mixRatioId = (String) requestData.get("mixRatioId");
+            
+            logger.info("保存动态模量试验数据: taskId={}, mixRatioId={}", taskId, mixRatioId);
+            
+            // 1. 保存试验记录到dynamic_modulus_test表
+            Map<String, Object> testData = new HashMap<>();
+            testData.put("task_id", taskId);
+            testData.put("experiment_name", "动态模量试验");
+            testData.put("mix_ratio_id", mixRatioId);
+            
+            // 尝试获取配比名称
+            try {
+                // 将字符串类型的ID转换为整数
+                Integer mixRatioIdInt = Integer.parseInt(mixRatioId);
+                String sql = "SELECT mix_name FROM mixratio WHERE id = ?";
+                Map<String, Object> mixRatio = jdbcTemplate.queryForMap(sql, mixRatioIdInt);
+                if (mixRatio != null && mixRatio.containsKey("mix_name")) {
+                    String mixRatioName = (String) mixRatio.get("mix_name");
+                    testData.put("mix_ratio_name", mixRatioName);
+                    testData.put("mix_ratio_display_name", mixRatioName);
+                }
+            } catch (Exception e) {
+                logger.warn("获取配比名称失败: {}", e.getMessage());
+                // 设置默认值，确保事务可以继续
+                testData.put("mix_ratio_name", "配比" + mixRatioId);
+                testData.put("mix_ratio_display_name", "配比" + mixRatioId);
+            }
+            
+            testData.put("created_at", new Timestamp(System.currentTimeMillis()));
+            testData.put("updated_at", new Timestamp(System.currentTimeMillis()));
+            
+            // 执行插入并获取生成的测试ID
+            String insertSql = "INSERT INTO dynamic_modulus_test (task_id, experiment_name, mix_ratio_id, mix_ratio_name, mix_ratio_display_name, created_at, updated_at) " +
+                              "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            
+            Long testId = jdbcTemplate.queryForObject(insertSql,
+                    Long.class,
+                    testData.get("task_id"),
+                    testData.get("experiment_name"),
+                    testData.get("mix_ratio_id"),
+                    testData.get("mix_ratio_name"),
+                    testData.get("mix_ratio_display_name"),
+                    testData.get("created_at"),
+                    testData.get("updated_at"));
+            
+            if (testId == null) {
+                throw new RuntimeException("无法获取插入的测试ID");
+            }
+            
+            result.put("testId", testId);
+            
+            // 2. 处理试件数据
+            if (requestData.containsKey("specimens")) {
+                List<Map<String, Object>> specimens = (List<Map<String, Object>>) requestData.get("specimens");
+                for (Map<String, Object> specimen : specimens) {
+                    Integer specimenNumber = (Integer) specimen.get("specimenNumber");
+                    Float diameter = specimen.get("diameter") != null ? ((Number) specimen.get("diameter")).floatValue() : null;
+                    Float height = specimen.get("height") != null ? ((Number) specimen.get("height")).floatValue() : null;
+                    Float bulkDensity = specimen.get("bulkDensity") != null ? ((Number) specimen.get("bulkDensity")).floatValue() : null;
+                    Float airVoidContent = specimen.get("airVoidContent") != null ? ((Number) specimen.get("airVoidContent")).floatValue() : null;
+                    
+                    // 保存试件信息到dynamic_modulus_specimen表
+                    String specimenSql = "INSERT INTO dynamic_modulus_specimen (test_id, specimen_number, diameter, height, bulk_density, air_void_content, created_at) " +
+                                        "VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    
+                    jdbcTemplate.update(specimenSql,
+                            testId,
+                            specimenNumber,
+                            diameter,
+                            height,
+                            bulkDensity,
+                            airVoidContent,
+                            new Timestamp(System.currentTimeMillis()));
+                }
+            }
+            
+            // 3. 处理温度数据
+            Map<Float, Long> temperatureIdMap = new HashMap<>(); // 用于存储温度值到数据库ID的映射
+            
+            if (requestData.containsKey("temperatures")) {
+                List<Map<String, Object>> temperatures = (List<Map<String, Object>>) requestData.get("temperatures");
+                for (Map<String, Object> tempData : temperatures) {
+                    Float temperature = tempData.get("temperature") != null ? 
+                            ((Number) tempData.get("temperature")).floatValue() : null;
+                    Integer tempOrder = tempData.get("temperatureOrder") != null ? 
+                            ((Number) tempData.get("temperatureOrder")).intValue() : null;
+                    
+                    // 保存温度信息到dynamic_modulus_temperature表
+                    String tempSql = "INSERT INTO dynamic_modulus_temperature (test_id, temperature, temperature_order, created_at) " +
+                                    "VALUES (?, ?, ?, ?) RETURNING id";
+                    
+                    Long temperatureId = jdbcTemplate.queryForObject(tempSql,
+                            Long.class,
+                            testId,
+                            temperature,
+                            tempOrder,
+                            new Timestamp(System.currentTimeMillis()));
+                    
+                    if (temperatureId != null) {
+                        temperatureIdMap.put(temperature, temperatureId);
+                    }
+                }
+            }
+            
+            // 4. 处理测量数据
+            if (requestData.containsKey("measurements")) {
+                List<Map<String, Object>> measurements = (List<Map<String, Object>>) requestData.get("measurements");
+                for (Map<String, Object> measurement : measurements) {
+                    Integer specimenId = (Integer) measurement.get("specimenId");
+                    Float temperature = measurement.get("temperature") != null ? 
+                            ((Number) measurement.get("temperature")).floatValue() : null;
+                    Float frequency = measurement.get("frequency") != null ? 
+                            ((Number) measurement.get("frequency")).floatValue() : null;
+                    Integer cycleCount = measurement.get("cycleCount") != null ? 
+                            ((Number) measurement.get("cycleCount")).intValue() : null;
+                    Float dynamicModulus = measurement.get("dynamicModulus") != null ? 
+                            ((Number) measurement.get("dynamicModulus")).floatValue() : null;
+                    Float phaseAngle = measurement.get("phaseAngle") != null ? 
+                            ((Number) measurement.get("phaseAngle")).floatValue() : null;
+                    Float axialStress = measurement.get("axialStress") != null ? 
+                            ((Number) measurement.get("axialStress")).floatValue() : null;
+                    Float axialStrain = measurement.get("axialStrain") != null ? 
+                            ((Number) measurement.get("axialStrain")).floatValue() : null;
+                    Float permanentDeformation = measurement.get("permanentDeformation") != null ? 
+                            ((Number) measurement.get("permanentDeformation")).floatValue() : null;
+                    
+                    // 获取温度ID
+                    Long temperatureId = temperatureIdMap.get(temperature);
+                    
+                    // 保存测量数据到dynamic_modulus_measurement表
+                    String measurementSql = "INSERT INTO dynamic_modulus_measurement " +
+                                          "(test_id, temperature_id, frequency, cycle_count, dynamic_modulus, phase_angle, " +
+                                          "axial_stress, axial_strain, permanent_deformation, test_date, is_valid, created_at) " +
+                                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    
+                    jdbcTemplate.update(measurementSql,
+                            testId,                          // 添加testId
+                            temperatureId,
+                            frequency,
+                            cycleCount,
+                            dynamicModulus,
+                            phaseAngle,
+                            axialStress,
+                            axialStrain,
+                            permanentDeformation,
+                            new Timestamp(System.currentTimeMillis()), // test_date
+                            true, // is_valid
+                            new Timestamp(System.currentTimeMillis())); // created_at
+                }
+            }
+            
+            logger.info("成功保存动态模量试验数据: testId={}", testId);
+            result.put("success", true);
+            result.put("message", "动态模量试验数据保存成功");
+            
+            return result;
+        } catch (Exception e) {
+            logger.error("保存动态模量试验数据时出错: {}", e.getMessage(), e);
+            throw new RuntimeException("保存动态模量试验数据失败: " + e.getMessage(), e);
+        }
+    }
+
+
+
 }

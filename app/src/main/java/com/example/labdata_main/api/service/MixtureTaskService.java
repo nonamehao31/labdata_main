@@ -257,4 +257,10 @@ public interface MixtureTaskService {
     Call<ApiResponse<Boolean>> updateTaskEquipment(
         @Body String requestBody
     );
+    
+    /**
+     * 保存动态模量试验数据
+     */
+    @POST("api/mixtureTask/saveDynamicModulusTest")
+    Call<ApiResponse<Map<String, Object>>> saveDynamicModulusTest(@Body Map<String, Object> requestData);
 }
