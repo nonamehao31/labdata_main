@@ -735,7 +735,8 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
         mixtureTaskService.saveDeviceInfo(
             taskId, 
             deviceInfo.getType(), 
-            deviceInfo.getModel()
+            deviceInfo.getModel(),
+            deviceInfo.getManufacturer()  // 添加设备厂家参数
         ).enqueue(new Callback<ApiResponse<Map<String, String>>>() {
             @Override
             public void onResponse(Call<ApiResponse<Map<String, String>>> call, 

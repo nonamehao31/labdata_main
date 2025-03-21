@@ -11,9 +11,11 @@ import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
+import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
+import retrofit2.http.Body;
 
 /**
  * 混合料任务服务接口
@@ -143,13 +145,15 @@ public interface MixtureTaskService {
      * @param taskId 任务ID
      * @param deviceType 设备类型
      * @param deviceModel 设备型号
-     * @return 已保存的设备信息
+     * @param manufacturer 设备厂家（可选）
+     * @return 设备信息和类型
      */
     @PUT("api/mixtureTask/{taskId}/device")
     Call<ApiResponse<Map<String, String>>> saveDeviceInfo(
         @Path("taskId") String taskId,
         @Query("deviceType") String deviceType,
-        @Query("deviceModel") String deviceModel
+        @Query("deviceModel") String deviceModel,
+        @Query("manufacturer") String manufacturer
     );
     
     /**
@@ -172,4 +176,85 @@ public interface MixtureTaskService {
      */
     @PUT("api/mixture-tasks/{taskIdPrefix}/making_status/finished")
     Call<ApiResponse<Boolean>> updateMakingStatusToFinished(@Path("taskIdPrefix") String taskIdPrefix);
+    
+    /**
+     * 完成材料准备
+     * 
+     * @param taskId 任务ID
+     * @param prepareTime 备料时间
+     * @return 更新结果
+     */
+    @PUT("api/mixture-tasks/{taskId}/material-preparation")
+    Call<ApiResponse<Boolean>> completeMaterialPreparation(
+        @Path("taskId") Long taskId,
+        @Query("prepareTime") Long prepareTime
+    );
+    
+    /**
+     * 保存马歇尔试验数据
+     * 
+     * @param requestData 包含任务ID和试验数据的请求体
+     * @return 保存结果
+     */
+    @POST("api/marshall-test")
+    Call<ApiResponse<Map<String, Object>>> saveMarshallTest(
+        @Body Map<String, Object> requestData
+    );
+    
+    /**
+     * 保存汉堡车辙实验数据
+     * 
+     * @param requestData 包含任务ID和车辙实验数据的请求体
+     * @return 保存结果
+     */
+    @POST("api/hamburg-rutting-test")
+    Call<ApiResponse<Map<String, Object>>> saveHamburgRuttingTest(
+        @Body Map<String, Object> requestData
+    );
+    
+    /**
+     * 保存沥青混合料弯曲试验数据
+     * 
+     * @param requestData 包含任务ID、配比ID、跨径长度和试件数据的请求体
+     * @return 保存结果
+     */
+    @POST("api/mixture-bending-test")
+    Call<ApiResponse<Map<String, Object>>> saveMixtureBendingTest(
+        @Body Map<String, Object> requestData
+    );
+    
+    /**
+     * 获取沥青混合料弯曲试验数据
+     * 
+     * @param taskId 任务ID
+     * @param mixRatioId 配比ID
+     * @return 试验数据
+     */
+    @GET("api/mixture-bending-test/task/{taskId}/mix-ratio/{mixRatioId}")
+    Call<ApiResponse<Map<String, Object>>> getMixtureBendingTestByTaskIdAndMixRatioId(
+            @Path("taskId") String taskId,
+            @Path("mixRatioId") Long mixRatioId
+    );
+
+    /**
+     * 获取沥青混合料弯曲试验数据
+     * 
+     * @param taskId 任务ID
+     * @return 试验数据列表
+     */
+    @GET("api/mixture-bending-test/task/{taskId}")
+    Call<ApiResponse<List<Map<String, Object>>>> getMixtureBendingTestsByTaskId(
+            @Path("taskId") String taskId
+    );
+    
+    /**
+     * 更新任务的设备信息（使用JSON格式）
+     * 
+     * @param requestBody 包含任务ID和设备信息的JSON字符串
+     * @return 更新结果
+     */
+    @POST("api/mixtureTask/equipment")
+    Call<ApiResponse<Boolean>> updateTaskEquipment(
+        @Body String requestBody
+    );
 }

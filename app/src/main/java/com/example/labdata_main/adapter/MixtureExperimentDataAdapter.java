@@ -86,13 +86,21 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         
         Log.d("MixtureAdapter", "开始绑定配比 " + mixRatioId + " 的视图 | mixRatioTaskAssignments键集: " + mixRatioTaskAssignments.keySet());
         
-        // 获取当前配比的名称和描述
+        // 获取当前配比的基本名称和描述，这可能不是最终显示值
         String mixRatioName = (String) mixRatio.get("name");
         String mixRatioDescription = (String) mixRatio.get("description");
         
-        Log.d("MixtureAdapter", "配比 " + mixRatioId + " 原始名称: " + mixRatioName + ", 描述: " + mixRatioDescription);
+        // 从配比对象中直接获取mix_name字段
+        Object mixNameObj = mixRatio.get("mix_name");
+        if (mixNameObj != null && !mixNameObj.toString().isEmpty()) {
+            // 如果mixRatio对象中有mix_name字段，优先使用这个名称
+            mixRatioName = mixNameObj.toString();
+            Log.d("MixtureAdapter", "从mixRatio直接获取mix_name: " + mixRatioName);
+        }
         
-        // 查找所有关联到此配比ID的试件
+        Log.d("MixtureAdapter", "配比 " + mixRatioId + " 基础名称: " + mixRatioName + ", 描述: " + mixRatioDescription);
+        
+        // 查找所有关联到此配比ID的试件，用于获取更多详细信息
         List<Map<String, Object>> relatedSpecimens = new ArrayList<>();
         for (Map<String, Object> methodRatio : methodsAndRatios) {
             Object methodMixRatioIdObj = methodRatio.get("mixratio_id");
@@ -106,16 +114,20 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         
         // 查找更有意义的名称信息
         if (!relatedSpecimens.isEmpty()) {
+            boolean foundMixName = false;
             for (Map<String, Object> specimen : relatedSpecimens) {
-                String name = (String) specimen.get("mix_name");
+                Object specimenMixNameObj = specimen.get("mix_name");
                 String compactionMethod = (String) specimen.get("compaction_method");
                 Object specimenId = specimen.get("id");
                 
-                Log.d("MixtureAdapter", "试件 " + specimenId + " 配方名称: " + name + ", 压实方法: " + compactionMethod);
+                Log.d("MixtureAdapter", "试件 " + specimenId + " 配方名称: " + specimenMixNameObj + ", 压实方法: " + compactionMethod);
                 
-                if (name != null && !name.isEmpty()) {
+                // 优先使用试件中的mix_name
+                if (specimenMixNameObj != null && !specimenMixNameObj.toString().isEmpty()) {
+                    String specimenMixName = specimenMixNameObj.toString();
+                    
                     // 使用试件的名称，并添加区分信息
-                    StringBuilder nameBuilder = new StringBuilder(name);
+                    StringBuilder nameBuilder = new StringBuilder(specimenMixName);
                     nameBuilder.append(" (ID:").append(mixRatioId);
                     
                     if (compactionMethod != null && !compactionMethod.isEmpty()) {
@@ -124,9 +136,16 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                     nameBuilder.append(")");
                     
                     mixRatioName = nameBuilder.toString();
-                    Log.d("MixtureAdapter", "更新配比 " + mixRatioId + " 显示名称为: " + mixRatioName);
+                    Log.d("MixtureAdapter", "从试件获取并更新配比 " + mixRatioId + " 显示名称为: " + mixRatioName);
+                    foundMixName = true;
                     break;
                 }
+            }
+            
+            // 如果在试件中没有找到mix_name，尝试从后端API响应中查找
+            if (!foundMixName) {
+                // 可能需要在这里添加调用后端API获取mix_name的逻辑
+                Log.d("MixtureAdapter", "未在试件中找到配比 " + mixRatioId + " 的mix_name，使用基础名称: " + mixRatioName);
             }
         }
         
@@ -183,13 +202,31 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         String deviceKey = String.valueOf(mixRatioId);
         DeviceInfo deviceInfo = deviceData.get(deviceKey);
         if (deviceInfo != null) {
-            String deviceText = String.format("设备编号：%s", deviceInfo.getDeviceId());
+            String deviceText = String.format("设备编号：%s，厂家：%s，型号：%s", 
+                deviceInfo.getDeviceId(), 
+                deviceInfo.getManufacturer(), 
+                deviceInfo.getModel());
             holder.tvDeviceInfo.setText(deviceText);
             Log.d("MixtureAdapter", "设置tvDeviceInfo文本为: " + deviceText);
         } else {
             holder.tvDeviceInfo.setText("未选择设备");
             Log.d("MixtureAdapter", "设置tvDeviceInfo文本为: 未选择设备");
         }
+        
+        // 设置扫描设备按钮点击监听器
+        final int adapterPosition = holder.getAdapterPosition();
+        holder.btnScanDevice.setOnClickListener(v -> {
+            if (deviceScanListener != null && adapterPosition != RecyclerView.NO_POSITION) {
+                // 获取当前配比的实验名称，如果有多个实验，使用第一个
+                String experimentName = "未知实验";
+                List<String> experimentList = experimentAssignments.get(String.valueOf(mixRatioId));
+                if (experimentList != null && !experimentList.isEmpty()) {
+                    experimentName = experimentList.get(0);
+                }
+                deviceScanListener.onDeviceScanRequested(adapterPosition, experimentName);
+                Log.d("MixtureAdapter", "请求扫描设备，位置: " + adapterPosition + ", 实验: " + experimentName);
+            }
+        });
     }
 
     @Override
@@ -200,6 +237,14 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     public Map<String, Map<String, String>> getExperimentData() {
         return experimentData;
     }
+    
+    /**
+     * 获取配比数据列表
+     * @return 配比数据列表
+     */
+    public List<Map<String, Object>> getMixRatios() {
+        return mixRatios;
+    }
 
     public void setDeviceInfo(int position, DeviceInfo deviceInfo) {
         String deviceKey = String.valueOf(mixRatios.get(position).get("id"));
@@ -207,8 +252,29 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         notifyItemChanged(position);
     }
 
+    /**
+     * 获取设备信息Map
+     * @return 设备信息Map
+     */
+    public Map<String, DeviceInfo> getDeviceData() {
+        return deviceData;
+    }
+    
+    /**
+     * 获取特定ID的设备信息
+     * @param mixRatioId 配比ID
+     * @return 设备信息
+     */
     public DeviceInfo getDeviceInfo(int mixRatioId) {
         return deviceData.get(String.valueOf(mixRatioId));
+    }
+    
+    /**
+     * 获取配比ID与任务分配的映射
+     * @return 配比任务分配映射
+     */
+    public Map<String, List<Map<String, Object>>> getMixRatioTaskAssignments() {
+        return mixRatioTaskAssignments;
     }
 
     /**
@@ -312,9 +378,13 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                         if (!specimensForMixRatio.isEmpty()) {
                             String mixName = (String) specimensForMixRatio.get(0).get("mix_name");
                             if (mixName != null) {
+                                // 将mix_name保存在两个位置：专用的mix_name字段和name字段
+                                mixRatio.put("mix_name", mixName);
                                 mixRatio.put("name", mixName);
+                                Log.d("MixtureAdapter", "为配比ID " + mixRatioId + " 设置mix_name: " + mixName);
                             } else {
                                 mixRatio.put("name", "配比 " + mixRatioId);
+                                Log.d("MixtureAdapter", "配比ID " + mixRatioId + " 没有mix_name");
                             }
                             
                             // 设置配比描述 - 标记为"制件信息"而非"配比信息"
@@ -323,8 +393,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                                 Map<String, Object> specimen = specimensForMixRatio.get(i);
                                 if (i > 0) description.append(" | ");
                                 
-                                Object specimenIdObj = specimen.get("id");
-                                Long specimenId = parseLongSafely(specimenIdObj);
+                                Object specimenId = specimen.get("id");
                                 description.append("ID: ").append(specimenId);
                                 
                                 if (specimen.containsKey("mixing_temperature")) {
@@ -3125,5 +3194,177 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 }
             });
         }
+    }
+
+    /**
+     * 获取所有实验数据用于保存配置变更状态
+     * @return 包含所有实验数据的ArrayList，用于保存到Bundle
+     */
+    public ArrayList<Map<String, String>> getAllExperimentData() {
+        Log.d("MixtureAdapter", "获取所有实验数据用于保存状态");
+        ArrayList<Map<String, String>> result = new ArrayList<>();
+        
+        // 转换内部存储的实验数据为可序列化的ArrayList
+        for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
+            HashMap<String, String> item = new HashMap<>();
+            // 添加mixRatioId作为标识符
+            item.put("mixRatioId", entry.getKey());
+            
+            // 复制所有该配比的实验数据
+            Map<String, String> data = entry.getValue();
+            if (data != null) {
+                for (Map.Entry<String, String> dataEntry : data.entrySet()) {
+                    item.put(dataEntry.getKey(), dataEntry.getValue());
+                }
+            }
+            
+            result.add(item);
+        }
+        
+        Log.d("MixtureAdapter", "已保存" + result.size() + "条实验数据记录");
+        return result;
+    }
+    
+    /**
+     * 从保存的状态恢复实验数据
+     * @param savedData 从Bundle恢复的实验数据列表
+     */
+    public void restoreExperimentData(ArrayList<Map<String, String>> savedData) {
+        if (savedData == null || savedData.isEmpty()) {
+            Log.w("MixtureAdapter", "没有可恢复的实验数据");
+            return;
+        }
+        
+        Log.d("MixtureAdapter", "恢复" + savedData.size() + "条实验数据记录");
+        
+        // 清空现有数据
+        experimentData.clear();
+        
+        // 恢复保存的实验数据
+        for (Map<String, String> item : savedData) {
+            String mixRatioId = item.remove("mixRatioId");
+            if (mixRatioId != null) {
+                Map<String, String> data = new HashMap<>(item);
+                experimentData.put(mixRatioId, data);
+                
+                Log.d("MixtureAdapter", "已恢复配比ID=" + mixRatioId + "的实验数据，包含" + 
+                      data.size() + "个字段");
+            }
+        }
+        
+        // 通知数据集变化
+        notifyDataSetChanged();
+    }
+    
+    /**
+     * 将Map格式的配比数据转换为MixRatio对象列表
+     * @return 配比对象列表
+     */
+    public List<MixRatio> getMixRatioObjects() {
+        List<MixRatio> result = new ArrayList<>();
+        for (Map<String, Object> map : mixRatios) {
+            MixRatio ratio = new MixRatio();
+            
+            // 提取ID
+            Object id = map.get("id");
+            if (id != null) {
+                if (id instanceof Number) {
+                    ratio.setId(((Number) id).longValue());
+                } else if (id instanceof String) {
+                    try {
+                        ratio.setId(Long.parseLong((String) id));
+                    } catch (NumberFormatException e) {
+                        Log.e("MixtureAdapter", "无法解析配比ID: " + id);
+                    }
+                }
+            }
+            
+            // 提取名称和描述
+            Object name = map.get("name");
+            if (name != null) {
+                ratio.setName(name.toString());
+            }
+            
+            Object description = map.get("description");
+            if (description != null) {
+                ratio.setDescription(description.toString());
+            }
+            
+            result.add(ratio);
+        }
+        return result;
+    }
+    
+    /**
+     * 添加新的配比
+     * @param ratio 要添加的配比
+     */
+    public void addMixRatio(MixRatio ratio) {
+        // 检查是否已存在该ID的配比
+        for (Map<String, Object> map : mixRatios) {
+            Object id = map.get("id");
+            if (id != null) {
+                long ratioId = -1;
+                if (id instanceof Number) {
+                    ratioId = ((Number) id).longValue();
+                } else if (id instanceof String) {
+                    try {
+                        ratioId = Long.parseLong((String) id);
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                
+                if (ratioId == ratio.getId()) {
+                    Log.d("MixtureAdapter", "配比ID=" + ratio.getId() + "已存在，不再添加");
+                    return;
+                }
+            }
+        }
+        
+        // 添加新配比
+        Map<String, Object> newRatio = new HashMap<>();
+        newRatio.put("id", ratio.getId());
+        newRatio.put("name", ratio.getName());
+        newRatio.put("description", ratio.getDescription());
+        mixRatios.add(newRatio);
+        
+        // 通知视图刷新
+        notifyDataSetChanged();
+        Log.d("MixtureAdapter", "已添加新配比: ID=" + ratio.getId() + ", 名称=" + ratio.getName());
+    }
+
+    /**
+     * 更新指定配比和实验字段的值
+     *
+     * @param mixRatioId 配比ID
+     * @param experimentKey 实验数据键
+     * @param value 要设置的值
+     */
+    public void updateExperimentValue(String mixRatioId, String experimentKey, String value) {
+        // 先检查mixRatioId是否存在于experimentData中
+        Map<String, String> mixRatioExperiments = experimentData.get(mixRatioId);
+        if (mixRatioExperiments == null) {
+            mixRatioExperiments = new HashMap<>();
+            experimentData.put(mixRatioId, mixRatioExperiments);
+        }
+        
+        // 更新实验数据值
+        mixRatioExperiments.put(experimentKey, value);
+        
+        // 通知数据集变化
+        notifyDataSetChanged();
+    }
+    
+    /**
+     * 更新实验数据 - 用于从API加载的数据
+     * 
+     * @param mixRatioId 配比ID
+     * @param key 实验数据键
+     * @param value 要设置的值
+     */
+    public void updateExperimentData(String mixRatioId, String key, String value) {
+        Map<String, String> mixRatioData = experimentData.computeIfAbsent(mixRatioId, k -> new HashMap<>());
+        mixRatioData.put(key, value);
+        Log.d("MixtureAdapter", "更新实验数据: mixRatioId=" + mixRatioId + ", key=" + key + ", value=" + value);
     }
 }

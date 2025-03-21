@@ -88,7 +88,7 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         // 注册令牌过期广播接收器
         tokenExpirationReceiver = new TokenExpirationReceiver(this);
         IntentFilter intentFilter = new IntentFilter("com.example.labdata_main.TOKEN_EXPIRED");
-        registerReceiver(tokenExpirationReceiver, intentFilter);
+        registerReceiver(tokenExpirationReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
         
         initViews();
         setupViewPager();
