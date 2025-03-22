@@ -1124,6 +1124,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                     Map<String, Boolean> processedBendingTests = new HashMap<>();
                     // 用于跟踪已处理的动态模量试验数据
                     Map<String, Boolean> processedDynamicModulusTests = new HashMap<>();
+                    // 用于跟踪已处理的沥青混合料四点弯曲疲劳寿命试验数据
+                    Map<String, Boolean> processedFourPointBendingFatigueTests = new HashMap<>();
                     
                     // 保存实验数据
                     for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
@@ -1201,6 +1203,14 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             processedDynamicModulusTests.put(mixRatioId, true);
                         }
                         
+                        // 检查是否有沥青混合料四点弯曲疲劳寿命试验数据需要保存
+                        if (assignedExperiments.contains("沥青混合料四点弯曲疲劳寿命试验") && !processedFourPointBendingFatigueTests.containsKey(mixRatioId)) {
+                            // 提取并保存沥青混合料四点弯曲疲劳寿命试验数据
+                            Log.d(TAG, "开始保存沥青混合料四点弯曲疲劳寿命试验数据，配比ID: " + mixRatioId);
+                            saveFourPointBendingFatigueTestData(mixRatioId, experiments);
+                            processedFourPointBendingFatigueTests.put(mixRatioId, true);
+                        }
+                        
                         // 只保存被指派给该配比的实验
                         for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
                             String experimentName = experimentEntry.getKey();
@@ -1223,6 +1233,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
 
                             // 动态模量试验数据已单独处理，跳过
                             if (experimentName.startsWith("动态模量试验_")) {
+                                continue;
+                            }
+
+                            // 沥青混合料四点弯曲疲劳寿命试验数据已单独处理，跳过
+                            if (experimentName.startsWith("沥青混合料四点弯曲疲劳寿命试验_")) {
                                 continue;
                             }
                             
@@ -1494,6 +1509,136 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             }
         } catch (Exception e) {
             Log.e(TAG, "保存沥青混合料弯曲试验数据时出错", e);
+        }
+    }
+
+    /**
+     * 保存沥青混合料四点弯曲疲劳寿命试验数据到后端
+     * 
+     * @param mixRatioId 配比ID
+     * @param experiments 实验数据Map
+     */
+    private void saveFourPointBendingFatigueTestData(String mixRatioId, Map<String, String> experiments) {
+        // 创建请求数据
+        Map<String, Object> requestData = new HashMap<>();
+        requestData.put("taskId", currentTask.getTaskId());
+        requestData.put("mixRatioId", mixRatioId);
+        
+        // 实验名称和日志记录
+        String experimentName = "沥青混合料四点弯曲疲劳寿命试验";
+        Log.d(TAG, "开始保存" + experimentName + "数据，配比ID: " + mixRatioId);
+        Log.d(TAG, "实验数据键集合: " + experiments.keySet());
+        
+        // 主实验表数据
+        Float temperature = parseFloatSafely(experiments.get(experimentName + "_temperature"));
+        Float frequency = parseFloatSafely(experiments.get(experimentName + "_frequency"));
+        Float loadingMode = parseFloatSafely(experiments.get(experimentName + "_loading_mode"));
+        
+        Map<String, Object> testData = new HashMap<>();
+        testData.put("experimentName", experimentName);
+        testData.put("temperature", temperature);  // 映射到mix_temperature
+        testData.put("frequency", frequency);      // 映射到frequency_hz
+        testData.put("loadingMode", loadingMode);  // 可能需要添加到表中
+        
+        requestData.put("testData", testData);
+        
+        // 计算试件数量
+        int specimenCount = 0;
+        Pattern specimenPattern = Pattern.compile(experimentName + "_width_(\\d+)");
+        
+        for (String key : experiments.keySet()) {
+            Matcher matcher = specimenPattern.matcher(key);
+            if (matcher.matches()) {
+                specimenCount++;
+            }
+        }
+        
+        Log.d(TAG, "找到" + experimentName + "试件数量: " + specimenCount);
+        
+        // 准备试件数据列表
+        List<Map<String, Object>> specimensData = new ArrayList<>();
+        
+        // 准备结果类型映射表，确保后端能正确保存
+        String[][] resultTypeMapping = {
+            {"最大拉应力", "Tensile stress", "kPa"},
+            {"最大拉应变", "Tensile strain", "με"},
+            {"弯曲劲度模量", "Flexural stiffness", "MPa"},
+            {"相位角", "Phase Angle", "deg"},
+            {"单个循环耗散能", "Dissipated energy", "J/m³"},
+            {"累积耗散能", "Cumulative dissipated energy", "kJ/m³"}
+        };
+        
+        for (int i = 1; i <= specimenCount; i++) {
+            // 获取试件参数
+            Map<String, Object> specimen = new HashMap<>();
+            specimen.put("specimenNumber", i);
+            
+            // 添加试件几何尺寸参数
+            Float width = parseFloatSafely(experiments.get(experimentName + "_width_" + i));
+            Float height = parseFloatSafely(experiments.get(experimentName + "_height_" + i));
+            Float length = parseFloatSafely(experiments.get(experimentName + "_length_" + i));
+            
+            specimen.put("width", width);     // 映射到width_mm
+            specimen.put("height", height);   // 映射到height_mm 
+            specimen.put("length", length);   // 映射到length_mm
+            
+            // 最终疲劳寿命 - 直接对应fatigue_life字段
+            String fatigueLifeKey = experimentName + "_result_" + i + "_fatigue_life";
+            Float fatigueLife = parseFloatSafely(experiments.get(fatigueLifeKey));
+            specimen.put("fatigueLife", fatigueLife);
+            
+            // 添加试验结果数据
+            List<Map<String, Object>> resultsList = new ArrayList<>();
+            
+            for (int j = 1; j <= 6; j++) {  // 6个结果参数（不包括疲劳寿命）
+                String initialKey = experimentName + "_result_" + i + "_initial_" + j;
+                String currentKey = experimentName + "_result_" + i + "_current_" + j;
+                
+                Float initialValue = parseFloatSafely(experiments.get(initialKey));
+                Float currentValue = parseFloatSafely(experiments.get(currentKey));
+                
+                Map<String, Object> result = new HashMap<>();
+                result.put("resultType", j);
+                result.put("resultTypeDisplayName", resultTypeMapping[j-1][0]);
+                result.put("resultTypeEnglishName", resultTypeMapping[j-1][1]);
+                result.put("resultTypeUnit", resultTypeMapping[j-1][2]);
+                result.put("initialValue", initialValue);
+                result.put("currentValue", currentValue);
+                
+                resultsList.add(result);
+                
+                Log.d(TAG, "试件" + i + "参数" + j + " 初始值: " + initialValue + ", 实时值: " + currentValue);
+            }
+            
+            specimen.put("results", resultsList);
+            specimensData.add(specimen);
+            Log.d(TAG, "已添加试件" + i + "数据: " + specimen.toString());
+        }
+        
+        // 将试件数据添加到请求数据中
+        requestData.put("specimens", specimensData);
+        
+        // 记录完整的请求数据，用于调试
+        Log.d(TAG, "完整的四点弯曲疲劳寿命试验请求数据: " + new Gson().toJson(requestData));
+        
+        // 发送请求到API
+        MixtureTaskService apiService = ServiceCreator.createMixtureTaskService();
+        Call<ApiResponse<Map<String, String>>> call = apiService.saveFourPointFatigueTestData(requestData);
+        
+        try {
+            Response<ApiResponse<Map<String, String>>> response = call.execute();
+            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                Log.i(TAG, "成功保存配比 " + mixRatioId + " 的" + experimentName + "数据");
+            } else {
+                String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
+                Log.e(TAG, "保存" + experimentName + "数据失败: " + errorMsg);
+                if (response.errorBody() != null) {
+                    String errorBody = response.errorBody().string();
+                    Log.e(TAG, "错误详情: " + errorBody);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "保存" + experimentName + "数据时出错", e);
         }
     }
 
@@ -1809,8 +1954,6 @@ for (String specimenId : specimenIds) {
 
 // 记录收集到的试件数量
 Log.d(TAG, "收集到的试件数据数量: " + specimensData.size());
-// 将试件数据添加到请求数据中
-requestData.put("specimens", specimensData);
     
     // 请求API保存数据
     Log.d(TAG, "准备发送沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据到服务器");
@@ -1820,8 +1963,6 @@ requestData.put("specimens", specimensData);
                 public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                         Log.d(TAG, "沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存成功: " + response.body().getMessage());
-                        // 记录完整的请求对象
-                        Log.d(TAG, "完整请求数据: " + new Gson().toJson(requestData));
                         showToast("沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存成功");
                     } else {
                         String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";

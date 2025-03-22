@@ -18,10 +18,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.List;
@@ -313,6 +313,23 @@ public class MixtureTaskController {
             logger.error("保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据时出错: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 保存沥青混合料四点弯曲疲劳寿命试验数据
+     * 
+     * @param requestData 包含试验数据的请求Map
+     * @return 保存结果
+     */
+    @PostMapping("/mixtureTask/saveFourPointFatigueTestData")
+    public ResponseEntity<?> saveFourPointFatigueTestData(@RequestBody Map<String, Object> requestData) {
+        try {
+            Map<String, String> result = mixtureTaskService.saveFourPointFatigueTestData(requestData);
+            return ResponseEntity.ok(new ApiResponse<>(true, "四点弯曲疲劳寿命试验数据保存成功", result));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "四点弯曲疲劳寿命试验数据保存失败: " + e.getMessage(), null));
         }
     }
 }

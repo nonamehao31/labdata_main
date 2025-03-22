@@ -1446,4 +1446,180 @@ public Map<String, String> saveDirectStretchingFatigueTestData(Map<String, Objec
     }
 }
 
+
+/**
+ * 保存沥青混合料四点弯曲疲劳寿命试验数据
+ * 
+ * @param requestData 包含试验数据的请求Map
+ * @return 保存结果
+ */
+public Map<String, String> saveFourPointFatigueTestData(Map<String, Object> requestData) {
+    logger.info("处理沥青混合料四点弯曲疲劳寿命试验数据: {}", requestData);
+    
+    try {
+        // 初始化结果MAP
+        Map<String, String> result = new HashMap<>();
+        
+        // 从请求中提取基本参数
+        String taskId = (String) requestData.get("taskId");
+        String mixRatioId = String.valueOf(requestData.get("mixRatioId"));
+        
+        // 获取测试数据信息
+        Map<String, Object> testData = (Map<String, Object>) requestData.get("testData");
+        String experimentName = testData != null ? (String) testData.get("experimentName") : null;
+        
+        // 其他测试参数可能来自顶层或testData，根据实际前端结构调整
+        // 如果这些值在前端没有提供，设置默认值或null
+        Timestamp testDate = new Timestamp(System.currentTimeMillis());
+        String operator = "未知";  // 默认值
+        String equipmentId = "未知";  // 默认值
+        Double temperature = 25.0;  // 默认值
+        Double frequency = 10.0;  // 默认值
+        String loadingMode = "默认控制";  // 默认值
+        String notes = experimentName != null ? experimentName : "四点弯曲疲劳寿命试验";
+        
+        // 保存测试基本信息
+        String testSql = "INSERT INTO mixture_four_point_bending_test" +
+                        "(task_id, mix_ratio_id, mix_ratio_name, experiment_name, mix_temperature, mix_speed, mix_time, " +
+                        "compaction_method, test_date, operator, created_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+        
+        // 从testData或requestData中获取数据或使用默认值
+        String mixRatioName = ""; // 如果前端发送了这个数据，从适当位置获取
+        Double mixTemperature = null; // 如果前端发送了这个数据，从适当位置获取
+        Double mixSpeed = null; // 如果前端发送了这个数据，从适当位置获取
+        Double mixTime = null; // 如果前端发送了这个数据，从适当位置获取
+        String compactionMethod = ""; // 如果前端发送了这个数据，从适当位置获取
+        
+        Long testId = jdbcTemplate.queryForObject(testSql, 
+                Long.class,
+                taskId,
+                mixRatioId,
+                mixRatioName,
+                experimentName,
+                mixTemperature,
+                mixSpeed,
+                mixTime,
+                compactionMethod,
+                testDate,
+                operator,
+                new Timestamp(System.currentTimeMillis()));
+        
+        if (testId == null) {
+            throw new RuntimeException("无法获取插入的测试ID");
+        }
+
+
+        // 在开始循环前获取specimens数组
+        List<Map<String, Object>> specimens = (List<Map<String, Object>>) requestData.get("specimens");
+        // 2. 保存试件数据
+        for (Map<String, Object> specimen : specimens) {
+            Integer specimenNumber = (Integer) specimen.get("specimenNumber"); // 注意这里改为specimenNumber
+            Double height = parseDoubleValue(specimen.get("height"));
+            Double width = parseDoubleValue(specimen.get("width"));
+            Double length = parseDoubleValue(specimen.get("length"));
+            
+            // 从specimen中获取其他字段，或设置为null/默认值
+            Double spanMm = null; // 可以从specimen中获取或设置默认值
+            Double strainRange = null; // 可以从specimen中获取或设置默认值
+            Double frequencyHz = null; // 可以从specimen中获取或设置默认值
+            Double testTemperature = null; // 可以从specimen中获取或设置默认值
+            Double fatigueLife = specimen.get("fatigueLife") != null ? 
+                    Double.valueOf(specimen.get("fatigueLife").toString()) : null;
+            
+            // 保存试件基本信息和测试结果
+            String specimenSql = "INSERT INTO mixture_four_point_bending_specimen" +
+                                "(test_id, specimen_number, length_mm, width_mm, height_mm, " +
+                                "span_mm, strain_range, frequency_hz, test_temperature, fatigue_life, created_at) " +
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            
+            Long specimenDbId = jdbcTemplate.queryForObject(specimenSql,
+                    Long.class,
+                    testId, 
+                    specimenNumber,
+                    length,
+                    width,
+                    height,
+                    spanMm,
+                    strainRange,
+                    frequencyHz,
+                    testTemperature,
+                    fatigueLife,
+                    new Timestamp(System.currentTimeMillis()));
+            
+            // 3. 保存测试结果数据（如果有）
+            List<Map<String, Object>> results = (List<Map<String, Object>>) specimen.get("results");
+            if (results != null && !results.isEmpty()) {
+                for (Map<String, Object> resultItem : results) {
+                    String resultType = resultItem.get("resultType") != null ? 
+                            String.valueOf(resultItem.get("resultType")) : null;
+                    String resultTypeDisplayName = resultItem.get("resultTypeDisplayName") != null ? 
+                            String.valueOf(resultItem.get("resultTypeDisplayName")) : null;
+                    String resultTypeEnglishName = resultItem.get("resultTypeEnglishName") != null ? 
+                            String.valueOf(resultItem.get("resultTypeEnglishName")) : null;
+                    String resultTypeUnit = resultItem.get("resultTypeUnit") != null ? 
+                            String.valueOf(resultItem.get("resultTypeUnit")) : null;
+                    Integer resultIndex = resultItem.get("resultIndex") != null ? 
+                            Integer.valueOf(resultItem.get("resultIndex").toString()) : null;
+                    Double initialValue = parseDoubleValue(resultItem.get("initialValue"));
+                    Double currentValue = parseDoubleValue(resultItem.get("currentValue"));
+                    
+                    String resultSql = "INSERT INTO mixture_four_point_bending_result" +
+                                    "(specimen_id, result_type, result_type_display_name, result_type_english_name, " +
+                                    "result_type_unit, result_index, initial_value, current_value, created_at) " +
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    
+                    jdbcTemplate.update(resultSql,
+                            specimenDbId,
+                            resultType,
+                            resultTypeDisplayName,
+                            resultTypeEnglishName,
+                            resultTypeUnit,
+                            resultIndex,
+                            initialValue,
+                            currentValue,
+                            new Timestamp(System.currentTimeMillis()));
+                }
+            }
+        }
+        
+        logger.info("成功保存四点弯曲疲劳寿命试验数据: testId={}", testId);
+        result.put("success", "true");
+        result.put("message", "四点弯曲疲劳寿命试验数据保存成功");
+        
+        return result;
+    } catch (Exception e) {
+        logger.error("保存四点弯曲疲劳寿命试验数据时出错: {}", e.getMessage(), e);
+        throw new RuntimeException("保存四点弯曲疲劳寿命试验数据失败: " + e.getMessage(), e);
+    }
+}
+
+/**
+ * 解析Double值，处理可能的格式问题
+ */
+private Double parseDoubleValue(Object value) {
+    if (value == null) {
+        return null;
+    }
+    
+    if (value instanceof Number) {
+        return ((Number) value).doubleValue();
+    }
+    
+    if (value instanceof String) {
+        String strValue = (String) value;
+        if (strValue.isEmpty()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(strValue);
+        } catch (NumberFormatException e) {
+            logger.warn("无法解析Double值: {}", strValue);
+            return null;
+        }
+    }
+    
+    return null;
+}
+
 }
