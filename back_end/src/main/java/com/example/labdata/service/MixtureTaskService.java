@@ -1520,12 +1520,11 @@ public Map<String, String> saveFourPointFatigueTestData(Map<String, Object> requ
             Double length = parseDoubleValue(specimen.get("length"));
             
             // 从specimen中获取其他字段，或设置为null/默认值
-            Double spanMm = null; // 可以从specimen中获取或设置默认值
-            Double strainRange = null; // 可以从specimen中获取或设置默认值
-            Double frequencyHz = null; // 可以从specimen中获取或设置默认值
-            Double testTemperature = null; // 可以从specimen中获取或设置默认值
-            Double fatigueLife = specimen.get("fatigueLife") != null ? 
-                    Double.valueOf(specimen.get("fatigueLife").toString()) : null;
+            Double spanMm = parseDoubleValue(specimen.get("spanMm")); // 可以从specimen中获取或设置默认值
+            Double strainRange = parseDoubleValue(specimen.get("strainRange")); // 可以从specimen中获取或设置默认值
+            Double frequencyHz = parseDoubleValue(specimen.get("frequencyHz")); // 可以从specimen中获取或设置默认值
+            Double testTemperature = parseDoubleValue(specimen.get("testTemperature")); // 可以从specimen中获取或设置默认值
+            Double fatigueLife = parseDoubleValue(specimen.get("fatigueLife")); // 可以从specimen中获取或设置默认值
             
             // 保存试件基本信息和测试结果
             String specimenSql = "INSERT INTO mixture_four_point_bending_specimen" +

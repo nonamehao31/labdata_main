@@ -1577,10 +1577,18 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             Float width = parseFloatSafely(experiments.get(experimentName + "_width_" + i));
             Float height = parseFloatSafely(experiments.get(experimentName + "_height_" + i));
             Float length = parseFloatSafely(experiments.get(experimentName + "_length_" + i));
+            Float spanMm = parseFloatSafely(experiments.get(experimentName + "_span_" + i));
+            Float strainRange = parseFloatSafely(experiments.get(experimentName + "_strain_range_" + i));
+            Float frequencyHz = parseFloatSafely(experiments.get(experimentName + "_frequency_" + i));
+            Float testTemperature = parseFloatSafely(experiments.get(experimentName + "_temperature_" + i));
             
             specimen.put("width", width);     // 映射到width_mm
             specimen.put("height", height);   // 映射到height_mm 
             specimen.put("length", length);   // 映射到length_mm
+            specimen.put("spanMm", spanMm);   // 映射到span_mm
+            specimen.put("strainRange", strainRange);   // 映射到strain_range
+            specimen.put("frequencyHz", frequencyHz);   // 映射到frequency_hz
+            specimen.put("testTemperature", testTemperature);   // 映射到test_temperature
             
             // 最终疲劳寿命 - 直接对应fatigue_life字段
             String fatigueLifeKey = experimentName + "_result_" + i + "_fatigue_life";
