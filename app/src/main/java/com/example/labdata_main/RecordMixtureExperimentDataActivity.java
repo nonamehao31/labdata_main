@@ -47,6 +47,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.Set;
+import java.io.IOException;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -1119,6 +1122,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                     Map<String, Boolean> processedHamburgTests = new HashMap<>();
                     // 用于跟踪已处理的沥青混合料弯曲试验数据
                     Map<String, Boolean> processedBendingTests = new HashMap<>();
+                    // 用于跟踪已处理的动态模量试验数据
+                    Map<String, Boolean> processedDynamicModulusTests = new HashMap<>();
                     
                     // 保存实验数据
                     for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
@@ -1139,6 +1144,29 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                                 hasDynamicModulusData = true;
                                 break;
                             }
+                        }
+
+                        // 在检查前，记录所有的实验数据键
+                        Log.d(TAG, "检查直接拉伸循环疲劳测黏弹损伤试验数据前，实验数据键: " + experiments.keySet());
+                        
+                        // 检查是否有直接拉伸循环疲劳测黏弹损伤试验数据
+                        boolean hasDirectStretchingFatigueTest = false;
+                        for (Map.Entry<String, String> expEntry : experiments.entrySet()) {
+                            String experimentName = expEntry.getKey();
+                            if (experimentName.contains("沥青混合料直接拉伸循环疲劳测黏弹损伤试验")) {
+                                hasDirectStretchingFatigueTest = true;
+                                Log.d(TAG, "找到了直接拉伸循环疲劳测黏弹损伤试验数据: " + experimentName);
+                                break;
+                            }
+                        }
+                        
+                        // 检查后，记录检测结果
+                        Log.d(TAG, "直接拉伸循环疲劳测黏弹损伤试验数据检测结果: " + hasDirectStretchingFatigueTest);
+                        
+                        // 如果有直接拉伸循环疲劳测黏弹损伤试验数据
+                        if (hasDirectStretchingFatigueTest) {
+                            Log.d(TAG, "开始保存直接拉伸循环疲劳测黏弹损伤试验数据");
+                            saveDirectStretchingFatigueTestData(mixRatioId, experiments);
                         }
                         
                         if (hasDynamicModulusData) {
@@ -1166,6 +1194,13 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             processedBendingTests.put(mixRatioId, true);
                         }
                         
+                        // 检查是否有动态模量试验数据需要保存
+                        if (assignedExperiments.contains("动态模量试验") && !processedDynamicModulusTests.containsKey(mixRatioId)) {
+                            // 提取并保存动态模量试验数据
+                            saveDynamicModulusTestData(mixRatioId, experiments);
+                            processedDynamicModulusTests.put(mixRatioId, true);
+                        }
+                        
                         // 只保存被指派给该配比的实验
                         for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
                             String experimentName = experimentEntry.getKey();
@@ -1183,6 +1218,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             
                             // 沥青混合料弯曲试验数据已单独处理，跳过
                             if (experimentName.startsWith("沥青混合料弯曲试验_")) {
+                                continue;
+                            }
+
+                            // 动态模量试验数据已单独处理，跳过
+                            if (experimentName.startsWith("动态模量试验_")) {
                                 continue;
                             }
                             
@@ -1239,6 +1279,14 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                 }
             });
         }
+    }
+
+    /**
+     * 显示Toast消息
+     * @param message 要显示的消息
+     */
+    private void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
     
     /**
@@ -1642,6 +1690,152 @@ private void saveDynamicModulusTestData(String mixRatioId, Map<String, String> e
     } catch (Exception e) {
         Log.e(TAG, "保存动态模量试验数据时出错", e);
     }
+}
+
+/**
+ * 保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据到后端
+ * 
+ * @param mixRatioId 配比ID
+ * @param experiments 实验数据Map
+ */
+private void saveDirectStretchingFatigueTestData(String mixRatioId, Map<String, String> experiments) {
+    // 基本信息收集
+    Log.d(TAG, "开始保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据，配比ID: " + mixRatioId);
+    Map<String, Object> requestData = new HashMap<>();
+    requestData.put("taskId", currentTask.getTaskId());
+    requestData.put("mixRatioId", mixRatioId);
+    
+    // 1. 测试基本信息 - 映射到direct_stretching_fatigue_test表
+    String testDate = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_测试日期", "");
+    String operator = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_操作人员", "");
+    String equipmentId = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_测试设备", "");
+    String notes = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_备注", "");
+    
+    Map<String, Object> testInfo = new HashMap<>();
+    testInfo.put("testDate", testDate);
+    testInfo.put("operator", operator);
+    testInfo.put("equipmentId", equipmentId);
+    testInfo.put("notes", notes);
+    requestData.put("testInfo", testInfo);
+    
+// 2. 识别所有试件ID - 修改为从已有键名中提取
+Set<String> specimenIds = new HashSet<>();
+Pattern pattern = Pattern.compile("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_(fatigue|dynamic|height|diameter)_(\\d+)");
+
+for (String key : experiments.keySet()) {
+    Matcher matcher = pattern.matcher(key);
+    if (matcher.find()) {
+        String specimenId = matcher.group(2); // 提取匹配的第二个组，即试件编号
+        if (specimenId != null && !specimenId.trim().isEmpty()) {
+            specimenIds.add(specimenId);
+        }
+    }
+}
+
+Log.d(TAG, "识别到的试件ID: " + specimenIds);
+
+// 3. 收集每个试件的数据
+List<Map<String, Object>> specimensData = new ArrayList<>();
+
+for (String specimenId : specimenIds) {
+    Map<String, Object> specimenData = new HashMap<>();
+    
+    // 3.1 试件基本信息 - 使用正确的键名格式
+    specimenData.put("specimenId", specimenId);
+    specimenData.put("height", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_height_" + specimenId, ""));
+    specimenData.put("diameter", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_diameter_" + specimenId, ""));
+    
+    // 3.2 动态模量数据 - 使用dynamic前缀
+    Map<String, Map<String, String>> modulusData = new HashMap<>();
+    
+    // 初始动态模量数据
+    Map<String, String> initialModulusData = new HashMap<>();
+    initialModulusData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_modulus", ""));
+    initialModulusData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_cycle", ""));
+    initialModulusData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_phase", ""));
+    initialModulusData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_stress", ""));
+    initialModulusData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_strain", ""));
+    initialModulusData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_actuator", ""));
+    initialModulusData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_temp", ""));
+    initialModulusData.put("stage", "initial");
+    modulusData.put("initial", initialModulusData);
+    
+    // 最终动态模量数据
+    Map<String, String> finalModulusData = new HashMap<>();
+    finalModulusData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_modulus", ""));
+    finalModulusData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_cycle", ""));
+    finalModulusData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_phase", ""));
+    finalModulusData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_stress", ""));
+    finalModulusData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_strain", ""));
+    finalModulusData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_actuator", ""));
+    finalModulusData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_temp", ""));
+    finalModulusData.put("stage", "final");
+    modulusData.put("final", finalModulusData);
+    
+    specimenData.put("modulusData", modulusData);
+    
+    // 3.3 疲劳数据 - 使用fatigue前缀
+    Map<String, Map<String, String>> fatigueData = new HashMap<>();
+    
+    // 初始疲劳数据
+    Map<String, String> initialFatigueData = new HashMap<>();
+    initialFatigueData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_modulus", ""));
+    initialFatigueData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_cycle", ""));
+    initialFatigueData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_phase", ""));
+    initialFatigueData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_stress", ""));
+    initialFatigueData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_strain", ""));
+    initialFatigueData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_actuator", ""));
+    initialFatigueData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_temp", ""));
+    initialFatigueData.put("stage", "initial");
+    fatigueData.put("initial", initialFatigueData);
+    
+    // 最终疲劳数据
+    Map<String, String> finalFatigueData = new HashMap<>();
+    finalFatigueData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_modulus", ""));
+    finalFatigueData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_cycle", ""));
+    finalFatigueData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_phase", ""));
+    finalFatigueData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_stress", ""));
+    finalFatigueData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_strain", ""));
+    finalFatigueData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_actuator", ""));
+    finalFatigueData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_temp", ""));
+    finalFatigueData.put("stage", "final");
+    fatigueData.put("final", finalFatigueData);
+    
+    specimenData.put("fatigueData", fatigueData);
+    
+    // 添加到试件列表
+    specimensData.add(specimenData);
+}
+
+// 记录收集到的试件数量
+Log.d(TAG, "收集到的试件数据数量: " + specimensData.size());
+// 将试件数据添加到请求数据中
+requestData.put("specimens", specimensData);
+    
+    // 请求API保存数据
+    Log.d(TAG, "准备发送沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据到服务器");
+    mixtureTaskService.saveDirectStretchingFatigueTestData(requestData)
+            .enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        Log.d(TAG, "沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存成功: " + response.body().getMessage());
+                        // 记录完整的请求对象
+                        Log.d(TAG, "完整请求数据: " + new Gson().toJson(requestData));
+                        showToast("沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存成功");
+                    } else {
+                        String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
+                        Log.e(TAG, "沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存失败: " + errorMsg);
+                        showToast("沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存失败: " + errorMsg);
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                    Log.e(TAG, "沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存请求失败", t);
+                    showToast("沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存请求失败: " + t.getMessage());
+                }
+            });
 }
     
     /**

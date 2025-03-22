@@ -263,4 +263,13 @@ public interface MixtureTaskService {
      */
     @POST("api/mixtureTask/saveDynamicModulusTest")
     Call<ApiResponse<Map<String, Object>>> saveDynamicModulusTest(@Body Map<String, Object> requestData);
+
+    /**
+     * 保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据
+     * 
+     * @param requestData 包含任务ID、配比ID和试件数据的请求体
+     * @return 保存结果
+     */
+    @POST("api/mixtureTask/saveDirectStretchingFatigueTestData")
+    Call<ApiResponse<Map<String, String>>> saveDirectStretchingFatigueTestData(@Body Map<String, Object> requestData);
 }

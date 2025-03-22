@@ -285,4 +285,34 @@ public class MixtureTaskController {
                     .body(new ApiResponse<>(false, "保存动态模量试验数据失败: " + e.getMessage()));
         }
     }
+
+    /**
+     * 保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据
+     * 
+     * @param requestData 请求数据
+     * @return 保存结果
+     */
+    @PostMapping("/mixtureTask/saveDirectStretchingFatigueTestData")
+    public ResponseEntity<ApiResponse<Map<String, String>>> saveDirectStretchingFatigueTestData(@RequestBody Map<String, Object> requestData) {
+        try {
+            logger.info("接收到保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据请求");
+            
+            String taskId = (String) requestData.get("taskId");
+            String mixRatioId = (String) requestData.get("mixRatioId");
+            
+            if (taskId == null || mixRatioId == null) {
+                logger.error("缺少必要参数: taskId={}, mixRatioId={}", taskId, mixRatioId);
+                return ResponseEntity.badRequest().body(new ApiResponse<>(false, "缺少必要参数"));
+            }
+            
+            // 调用服务层方法保存数据
+            Map<String, String> result = mixtureTaskService.saveDirectStretchingFatigueTestData(requestData);
+            
+            return ResponseEntity.ok(new ApiResponse<>(true, "保存成功", result));
+        } catch (Exception e) {
+            logger.error("保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据时出错: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据失败: " + e.getMessage(), null));
+        }
+    }
 }

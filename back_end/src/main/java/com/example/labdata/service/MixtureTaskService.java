@@ -1319,6 +1319,131 @@ public class MixtureTaskService {
         }
     }
 
-
+/**
+ * 保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据
+ * 
+ * @param requestData 包含试验数据的请求Map
+ * @return 保存结果
+ */
+public Map<String, String> saveDirectStretchingFatigueTestData(Map<String, Object> requestData) {
+    try {
+        logger.info("处理沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据: {}", requestData);
+        Map<String, String> result = new HashMap<>();
+        
+        String taskId = (String) requestData.get("taskId");
+        String mixRatioId = (String) requestData.get("mixRatioId");
+        Map<String, Object> testInfo = (Map<String, Object>) requestData.get("testInfo");
+        List<Map<String, Object>> specimens = (List<Map<String, Object>>) requestData.get("specimens");
+        
+        // 1. 保存测试基本信息
+        String testDate = (String) testInfo.get("testDate");
+        String operator = (String) testInfo.get("operator");
+        String equipmentId = (String) testInfo.get("equipmentId");
+        String notes = (String) testInfo.get("notes");
+        
+        String testSql = "INSERT INTO direct_stretching_fatigue_test (task_id, mix_ratio_id, test_date, operator, equipment_id, notes, created_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
+        
+        Long testId = jdbcTemplate.queryForObject(testSql, 
+                Long.class,
+                taskId,
+                mixRatioId,
+                testDate != null && !testDate.isEmpty() ? testDate : null,
+                operator,
+                equipmentId,
+                notes,
+                new Timestamp(System.currentTimeMillis()));
+        
+        if (testId == null) {
+            throw new RuntimeException("无法获取插入的测试ID");
+        }
+        
+        // 2. 保存试件数据
+        for (Map<String, Object> specimen : specimens) {
+            String specimenId = (String) specimen.get("specimenId");
+            String height = (String) specimen.get("height");
+            String diameter = (String) specimen.get("diameter");
+            
+            // 保存试件基本信息
+            String specimenSql = "INSERT INTO direct_stretching_fatigue_specimens (test_id, specimen_id, height, diameter, created_at) " +
+                                "VALUES (?, ?, ?, ?, ?) RETURNING id";
+            
+            Long specimenDbId = jdbcTemplate.queryForObject(specimenSql,
+                    Long.class,
+                    testId, 
+                    specimenId,
+                    height != null && !height.isEmpty() ? Float.parseFloat(height) : null,
+                    diameter != null && !diameter.isEmpty() ? Float.parseFloat(diameter) : null,
+                    new Timestamp(System.currentTimeMillis()));
+            
+            // 3. 保存动态模量数据
+            Map<String, Map<String, String>> modulusData = (Map<String, Map<String, String>>) specimen.get("modulusData");
+            for (Map.Entry<String, Map<String, String>> entry : modulusData.entrySet()) {
+                String stage = entry.getKey(); // initial或final
+                Map<String, String> data = entry.getValue();
+                
+                String modulusSql = "INSERT INTO direct_stretching_modulus_data " +
+                                 "(specimen_id, stage, dynamic_modulus, cycle_count, phase_angle, force_level, " +
+                                 "equilibrium_strain, temperature, created_at) " +
+                                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                
+                jdbcTemplate.update(modulusSql,
+                        specimenDbId,
+                        stage,
+                        data.get("dynamicModulus") != null && !data.get("dynamicModulus").isEmpty() ? 
+                            Float.parseFloat(data.get("dynamicModulus")) : null,
+                        data.get("cycleCount") != null && !data.get("cycleCount").isEmpty() ? 
+                            Integer.parseInt(data.get("cycleCount")) : null,
+                        data.get("phaseAngle") != null && !data.get("phaseAngle").isEmpty() ? 
+                            Float.parseFloat(data.get("phaseAngle")) : null,
+                        data.get("forceLevel") != null && !data.get("forceLevel").isEmpty() ? 
+                            Float.parseFloat(data.get("forceLevel")) : null,
+                        data.get("uniformStrain") != null && !data.get("uniformStrain").isEmpty() ? 
+                            Float.parseFloat(data.get("uniformStrain")) : null,
+                        data.get("temperature") != null && !data.get("temperature").isEmpty() ? 
+                            Float.parseFloat(data.get("temperature")) : null,
+                        new Timestamp(System.currentTimeMillis()));
+            }
+            
+            // 4. 保存疲劳数据
+            Map<String, Map<String, String>> fatigueData = (Map<String, Map<String, String>>) specimen.get("fatigueData");
+            for (Map.Entry<String, Map<String, String>> entry : fatigueData.entrySet()) {
+                String stage = entry.getKey(); // initial或final
+                Map<String, String> data = entry.getValue();
+                
+                String fatigueSql = "INSERT INTO direct_stretching_fatigue_data " +
+                                 "(specimen_id, stage, dynamic_modulus, cycle_count, phase_angle, force_level, " +
+                                 "equilibrium_strain, temperature, created_at) " +
+                                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                
+                jdbcTemplate.update(fatigueSql,
+                        specimenDbId,
+                        stage,
+                        data.get("dynamicModulus") != null && !data.get("dynamicModulus").isEmpty() ? 
+                            Float.parseFloat(data.get("dynamicModulus")) : null,
+                        data.get("cycleCount") != null && !data.get("cycleCount").isEmpty() ? 
+                            Integer.parseInt(data.get("cycleCount")) : null,
+                        data.get("phaseAngle") != null && !data.get("phaseAngle").isEmpty() ? 
+                            Float.parseFloat(data.get("phaseAngle")) : null,
+                        data.get("forceLevel") != null && !data.get("forceLevel").isEmpty() ? 
+                            Float.parseFloat(data.get("forceLevel")) : null,
+                        data.get("equilibrium_strain") != null && !data.get("equilibrium_strain").isEmpty() ? 
+                            Float.parseFloat(data.get("equilibrium_strain")) : null,
+                        data.get("temperature") != null && !data.get("temperature").isEmpty() ? 
+                            Float.parseFloat(data.get("temperature")) : null,
+                        new Timestamp(System.currentTimeMillis()));
+            }
+        }
+        
+        result.put("success", "true");
+        result.put("message", "沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存成功");
+        result.put("testId", testId.toString());
+        
+        return result;
+    } catch (Exception e) {
+        logger.error("保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据时出错: {}", e.getMessage(), e);
+        throw new RuntimeException("保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据失败: " + e.getMessage(), e);
+    }
+}
 
 }
