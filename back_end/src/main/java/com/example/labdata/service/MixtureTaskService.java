@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.sql.Timestamp;
+import java.util.UUID;
 
 @Service
 public class MixtureTaskService {
@@ -1619,6 +1620,137 @@ private Double parseDoubleValue(Object value) {
     }
     
     return null;
+}
+
+
+/**
+ * 保存单轴压缩试验数据
+ * 
+ * @param requestData 前端传入的测试数据
+ * @return 保存结果
+ */
+public Map<String, String> saveUniaxialCompressionTestData(Map<String, Object> requestData) {
+    Map<String, String> result = new HashMap<>();
+    
+    try {
+        // 提取基本信息
+        String taskId = (String) requestData.get("taskId");
+        String mixRatioId = (String) requestData.get("mixRatioId");
+        Float testTemperature = requestData.get("testTemperature") != null ? 
+            Float.parseFloat(requestData.get("testTemperature").toString()) : null;
+        
+        // 生成测试ID
+        String testId = UUID.randomUUID().toString();
+        
+        // 插入测试记录
+String insertTestSql = "INSERT INTO mixture_uniaxial_compression_test " +
+                       "(test_id, task_id, mix_ratio_id, mix_ratio_name, compaction_method, " +
+                       "mixing_temperature, mixing_speed, mixing_time, test_date, test_temperature, " +
+                       "average_force, created_at, updated_at) " +
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+        
+        // 获取新增字段
+        String mixRatioName = (String) requestData.get("mixRatioName");
+        String compactionMethod = (String) requestData.get("compactionMethod");
+        Float mixingTemperature = requestData.get("mixingTemperature") != null ? 
+            Float.parseFloat(requestData.get("mixingTemperature").toString()) : null;
+        Float mixingSpeed = requestData.get("mixingSpeed") != null ? 
+            Float.parseFloat(requestData.get("mixingSpeed").toString()) : null;
+        Float mixingTime = requestData.get("mixingTime") != null ? 
+            Float.parseFloat(requestData.get("mixingTime").toString()) : null;
+        String testDate = (String) requestData.get("testDate");
+        Float averageForce = requestData.get("averageForce") != null ? 
+            Float.parseFloat(requestData.get("averageForce").toString()) : null;
+        
+        // 更新SQL参数绑定
+        jdbcTemplate.update(insertTestSql, testId, taskId, mixRatioId, mixRatioName, compactionMethod,
+                          mixingTemperature, mixingSpeed, mixingTime, testDate, testTemperature,
+                          averageForce);
+
+        // 记录收到的数据
+        logger.info("收到单轴压缩试验数据，测试ID: {}, 任务ID: {}, 配比ID: {}", testId, taskId, mixRatioId);
+        
+        // 获取并处理试件数据
+        List<Map<String, Object>> specimens = (List<Map<String, Object>>) requestData.get("specimens");
+        logger.info("试件数量: {}", specimens != null ? specimens.size() : 0);
+        
+        // 获取并处理试件数据
+        if (specimens != null) {
+            for (Map<String, Object> specimen : specimens) {
+                Integer specimenNumber = (Integer) specimen.get("specimenNumber");
+                Float diameter = specimen.get("diameter") != null ? 
+                    Float.parseFloat(specimen.get("diameter").toString()) : null;
+                Float height = specimen.get("height") != null ? 
+                    Float.parseFloat(specimen.get("height").toString()) : null;
+                
+                // 插入试件记录
+                String specimenId = UUID.randomUUID().toString();
+                String insertSpecimenSql = "INSERT INTO mixture_uniaxial_compression_specimen " +
+                                          "(specimen_id, test_id, specimen_number, diameter, height, created_at, updated_at) " +
+                                          "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                
+                jdbcTemplate.update(insertSpecimenSql, specimenId, testId, specimenNumber, diameter, height);
+                
+                // 处理P值数据
+                List<?> pValuesList = (List<?>) specimen.get("pValues");
+                if (pValuesList != null && !pValuesList.isEmpty()) {
+                    for (int i = 0; i < pValuesList.size(); i++) {
+                        Object pValueObj = pValuesList.get(i);
+                        if (pValueObj != null) {
+                            Float pValue = Float.parseFloat(pValueObj.toString());
+                            String insertPValueSql = "INSERT INTO mixture_uniaxial_compression_p_values " +
+                                                   "(specimen_id, p_index, p_value, created_at, updated_at) " +
+                                                   "VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                            
+                            jdbcTemplate.update(insertPValueSql, specimenId, i + 1, pValue);
+                        }
+                    }
+                }
+                
+                // 处理UTM数据
+                Map<String, Object> utmData = (Map<String, Object>) specimen.get("utmData");
+                if (utmData != null) {
+                    Float maxForce = utmData.get("maxForce") != null ? 
+                        Float.parseFloat(utmData.get("maxForce").toString()) : null;
+                    Float minForce = utmData.get("minForce") != null ? 
+                        Float.parseFloat(utmData.get("minForce").toString()) : null;
+                    Float workRatio = utmData.get("workRatio") != null ? 
+                        Float.parseFloat(utmData.get("workRatio").toString()) : null;
+                    Float displacement = utmData.get("displacement") != null ? 
+                        Float.parseFloat(utmData.get("displacement").toString()) : null;
+                    Float strain = utmData.get("strain") != null ? 
+                        Float.parseFloat(utmData.get("strain").toString()) : null;
+                    Float reboundModulus = utmData.get("reboundModulus") != null ? 
+                        Float.parseFloat(utmData.get("reboundModulus").toString()) : null;
+                    Float temperature = utmData.get("temperature") != null ? 
+                        Float.parseFloat(utmData.get("temperature").toString()) : null;
+                    
+                    String insertUtmDataSql = "INSERT INTO mixture_uniaxial_compression_uts028_data " +
+                                             "(specimen_id, max_force, min_force, work_ratio, displacement, strain, " +
+                                             "rebound_modulus, temperature, created_at, updated_at) " +
+                                             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                    
+                    jdbcTemplate.update(insertUtmDataSql, specimenId, maxForce, minForce, workRatio, 
+                                      displacement, strain, reboundModulus, temperature);
+                }
+            }
+        }
+        
+        // 记录日志
+        logger.info("成功保存单轴压缩试验数据，测试ID: {}", testId);
+        
+        // 返回结果
+        result.put("success", "true");
+        result.put("testId", testId);
+        
+    } catch (Exception e) {
+        logger.error("保存单轴压缩试验数据时出错: {}", e.getMessage(), e);
+        result.put("success", "false");
+        result.put("error", e.getMessage());
+        throw e;
+    }
+    
+    return result;
 }
 
 }

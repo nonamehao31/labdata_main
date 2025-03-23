@@ -332,4 +332,24 @@ public class MixtureTaskController {
                     .body(new ApiResponse<>(false, "四点弯曲疲劳寿命试验数据保存失败: " + e.getMessage(), null));
         }
     }
+
+    /**
+     * 保存单轴压缩试验数据
+     * 
+     * @param requestData 包含测试数据的Map
+     * @return 保存结果
+     */
+    @PostMapping("/mixtureTask/saveUniaxialCompressionTestData")
+    public ResponseEntity<ApiResponse<Map<String, String>>> saveUniaxialCompressionTestData(
+            @RequestBody Map<String, Object> requestData) {
+        logger.info("接收到单轴压缩试验数据保存请求: {}", requestData);
+        try {
+            Map<String, String> result = mixtureTaskService.saveUniaxialCompressionTestData(requestData);
+            return ResponseEntity.ok(new ApiResponse<>(true, "单轴压缩试验数据保存成功", result));
+        } catch (Exception e) {
+            logger.error("保存单轴压缩试验数据时出错: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "保存单轴压缩试验数据失败: " + e.getMessage(), null));
+        }
+    }
 }

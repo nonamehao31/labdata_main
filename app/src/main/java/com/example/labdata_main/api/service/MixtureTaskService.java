@@ -281,4 +281,13 @@ public interface MixtureTaskService {
      */
     @POST("api/mixtureTask/saveFourPointFatigueTestData")
     Call<ApiResponse<Map<String, String>>> saveFourPointFatigueTestData(@Body Map<String, Object> requestData);
+
+    /**
+     * 保存单轴压缩试验数据
+     * 
+     * @param requestData 包含任务ID、配比ID和试件数据的请求体
+     * @return 保存结果
+     */
+    @POST("api/mixtureTask/saveUniaxialCompressionTestData")
+    Call<ApiResponse<Map<String, String>>> saveUniaxialCompressionTestData(@Body Map<String, Object> requestData);
 }

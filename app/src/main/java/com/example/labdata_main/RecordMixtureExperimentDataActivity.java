@@ -1126,6 +1126,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                     Map<String, Boolean> processedDynamicModulusTests = new HashMap<>();
                     // 用于跟踪已处理的沥青混合料四点弯曲疲劳寿命试验数据
                     Map<String, Boolean> processedFourPointBendingFatigueTests = new HashMap<>();
+                    // 用于跟踪衣橱里的单轴压缩实验数据
+                    Map<String, Boolean> processedSingleAxisCompressionTests = new HashMap<>();
                     
                     // 保存实验数据
                     for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
@@ -1210,6 +1212,13 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             saveFourPointBendingFatigueTestData(mixRatioId, experiments);
                             processedFourPointBendingFatigueTests.put(mixRatioId, true);
                         }
+
+                        // 检查是否有单轴压缩试验数据需要保存
+                        if (assignedExperiments.contains("沥青混合料单轴压缩试验(圆柱体法)") && !processedSingleAxisCompressionTests.containsKey(mixRatioId)) {
+                            // 提取并保存单轴压缩试验数据
+                            saveUniaxialCompressionTestData(mixRatioId, experiments);
+                            processedSingleAxisCompressionTests.put(mixRatioId, true);
+                        }
                         
                         // 只保存被指派给该配比的实验
                         for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
@@ -1240,10 +1249,21 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             if (experimentName.startsWith("沥青混合料四点弯曲疲劳寿命试验_")) {
                                 continue;
                             }
+
+                            // 单轴压缩试验数据已单独处理，跳过
+                            if (experimentName.startsWith("沥青混合料单轴压缩试验_")) {
+                                continue;
+                            }
                             
                             // 检查实验是否被指派给该配比
                             boolean isAssigned = false;
                             for (String assigned : assignedExperiments) {
+                                // 特殊处理单轴压缩试验的情况，由于命名不完全匹配
+                                if (assigned.equals("沥青混合料单轴压缩试验(圆柱体法)") && experimentName.startsWith("沥青混合料单轴压缩试验_")) {
+                                    isAssigned = true;
+                                    break;
+                                }
+                                // 常规匹配处理
                                 if (experimentName.startsWith(assigned)) {
                                     isAssigned = true;
                                     break;
@@ -2058,6 +2078,291 @@ Log.d(TAG, "收集到的试件数据数量: " + specimensData.size());
             }
         }).start();
     }
+
+/**
+ * 保存沥青混合料单轴压缩试验数据到后端
+ * 
+ * @param mixRatioId 配比ID
+ * @param experiments 实验数据Map
+ */
+private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, String> experiments) {
+    Log.d(TAG, "开始保存单轴压缩试验数据，配比ID: " + mixRatioId);
+    
+    if (currentTask == null) {
+        Log.e(TAG, "保存单轴压缩试验数据失败: 当前任务为null");
+        showToast("无法保存数据：任务信息不完整");
+        return;
+    }
+    
+    try {
+        String experimentName = "沥青混合料单轴压缩试验";
+        String taskId = currentTask.getTaskId();
+        
+        // 确定试件数量
+        int specimenCount = 0;
+        for (String key : experiments.keySet()) {
+            if (key.matches(experimentName + "_diameter_\\d+")) {
+                int id = Integer.parseInt(key.substring(key.lastIndexOf("_") + 1));
+                if (id > specimenCount) {
+                    specimenCount = id;
+                }
+            }
+        }
+        
+        if (specimenCount == 0) {
+            Log.e(TAG, "找不到单轴压缩试验的试件数据");
+            showToast("无法保存数据：未找到试件信息");
+            return;
+        }
+        
+        // 准备要发送的数据
+        Map<String, Object> requestData = new HashMap<>();
+        requestData.put("taskId", taskId);
+        requestData.put("mixRatioId", mixRatioId);
+        
+        // 获取测试温度
+        Float testTemperature = parseFloatSafely(experiments.get(experimentName + "_temperature"));
+        requestData.put("testTemperature", testTemperature);
+
+        // 其他测试信息字段 - 尝试多种可能的键名格式
+        // 尝试直接从实验名获取
+        String mixRatioName = experiments.get(experimentName + "_mix_ratio_name");
+        // 如果为空，尝试从strength获取
+        if (mixRatioName == null) mixRatioName = experiments.get(experimentName + "_strength_1_mix_ratio_name");
+        // 尝试不带实验名前缀
+        if (mixRatioName == null) mixRatioName = experiments.get("mix_ratio_name"); 
+        
+        // 同样处理其他字段
+        String compactionMethod = experiments.get(experimentName + "_compaction_method");
+        if (compactionMethod == null) compactionMethod = experiments.get(experimentName + "_strength_1_compaction_method");
+        if (compactionMethod == null) compactionMethod = experiments.get("compaction_method");
+        
+        Float mixingTemperature = parseFloatSafely(experiments.get(experimentName + "_mixing_temperature"));
+        if (mixingTemperature == null) mixingTemperature = parseFloatSafely(experiments.get(experimentName + "_strength_1_mixing_temperature"));
+        if (mixingTemperature == null) mixingTemperature = parseFloatSafely(experiments.get("mixing_temperature"));
+        
+        Float mixingSpeed = parseFloatSafely(experiments.get(experimentName + "_mixing_speed"));
+        if (mixingSpeed == null) mixingSpeed = parseFloatSafely(experiments.get(experimentName + "_strength_1_mixing_speed"));
+        if (mixingSpeed == null) mixingSpeed = parseFloatSafely(experiments.get("mixing_speed"));
+        
+        Float mixingTime = parseFloatSafely(experiments.get(experimentName + "_mixing_time"));
+        if (mixingTime == null) mixingTime = parseFloatSafely(experiments.get(experimentName + "_strength_1_mixing_time"));
+        if (mixingTime == null) mixingTime = parseFloatSafely(experiments.get("mixing_time"));
+        
+        String testDate = experiments.get(experimentName + "_test_date");
+        if (testDate == null) testDate = experiments.get(experimentName + "_strength_1_test_date");
+        if (testDate == null) testDate = experiments.get("test_date");
+        
+        // 平均强度可能用average_force或strength_1_avg
+        Float averageForce = parseFloatSafely(experiments.get(experimentName + "_average_force"));
+        if (averageForce == null) averageForce = parseFloatSafely(experiments.get(experimentName + "_strength_1_avg"));
+        
+        Log.d(TAG, "收集的额外数据: mixRatioName=" + mixRatioName + ", compactionMethod=" + compactionMethod + 
+              ", mixingTemperature=" + mixingTemperature + ", mixingSpeed=" + mixingSpeed + 
+              ", mixingTime=" + mixingTime + ", testDate=" + testDate + ", averageForce=" + averageForce);
+        
+        // 准备试件列表
+        List<Map<String, Object>> specimens = new ArrayList<>();
+        
+        for (int i = 1; i <= specimenCount; i++) {
+            Map<String, Object> specimen = new HashMap<>();
+            specimen.put("specimenNumber", i);
+            
+            // 添加试件尺寸参数
+            Float diameter = parseFloatSafely(experiments.get(experimentName + "_diameter_" + i));
+            Float height = parseFloatSafely(experiments.get(experimentName + "_height_" + i));
+
+            specimen.put("diameter", diameter);   // 映射到 diameter
+            specimen.put("height", height);       // 映射到 height
+
+            // 获取P值列表
+            List<Float> pValues = new ArrayList<>();
+            
+            // 更新P值键名格式和收集逻辑
+            String[] possiblePrefixes = {
+                experimentName + "_p" + i + "_",            // 格式1
+                experimentName + "_strength_1_p" + i + "_", // 格式2
+                experimentName + "_strength_p" + i + "_"    // 格式3
+            };
+            
+            for (String prefix : possiblePrefixes) {
+                for (String key : experiments.keySet()) {
+                    if (key.startsWith(prefix)) {
+                        String pIdStr = key.substring(prefix.length());
+                        try {
+                            int pId = Integer.parseInt(pIdStr);
+                            Float pValue = parseFloatSafely(experiments.get(key));
+                            if (pValue != null) {
+                                while (pValues.size() < pId) {
+                                    pValues.add(null);
+                                }
+                                pValues.set(pId - 1, pValue);
+                            }
+                        } catch (NumberFormatException e) {
+                            Log.w(TAG, "跳过无效的P值ID: " + pIdStr);
+                        }
+                    }
+                }
+            }
+            
+            // 添加日志以便调试
+            Log.d(TAG, "试件 " + i + " 的P值数量: " + pValues.size());
+            if (pValues.isEmpty()) {
+                // 尝试使用备用格式收集P值
+                for (String key : experiments.keySet()) {
+                    if (key.matches(experimentName + ".*_p\\d+") || 
+                        key.matches(experimentName + ".*strength.*_p\\d+")) {
+                        Log.d(TAG, "发现可能的P值键: " + key);
+                        try {
+                            // 尝试提取P值ID
+                            String pattern = ".*_p(\\d+).*";
+                            Pattern p = Pattern.compile(pattern);
+                            Matcher m = p.matcher(key);
+                            if (m.find()) {
+                                int pId = Integer.parseInt(m.group(1));
+                                Float pValue = parseFloatSafely(experiments.get(key));
+                                if (pValue != null) {
+                                    while (pValues.size() < pId) {
+                                        pValues.add(null);
+                                    }
+                                    pValues.set(pId - 1, pValue);
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.w(TAG, "提取P值时出错: " + e.getMessage());
+                        }
+                    }
+                }
+                Log.d(TAG, "备用方法后的P值数量: " + pValues.size());
+            }
+            // 添加UTM数据
+            Map<String, Object> utmData = new HashMap<>();
+            
+            // 从哈希表中基于行列格式提取UTM数据
+            Map<Integer, Map<Integer, Float>> utmRowColData = new HashMap<>();
+            
+            // 收集所有行列UTM数据
+            for (String key : experiments.keySet()) {
+                if (key.startsWith(experimentName + "_utm_1_row") && key.contains("_col")) {
+                    try {
+                        // 解析行号和列号
+                        String rowPart = key.substring(key.indexOf("row") + 3, key.indexOf("_col"));
+                        String colPart = key.substring(key.indexOf("col") + 3);
+                        int rowIndex = Integer.parseInt(rowPart);
+                        int colIndex = Integer.parseInt(colPart);
+                        
+                        // 获取值
+                        Float value = parseFloatSafely(experiments.get(key));
+                        
+                        // 存储行列数据
+                        if (!utmRowColData.containsKey(rowIndex)) {
+                            utmRowColData.put(rowIndex, new HashMap<>());
+                        }
+                        utmRowColData.get(rowIndex).put(colIndex, value);
+                        
+                    } catch (Exception e) {
+                        Log.w(TAG, "解析UTM数据键时出错: " + key + ", " + e.getMessage());
+                    }
+                }
+            }
+            
+            // 尝试从行0获取数据（主要数据行）
+            Float maxForce = null, minForce = null, workRatio = null;
+            Float displacement = null, strain = null, reboundModulus = null, temperature = null;
+            
+            if (utmRowColData.containsKey(0)) {
+                Map<Integer, Float> rowData = utmRowColData.get(0);
+                maxForce = rowData.get(1);        // 第1列
+                minForce = rowData.get(2);        // 第2列
+                workRatio = rowData.get(3);       // 第3列
+                displacement = rowData.get(4);    // 第4列
+                strain = rowData.get(5);          // 第5列
+                reboundModulus = rowData.get(6);  // 第6列
+                temperature = rowData.get(7);     // 第7列
+            }
+            
+            // 如果行0没有完整数据，尝试其他行
+            if (maxForce == null) {
+                for (int row = 1; row <= 6; row++) {
+                    if (utmRowColData.containsKey(row)) {
+                        Map<Integer, Float> rowData = utmRowColData.get(row);
+                        if (rowData.containsKey(1)) { // 检查是否有第1列(maxForce)
+                            maxForce = rowData.get(1);
+                            minForce = rowData.getOrDefault(2, null);
+                            workRatio = rowData.getOrDefault(3, null);
+                            displacement = rowData.getOrDefault(4, null);
+                            strain = rowData.getOrDefault(5, null);
+                            reboundModulus = rowData.getOrDefault(6, null);
+                            temperature = rowData.getOrDefault(7, null);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 如果还是没有找到，尝试旧格式
+            if (maxForce == null) {
+                maxForce = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_maxForce"));
+                minForce = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_minForce"));
+                workRatio = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_workRatio"));
+                displacement = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_displacement"));
+                strain = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_strain"));
+                reboundModulus = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_reboundModulus"));
+                temperature = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_temperature"));
+            }
+            
+            // 记录找到的UTM数据
+            Log.d(TAG, "UTM数据: maxForce=" + maxForce + ", minForce=" + minForce + 
+                  ", workRatio=" + workRatio + ", displacement=" + displacement);
+            
+            utmData.put("maxForce", maxForce);
+            utmData.put("minForce", minForce);
+            utmData.put("workRatio", workRatio);
+            utmData.put("displacement", displacement);
+            utmData.put("strain", strain);
+            utmData.put("reboundModulus", reboundModulus);
+            utmData.put("temperature", temperature);
+            
+            specimen.put("utmData", utmData);
+            specimens.add(specimen);
+        }
+        
+        requestData.put("specimens", specimens);
+        
+        // 记录要发送的数据
+        Log.d(TAG, "单轴压缩试验数据准备完成: " + requestData);
+        
+        // 调用API保存数据
+        Call<ApiResponse<Map<String, String>>> call = mixtureTaskService.saveUniaxialCompressionTestData(requestData);
+        call.enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    ApiResponse<Map<String, String>> apiResponse = response.body();
+                    if (apiResponse.isSuccess()) {
+                        Log.d(TAG, "单轴压缩试验数据保存成功");
+                        showToast("单轴压缩试验数据保存成功");
+                    } else {
+                        Log.e(TAG, "保存单轴压缩试验数据错误: " + apiResponse.getMessage());
+                        showToast("保存数据失败: " + apiResponse.getMessage());
+                    }
+                } else {
+                    Log.e(TAG, "保存单轴压缩试验数据请求失败: " + (response.errorBody() != null ? response.errorBody().toString() : "未知错误"));
+                    showToast("保存数据请求失败: 服务器错误");
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                Log.e(TAG, "保存单轴压缩试验数据网络错误", t);
+                showToast("保存数据失败: 网络连接错误");
+            }
+        });
+    } catch (Exception e) {
+        Log.e(TAG, "保存单轴压缩试验数据时出现异常", e);
+        showToast("保存数据失败: " + e.getMessage());
+    }
+}
 
     /**
      * 保存应用状态，在屏幕旋转或其他配置变更时调用
