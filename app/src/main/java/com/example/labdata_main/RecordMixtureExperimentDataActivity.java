@@ -50,6 +50,7 @@ import java.util.Set;
 import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import  java.util.UUID;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -70,6 +71,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     private SwipeRefreshLayout swipeRefreshLayout;
     private MixtureTaskService mixtureTaskService;
     private ArrayList<Map<String, String>> savedExperimentData; // 保存实验数据的状态
+
+    private  Gson gson = new Gson();
 
     /**
      * API回调接口
@@ -1126,8 +1129,12 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                     Map<String, Boolean> processedDynamicModulusTests = new HashMap<>();
                     // 用于跟踪已处理的沥青混合料四点弯曲疲劳寿命试验数据
                     Map<String, Boolean> processedFourPointBendingFatigueTests = new HashMap<>();
-                    // 用于跟踪衣橱里的单轴压缩实验数据
+                    // 用于跟踪已处理的单轴压缩实验数据
                     Map<String, Boolean> processedSingleAxisCompressionTests = new HashMap<>();
+                    // 用于跟踪已处理的劈裂试验数据
+                    Map<String, Boolean> processedSplittingTests = new HashMap<>();
+                    
+                    
                     
                     // 保存实验数据
                     for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
@@ -1219,6 +1226,13 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             saveUniaxialCompressionTestData(mixRatioId, experiments);
                             processedSingleAxisCompressionTests.put(mixRatioId, true);
                         }
+
+                        // 检查是否有劈裂试验数据需要保存
+                        if (assignedExperiments.contains("沥青混合料劈裂试验") && !processedSplittingTests.containsKey(mixRatioId)) {
+                            // 提取并保存劈裂试验数据
+                            saveSplittingTestData(mixRatioId, experiments);
+                            processedSplittingTests.put(mixRatioId, true);
+                        }
                         
                         // 只保存被指派给该配比的实验
                         for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
@@ -1252,6 +1266,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
 
                             // 单轴压缩试验数据已单独处理，跳过
                             if (experimentName.startsWith("沥青混合料单轴压缩试验_")) {
+                                continue;
+                            }
+
+                            // 棱柱劈裂试验数据已单独处理，跳过
+                            if (experimentName.startsWith("棱柱劈裂试验_")) {
                                 continue;
                             }
                             
@@ -2361,6 +2380,129 @@ private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, Stri
     } catch (Exception e) {
         Log.e(TAG, "保存单轴压缩试验数据时出现异常", e);
         showToast("保存数据失败: " + e.getMessage());
+    }
+}
+
+private void saveSplittingTestData(String mixRatioId, Map<String, String> experiments) {
+    Log.d(TAG, "开始保存劈裂试验数据，配比ID: " + mixRatioId);
+    
+    // 创建请求数据哈希表
+    Map<String, Object> requestData = new HashMap<>();
+    
+    // 基本测试信息
+    requestData.put("taskId", currentTask.getTaskId());
+    requestData.put("mixRatioId", mixRatioId);
+    requestData.put("testId", UUID.randomUUID().toString());
+    requestData.put("operator", currentTask.getExperimenter());
+    
+    // 测试基本参数
+    String testTemperature = null;
+    for (Map.Entry<String, String> entry : experiments.entrySet()) {
+        if (entry.getKey().equals("沥青混合料劈裂试验_temperature")) {
+            testTemperature = entry.getValue();
+            requestData.put("testTemperature", testTemperature);
+            break;
+        }
+    }
+    
+    // 添加测试设备信息
+    requestData.put("testEquipment", experiments.getOrDefault("沥青混合料劈裂试验_equipment", ""));
+    requestData.put("testMethod", experiments.getOrDefault("沥青混合料劈裂试验_method", ""));
+    requestData.put("testStandard", experiments.getOrDefault("沥青混合料劈裂试验_standard", ""));
+    
+    // 查找试件数量
+    int specimenCount = 1;
+    for (int i = 1; i <= 10; i++) { // 假设最多10个试件
+        if (experiments.containsKey("沥青混合料劈裂试验_diameter_" + i)) {
+            specimenCount = Math.max(specimenCount, i);
+        }
+    }
+    requestData.put("specimenCount", specimenCount);
+    
+    // 创建试件数据数组
+    List<Map<String, Object>> specimens = new ArrayList<>();
+    
+    // 收集每个试件的数据
+    for (int specimenId = 1; specimenId <= specimenCount; specimenId++) {
+        Map<String, Object> specimen = new HashMap<>();
+        
+        // 试件ID
+        specimen.put("specimenId", UUID.randomUUID().toString());
+        specimen.put("specimenNumber", specimenId);
+        
+        // 试件尺寸
+        String diameterKey = "沥青混合料劈裂试验_diameter_" + specimenId;
+        String heightKey = "沥青混合料劈裂试验_height_" + specimenId;
+        
+        specimen.put("diameter", experiments.getOrDefault(diameterKey, ""));
+        specimen.put("height", experiments.getOrDefault(heightKey, ""));
+        
+        // 抗拉强度数据
+        String p1Key = "沥青混合料劈裂试验_strength_" + specimenId + "_p1";
+        String p2Key = "沥青混合料劈裂试验_strength_" + specimenId + "_p2";
+        String p3Key = "沥青混合料劈裂试验_strength_" + specimenId + "_p3";
+        String pAvgKey = "沥青混合料劈裂试验_strength_" + specimenId + "_avg";
+        
+        specimen.put("p1Value", experiments.getOrDefault(p1Key, ""));
+        specimen.put("p2Value", experiments.getOrDefault(p2Key, ""));
+        specimen.put("p3Value", experiments.getOrDefault(p3Key, ""));
+        specimen.put("pAverage", experiments.getOrDefault(pAvgKey, ""));
+        
+        // 水平应变变形数据
+        String x1Key = "沥青混合料劈裂试验_deformation_" + specimenId + "_x1";
+        String x2Key = "沥青混合料劈裂试验_deformation_" + specimenId + "_x2";
+        String x3Key = "沥青混合料劈裂试验_deformation_" + specimenId + "_x3";
+        String xAvgKey = "沥青混合料劈裂试验_deformation_" + specimenId + "_avg";
+        
+        specimen.put("x1Value", experiments.getOrDefault(x1Key, ""));
+        specimen.put("x2Value", experiments.getOrDefault(x2Key, ""));
+        specimen.put("x3Value", experiments.getOrDefault(x3Key, ""));
+        specimen.put("xAverage", experiments.getOrDefault(xAvgKey, ""));
+        
+        // 计算结果
+        String poissonRatioKey = "沥青混合料劈裂试验_poisson_ratio_" + specimenId;
+        String rtKey = "沥青混合料劈裂试验_rt_" + specimenId;
+        String strainKey = "沥青混合料劈裂试验_strain_" + specimenId;
+        String stKey = "沥青混合料劈裂试验_st_" + specimenId;
+        
+        specimen.put("poissonRatio", experiments.getOrDefault(poissonRatioKey, ""));
+        specimen.put("tensileStrength", experiments.getOrDefault(rtKey, ""));
+        specimen.put("failureStrain", experiments.getOrDefault(strainKey, ""));
+        specimen.put("stiffnessModulus", experiments.getOrDefault(stKey, ""));
+        
+        specimens.add(specimen);
+    }
+    
+    // 将试件数据添加到请求中
+    requestData.put("specimens", specimens);
+    
+    // 调用API保存数据
+    try {
+        Log.d(TAG, "发送劈裂试验数据到后端: " + gson.toJson(requestData));
+        
+        Call<ApiResponse<Map<String, String>>> call = mixtureTaskService.saveSplittingTestData(requestData);
+        call.enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Log.d(TAG, "劈裂试验数据保存成功");
+                    runOnUiThread(() -> Toast.makeText(RecordMixtureExperimentDataActivity.this, "劈裂试验数据保存成功", Toast.LENGTH_SHORT).show());
+                } else {
+                    String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
+                    Log.e(TAG, "劈裂试验数据保存失败: " + errorMsg);
+                    runOnUiThread(() -> Toast.makeText(RecordMixtureExperimentDataActivity.this, "劈裂试验数据保存失败: " + errorMsg, Toast.LENGTH_LONG).show());
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                Log.e(TAG, "劈裂试验数据保存请求失败", t);
+                runOnUiThread(() -> Toast.makeText(RecordMixtureExperimentDataActivity.this, "网络错误，请稍后重试", Toast.LENGTH_LONG).show());
+            }
+        });
+    } catch (Exception e) {
+        Log.e(TAG, "保存劈裂试验数据异常", e);
+        runOnUiThread(() -> Toast.makeText(this, "保存劈裂试验数据出错: " + e.getMessage(), Toast.LENGTH_LONG).show());
     }
 }
 

@@ -32,9 +32,11 @@ import java.util.Map;
 public class MixtureTaskController {
 
     private static final Logger logger = LoggerFactory.getLogger(MixtureTaskController.class);
+    private static final Logger log = LoggerFactory.getLogger(MixtureTaskController.class);
 
     @Autowired
     private MixtureTaskService mixtureTaskService;
+
 
     @GetMapping("/mixtureTask/list")
     public ResponseEntity<List<MixtureTask>> getAllMixtureTasks() {
@@ -350,6 +352,22 @@ public class MixtureTaskController {
             logger.error("保存单轴压缩试验数据时出错: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "保存单轴压缩试验数据失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 保存劈裂试验数据
+     */
+    @PostMapping("/mixtureTask/saveSplittingTestData")
+    public ResponseEntity<ApiResponse<Map<String, String>>> saveSplittingTestData(
+            @RequestBody Map<String, Object> requestData) {
+        try {
+            Map<String, String> result = mixtureTaskService.saveSplittingTestData(requestData);
+            return ResponseEntity.ok(new ApiResponse<>(true, "劈裂试验数据保存成功", result));
+        } catch (Exception e) {
+            log.error("保存劈裂试验数据时发生错误: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "保存劈裂试验数据失败: " + e.getMessage(), null));
         }
     }
 }

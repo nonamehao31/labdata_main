@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.sql.Timestamp;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 @Service
 public class MixtureTaskService {
@@ -47,6 +48,7 @@ public class MixtureTaskService {
     private final MixRatioStoneRepository mixRatioStoneRepository;
     private final SupportMixtureTaskRepository supportMixtureTaskRepository;
     private final JdbcTemplate jdbcTemplate;
+    private static final Logger log = LoggerFactory.getLogger(MixtureTaskService.class);
 
     private static final Logger logger = LoggerFactory.getLogger(MixtureTaskService.class);
 
@@ -1622,6 +1624,124 @@ private Double parseDoubleValue(Object value) {
     return null;
 }
 
+    /**
+     * 保存劈裂试验数据
+     *
+     * @param requestData 前端传入的测试数据
+     * @return 保存结果
+     */
+    public Map<String, String> saveSplittingTestData(Map<String, Object> requestData) {
+        Map<String, String> result = new HashMap<>();
+
+        try {
+            // 提取基本信息
+            String taskId = (String) requestData.get("taskId");
+            String mixRatioId = (String) requestData.get("mixRatioId");
+            String testId = (String) requestData.get("testId");
+            String operator = (String) requestData.get("operator");
+            String testEquipment = (String) requestData.get("testEquipment");
+            String testMethod = (String) requestData.get("testMethod");
+            String testStandard = (String) requestData.get("testStandard");
+            String remarks = (String) requestData.get("remarks");
+
+            // 提取测试温度（如果有）
+            BigDecimal testTemperature = null;
+            if (requestData.get("testTemperature") != null && !requestData.get("testTemperature").toString().isEmpty()) {
+                testTemperature = new BigDecimal(requestData.get("testTemperature").toString());
+            }
+
+            // 插入测试记录
+            String insertTestSql = "INSERT INTO mixture_splitting_test " +
+                    "(test_id, task_id, mix_ratio_id, test_temperature, test_time, " +
+                    "operator, test_equipment, test_method, test_standard, remarks, " +
+                    "create_time, update_time) " +
+                    "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+
+            jdbcTemplate.update(insertTestSql,
+                    testId,
+                    taskId,
+                    mixRatioId,
+                    testTemperature,
+                    operator,
+                    testEquipment,
+                    testMethod,
+                    testStandard,
+                    remarks);
+
+            // 处理试件数据
+            List<Map<String, Object>> specimens = (List<Map<String, Object>>) requestData.get("specimens");
+            if (specimens != null && !specimens.isEmpty()) {
+                for (Map<String, Object> specimenData : specimens) {
+                    String specimenId = (String) specimenData.get("specimenId");
+                    Integer specimenNumber = specimenData.get("specimenNumber") != null ?
+                            Integer.parseInt(specimenData.get("specimenNumber").toString()) : null;
+
+                    // 提取试件尺寸
+                    BigDecimal diameter = getBigDecimalValue(specimenData, "diameter");
+                    BigDecimal height = getBigDecimalValue(specimenData, "height");
+
+                    // 提取p值
+                    BigDecimal p1Value = getBigDecimalValue(specimenData, "p1Value");
+                    BigDecimal p2Value = getBigDecimalValue(specimenData, "p2Value");
+                    BigDecimal p3Value = getBigDecimalValue(specimenData, "p3Value");
+                    // 不再直接使用前端传过来的pAverage，而是在后端计算
+                    //BigDecimal pAverage = getBigDecimalValue(specimenData, "pAverage");
+                    BigDecimal pAverage = calculateAverage(p1Value, p2Value, p3Value);
+
+                    // 提取x值
+                    BigDecimal x1Value = getBigDecimalValue(specimenData, "x1Value");
+                    BigDecimal x2Value = getBigDecimalValue(specimenData, "x2Value");
+                    BigDecimal x3Value = getBigDecimalValue(specimenData, "x3Value");
+                    BigDecimal xAverage = getBigDecimalValue(specimenData, "xAverage");
+
+                    // 提取计算结果
+                    BigDecimal poissonRatio = getBigDecimalValue(specimenData, "poissonRatio");
+                    BigDecimal tensileStrength = getBigDecimalValue(specimenData, "tensileStrength");
+                    BigDecimal failureStrain = getBigDecimalValue(specimenData, "failureStrain");
+                    BigDecimal stiffnessModulus = getBigDecimalValue(specimenData, "stiffnessModulus");
+
+                    // 插入试件记录
+                    String insertSpecimenSql = "INSERT INTO mixture_splitting_test_specimen " +
+                            "(specimen_id, test_id, specimen_number, diameter, height, " +
+                            "p1_value, p2_value, p3_value, p_average, " +
+                            "x1_value, x2_value, x3_value, x_average, " +
+                            "poisson_ratio, tensile_strength, failure_strain, stiffness_modulus) " +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+                    jdbcTemplate.update(insertSpecimenSql,
+                            specimenId,
+                            testId,
+                            specimenNumber,
+                            diameter,
+                            height,
+                            p1Value,
+                            p2Value,
+                            p3Value,
+                            pAverage,
+                            x1Value,
+                            x2Value,
+                            x3Value,
+                            xAverage,
+                            poissonRatio,
+                            tensileStrength,
+                            failureStrain,
+                            stiffnessModulus);
+                }
+            }
+
+            result.put("success", "true");
+            result.put("message", "劈裂试验数据保存成功");
+            result.put("testId", testId);
+
+        } catch (Exception e) {
+            log.error("保存劈裂试验数据失败", e);
+            result.put("success", "false");
+            result.put("message", "保存失败: " + e.getMessage());
+        }
+
+        return result;
+    }
+
 
 /**
  * 保存单轴压缩试验数据
@@ -1752,5 +1872,50 @@ String insertTestSql = "INSERT INTO mixture_uniaxial_compression_test " +
     
     return result;
 }
+
+
+
+/**
+ * 从Map中安全获取BigDecimal值
+ */
+private BigDecimal getBigDecimalValue(Map<String, Object> data, String key) {
+    if (data.containsKey(key) && data.get(key) != null && !data.get(key).toString().isEmpty()) {
+        try {
+            return new BigDecimal(data.get(key).toString());
+        } catch (NumberFormatException e) {
+            log.warn("无法解析BigDecimal值: " + key + " = " + data.get(key), e);
+        }
+    }
+    return null;
+}
+
+    /**
+     * 计算平均值
+     * @param values
+     * @return
+     */
+    private BigDecimal calculateAverage(BigDecimal... values) {
+        if (values == null || values.length == 0) {
+            return null;
+        }
+
+        BigDecimal sum = BigDecimal.ZERO;
+        int count = 0;
+        
+        for (BigDecimal value : values) {
+            if (value != null) {
+                sum = sum.add(value);
+                count++;
+            }
+        }
+        
+        // 如果没有有效值，返回null而不是尝试除以零
+        if (count == 0) {
+            return null;
+        }
+        
+        // 使用实际的非null值数量作为除数
+        return sum.divide(new BigDecimal(count), 2, BigDecimal.ROUND_HALF_UP);
+    }
 
 }

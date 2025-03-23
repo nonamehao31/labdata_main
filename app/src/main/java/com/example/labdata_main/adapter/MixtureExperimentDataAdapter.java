@@ -45,6 +45,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     private List<Map<String, Object>> methodsAndRatios;
     private List<Map<String, Object>> mixingEquipment;
     private List<Map<String, Object>> formingEquipment;
+    private List<Map<String, Object>> mixRatioExperimentPairs = new ArrayList<>();
 
     public interface OnDeviceScanRequestListener {
         void onDeviceScanRequested(int position, String experimentName);
@@ -60,9 +61,10 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         this.methodsAndRatios = new ArrayList<>();
         this.mixingEquipment = new ArrayList<>();
         this.formingEquipment = new ArrayList<>();
-        this.taskAssignments = new ArrayList<>();
-        this.mixRatioTaskAssignments = new HashMap<>();
-    }
+    this.taskAssignments = new ArrayList<>();
+    this.mixRatioTaskAssignments = new HashMap<>();
+    initMixRatioExperimentPairs(); // 调用初始化方法
+}
 
     @NonNull
     @Override
@@ -74,7 +76,11 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Map<String, Object> mixRatio = mixRatios.get(position);
+        // 获取配比-实验组合项
+        Map<String, Object> pair = mixRatioExperimentPairs.get(position);
+        Map<String, Object> mixRatio = (Map<String, Object>) pair.get("mixRatio");
+        String experimentType = (String) pair.get("experimentType");
+        
         Object idObj = mixRatio.get("id");
         
         // 安全地将ID解析为Long
@@ -84,7 +90,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             return;
         }
         
-        Log.d("MixtureAdapter", "开始绑定配比 " + mixRatioId + " 的视图 | mixRatioTaskAssignments键集: " + mixRatioTaskAssignments.keySet());
+        Log.d("MixtureAdapter", "开始绑定配比 " + mixRatioId + " 的视图 | 实验类型: " + experimentType);
         
         // 获取当前配比的基本名称和描述，这可能不是最终显示值
         String mixRatioName = (String) mixRatio.get("name");
@@ -163,40 +169,13 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         holder.tvDescription.setText(mixRatioDescription);
         Log.d("MixtureAdapter", "设置tvDescription文本为: " + mixRatioDescription);
         
-        // 获取配比对应的实验类型 - 检查复合键和简单键
-        String mixRatioIdStr = String.valueOf(mixRatioId);
-        List<String> experiments = null;
-        
-        // 先检查简单键
-        if (experimentAssignments.containsKey(mixRatioIdStr)) {
-            experiments = experimentAssignments.get(mixRatioIdStr);
-            Log.d("MixtureAdapter", "找到配比ID " + mixRatioIdStr + " 的实验指派: " + experiments);
-        } else {
-            // 尝试查找复合键 (格式如 "7_18")
-            for (String key : experimentAssignments.keySet()) {
-                if (key.startsWith(mixRatioIdStr + "_") || key.endsWith("_" + mixRatioIdStr)) {
-                    experiments = experimentAssignments.get(key);
-                    Log.d("MixtureAdapter", "找到复合键 " + key + " 的实验指派: " + experiments);
-                    break;
-                }
-            }
-        }
-        
         // 设置实验名称和输入字段
-        if (experiments != null && !experiments.isEmpty()) {
-            String experimentText = "实验: " + String.join(", ", experiments);
-            holder.tvExperimentName.setText(experimentText);
-            Log.d("MixtureAdapter", "设置tvExperimentName文本为: " + experimentText);
-            
-            // 添加实验输入字段
-            holder.layoutInputs.removeAllViews();
-            for (String experimentName : experiments) {
-                holder.addInputField(experimentName, mixRatioId);
-            }
-        } else {
-            holder.tvExperimentName.setText("无指定实验");
-            Log.d("MixtureAdapter", "设置tvExperimentName文本为: 无指定实验");
-        }
+        holder.tvExperimentName.setText("实验: " + experimentType);
+        Log.d("MixtureAdapter", "设置tvExperimentName文本为: 实验: " + experimentType);
+        
+        // 添加实验输入字段
+        holder.layoutInputs.removeAllViews();
+        holder.addInputField(experimentType, mixRatioId);
         
         // 设置设备信息
         String deviceKey = String.valueOf(mixRatioId);
@@ -217,21 +196,61 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         final int adapterPosition = holder.getAdapterPosition();
         holder.btnScanDevice.setOnClickListener(v -> {
             if (deviceScanListener != null && adapterPosition != RecyclerView.NO_POSITION) {
-                // 获取当前配比的实验名称，如果有多个实验，使用第一个
-                String experimentName = "未知实验";
-                List<String> experimentList = experimentAssignments.get(String.valueOf(mixRatioId));
-                if (experimentList != null && !experimentList.isEmpty()) {
-                    experimentName = experimentList.get(0);
-                }
-                deviceScanListener.onDeviceScanRequested(adapterPosition, experimentName);
-                Log.d("MixtureAdapter", "请求扫描设备，位置: " + adapterPosition + ", 实验: " + experimentName);
+                // 获取当前配比的实验名称
+                deviceScanListener.onDeviceScanRequested(adapterPosition, experimentType);
             }
         });
     }
 
+    private void initMixRatioExperimentPairs() {
+        mixRatioExperimentPairs.clear();
+        
+        // 遍历所有配比
+        for (Map<String, Object> mixRatio : mixRatios) {
+            Object idObj = mixRatio.get("id");
+            Long mixRatioId = parseLongSafely(idObj);
+            if (mixRatioId == null) continue;
+            
+            // 获取当前配比分配的实验类型
+            String mixRatioIdStr = String.valueOf(mixRatioId);
+            Set<String> experimentTypes = new HashSet<>();
+            
+            // 从mixRatioTaskAssignments中提取实验类型
+            List<Map<String, Object>> assignments = mixRatioTaskAssignments.get(mixRatioIdStr);
+            if (assignments != null) {
+                for (Map<String, Object> assignment : assignments) {
+                    if (assignment.containsKey("experiment_type")) {
+                        String type = (String) assignment.get("experiment_type");
+                        if (type != null && !type.isEmpty()) {
+                            experimentTypes.add(type);
+                        }
+                    }
+                }
+            }
+            
+            // 如果没有找到实验类型，尝试从experimentAssignments获取
+            if (experimentTypes.isEmpty() && experimentAssignments.containsKey(mixRatioIdStr)) {
+                List<String> types = experimentAssignments.get(mixRatioIdStr);
+                if (types != null) {
+                    experimentTypes.addAll(types);
+                }
+            }
+            
+            // 为每个实验类型创建一个项目
+            for (String experimentType : experimentTypes) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("mixRatio", mixRatio);
+                item.put("experimentType", experimentType);
+                mixRatioExperimentPairs.add(item);
+            }
+        }
+        
+        Log.d("MixtureAdapter", "初始化了 " + mixRatioExperimentPairs.size() + " 个配比-实验类型组合");
+    }
+
     @Override
     public int getItemCount() {
-        return mixRatios.size();
+        return mixRatioExperimentPairs.size();
     }
 
     public Map<String, Map<String, String>> getExperimentData() {
@@ -642,6 +661,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         }
         
         // 更新视图
+        initMixRatioExperimentPairs();
         notifyDataSetChanged();
     }
     
@@ -1305,17 +1325,35 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                     double pSum = 0;
                     int pCount = 0;
 
+                    // 用于调试p值平均值计算
+                    Log.d("SplittingTest", "P值： p1=" + p1Str + ", p2=" + p2Str + ", p3=" + p3Str);
+
+                    try {
                     if (p1Str != null && !p1Str.isEmpty()) {
                         pSum += Double.parseDouble(p1Str);
                         pCount++;
                     }
+                    }
+                    catch (NumberFormatException e) {
+                        Log.e("SplittingTest", "P1解析错误: " + e.getMessage());
+                    }
+                    try {
                     if (p2Str != null && !p2Str.isEmpty()) {
                         pSum += Double.parseDouble(p2Str);
                         pCount++;
+                    }   
                     }
+                    catch (NumberFormatException e) {
+                        Log.e("SplittingTest", "P2解析错误: " + e.getMessage());
+                    }
+                    try {
                     if (p3Str != null && !p3Str.isEmpty()) {
                         pSum += Double.parseDouble(p3Str);
                         pCount++;
+                    }
+                    }
+                    catch (NumberFormatException e) {
+                        Log.e("SplittingTest", "P3解析错误: " + e.getMessage());
                     }
 
                     double pAvg = (pCount > 0) ? (pSum / pCount) : 0;
@@ -1529,14 +1567,19 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             avgLabel.setPadding(0, 0, 16, 0);
             avgContainer.addView(avgLabel);
 
-            TextInputEditText avgInput = new TextInputEditText(itemView.getContext());
-            avgInput.setLayoutParams(new LinearLayout.LayoutParams(
+            TextView avgValueDisplay = new TextView(itemView.getContext());
+            avgValueDisplay.setText("0.00");
+            avgValueDisplay.setTextSize(14);
+            avgValueDisplay.setTypeface(null, android.graphics.Typeface.BOLD);
+            avgValueDisplay.setLayoutParams(new LinearLayout.LayoutParams(
                     0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     1
             ));
-            avgInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-            avgInput.setHint("计算获得");
+            avgContainer.addView(avgValueDisplay);
+
+            TextInputEditText avgInput = new TextInputEditText(itemView.getContext());
+            avgInput.setVisibility(View.GONE);
             String avgKey = experimentName + "_strength_" + specimenId + "_avg";
             setupDataInput(avgInput, avgKey, mixRatioId);
             avgContainer.addView(avgInput);
@@ -1592,14 +1635,19 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             avgLabel.setPadding(0, 0, 16, 0);
             avgContainer.addView(avgLabel);
 
-            TextInputEditText avgInput = new TextInputEditText(itemView.getContext());
-            avgInput.setLayoutParams(new LinearLayout.LayoutParams(
+            TextView avgValueDisplay = new TextView(itemView.getContext());
+            avgValueDisplay.setText("0.00");
+            avgValueDisplay.setTextSize(14);
+            avgValueDisplay.setTypeface(null, android.graphics.Typeface.BOLD);
+            avgValueDisplay.setLayoutParams(new LinearLayout.LayoutParams(
                     0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     1
             ));
-            avgInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-            avgInput.setHint("计算获得");
+            avgContainer.addView(avgValueDisplay);
+
+            TextInputEditText avgInput = new TextInputEditText(itemView.getContext());
+            avgInput.setVisibility(View.GONE);
             String avgKey = experimentName + "_deformation_" + specimenId + "_avg";
             setupDataInput(avgInput, avgKey, mixRatioId);
             avgContainer.addView(avgInput);
@@ -3365,6 +3413,13 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     public void updateExperimentData(String mixRatioId, String key, String value) {
         Map<String, String> mixRatioData = experimentData.computeIfAbsent(mixRatioId, k -> new HashMap<>());
         mixRatioData.put(key, value);
+
+        //跟踪P值的信息
+        if (key.contains("strength") && (key.endsWith("_p1") || key.endsWith("_p2") || key.endsWith("_p3"))) {
+        Log.d("SplittingTest", "保存P值： mixRatioId=" + mixRatioId + ", key=" + key + ", value=" + value);
+    }
+
+        // 通知数据集变化
         Log.d("MixtureAdapter", "更新实验数据: mixRatioId=" + mixRatioId + ", key=" + key + ", value=" + value);
     }
 }
