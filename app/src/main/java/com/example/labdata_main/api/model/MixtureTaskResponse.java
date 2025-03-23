@@ -49,6 +49,9 @@ public class MixtureTaskResponse {
     @SerializedName("status")
     private String status;
     
+    @SerializedName("testing_status")
+    private String testingStatus;
+    
     @SerializedName("dueDate")
     private String dueDate;
     
@@ -168,6 +171,14 @@ public class MixtureTaskResponse {
     
     public void setStatus(String status) {
         this.status = status;
+    }
+    
+    public String getTestingStatus() {
+        return testingStatus;
+    }
+    
+    public void setTestingStatus(String testingStatus) {
+        this.testingStatus = testingStatus;
     }
     
     public String getDueDate() {

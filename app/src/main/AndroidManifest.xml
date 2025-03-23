@@ -209,11 +209,13 @@
 
         <activity
             android:name=".RecordExperimentDataActivity"
-            android:exported="false" />
+            android:exported="false" 
+            android:configChanges="orientation|screenSize|keyboardHidden"/>
 
         <activity
             android:name=".RecordMixtureExperimentDataActivity"
-            android:exported="false" />
+            android:exported="false" 
+            android:configChanges="orientation|screenSize|keyboardHidden"/>
 
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"

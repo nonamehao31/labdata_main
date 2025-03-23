@@ -2,7 +2,10 @@ package com.example.labdata_main;
 
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -100,7 +103,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         // 获取传入的任务ID
         String taskId = getIntent().getStringExtra("taskId");
         if (taskId != null && !taskId.isEmpty()) {
-            loadTaskData(taskId);
+            loadTaskData(taskId, true);
         } else {
             Toast.makeText(this, "未找到任务信息", Toast.LENGTH_SHORT).show();
             finish();
@@ -137,14 +140,6 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         btnBack.setOnClickListener(v -> onBackPressed());
     }
 
-    /**
-     * 加载任务数据
-     * @param taskId 任务ID
-     */
-    private void loadTaskData(String taskId) {
-        loadTaskData(taskId, true);
-    }
-    
     /**
      * 加载任务数据
      * @param taskId 任务ID
@@ -209,6 +204,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                     setupEmptyState(taskId);
                 }
             }
+
         });
     }
     
@@ -336,6 +332,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             adapter.setOnDeviceScanRequestListener(RecordMixtureExperimentDataActivity.this);
                             rvExperiments.setAdapter(adapter);
                             rvExperiments.setVisibility(View.VISIBLE);
+                            // 恢复临时数据
+                            restoreTemporaryData();
                             return;
                         }
                         
@@ -343,6 +341,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         adapter.setOnDeviceScanRequestListener(RecordMixtureExperimentDataActivity.this);
                         rvExperiments.setAdapter(adapter);
                         rvExperiments.setVisibility(View.VISIBLE);
+                        // 恢复临时数据
+                        restoreTemporaryData();
                         btnSave.setEnabled(true);
                         
                         // 适配器准备好后，加载已保存的实验数据
@@ -2650,5 +2650,120 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
         }
         
         // 恢复其他状态...
+    }
+
+    /**
+     * 保存临时输入的数据到SharedPreferences，在用户离开Activity时调用
+     */
+    private void saveTemporaryData() {
+        if (adapter != null) {
+            try {
+                // 获取当前输入的数据
+                Map<String, Map<String, String>> experimentData = adapter.getExperimentData();
+                
+                // 使用Gson将数据转换为JSON字符串
+                String jsonData = gson.toJson(experimentData);
+                
+                // 从Intent中获取任务ID
+                String taskId = getIntent().getStringExtra("taskId");
+                if (taskId == null) {
+                    taskId = String.valueOf(getIntent().getLongExtra("taskId", -1));
+                }
+                
+                // 使用SharedPreferences保存数据
+                SharedPreferences preferences = getSharedPreferences("mixture_experiment_temp_data", MODE_PRIVATE);
+                SharedPreferences.Editor editor = preferences.edit();
+                
+                // 使用任务ID作为唯一键
+                String dataKey = "temp_data_" + taskId;
+                editor.putString(dataKey, jsonData);
+                editor.apply();
+                
+                Log.d(TAG, "已保存临时数据: " + dataKey + ", 数据大小: " + jsonData.length());
+            } catch (Exception e) {
+                Log.e(TAG, "保存临时数据时出错", e);
+            }
+        }
+    }
+    
+    /**
+     * 从SharedPreferences恢复临时保存的数据，在Activity创建时调用
+     */
+    private void restoreTemporaryData() {
+        try {
+            // 从Intent中获取任务ID
+            String taskId = getIntent().getStringExtra("taskId");
+            if (taskId == null) {
+                taskId = String.valueOf(getIntent().getLongExtra("taskId", -1));
+            }
+            
+            // 从SharedPreferences读取之前保存的数据
+            SharedPreferences preferences = getSharedPreferences("mixture_experiment_temp_data", MODE_PRIVATE);
+            
+            // 使用任务ID作为唯一键
+            String dataKey = "temp_data_" + taskId;
+            String jsonData = preferences.getString(dataKey, null);
+            
+            Log.d(TAG, "尝试恢复临时数据, key=" + dataKey + ", 数据是否存在: " + (jsonData != null));
+            
+            if (jsonData != null && !jsonData.isEmpty() && adapter != null) {
+                // 使用Gson将JSON字符串转换回数据结构
+                Map<String, Map<String, String>> savedData = gson.fromJson(jsonData, 
+                        new com.google.gson.reflect.TypeToken<Map<String, Map<String, String>>>(){}.getType());
+                
+                if (savedData != null && !savedData.isEmpty()) {
+                    // 先延迟一点时间让RecyclerView完全初始化
+                    new Handler().postDelayed(() -> {
+                        // 遍历并逐个更新实验数据
+                        for (Map.Entry<String, Map<String, String>> entry : savedData.entrySet()) {
+                            String mixRatioId = entry.getKey();
+                            Map<String, String> experiments = entry.getValue();
+                            
+                            for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
+                                String key = experimentEntry.getKey();
+                                String value = experimentEntry.getValue();
+                                adapter.updateExperimentValue(mixRatioId, key, value);
+                                Log.d(TAG, "恢复数据项: mixRatioId=" + mixRatioId + ", key=" + key + ", value=" + value);
+                            }
+                        }
+                        
+                        // 强制UI刷新
+                        adapter.notifyDataSetChanged();
+                        
+                        Log.d(TAG, "已恢复临时数据: " + dataKey + ", 实验类型数: " + savedData.size());
+                        Toast.makeText(this, "已恢复之前输入的数据", Toast.LENGTH_SHORT).show();
+                    }, 300); // 延迟300毫秒，确保视图已绑定
+                } else {
+                    Log.d(TAG, "解析的savedData为空或无效");
+                }
+            } else {
+                if (jsonData == null) {
+                    Log.d(TAG, "没有找到临时保存的数据");
+                } else if (adapter == null) {
+                    Log.d(TAG, "适配器尚未初始化");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "恢复临时数据时出错", e);
+        }
+    }
+
+    /**
+     * 在用户离开Activity时保存数据
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        saveTemporaryData();
+    }
+    
+    /**
+     * 处理配置变化，如屏幕旋转
+     */
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        Log.d(TAG, "配置已更改，但Activity未重新创建");
+        // 因为在AndroidManifest.xml中添加了配置变更处理，所以无需额外操作
     }
 }

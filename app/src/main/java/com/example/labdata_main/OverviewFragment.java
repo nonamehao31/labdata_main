@@ -60,6 +60,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -497,8 +498,19 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 用于跟踪已处理的task_id基础部分，避免重复
         Set<String> processedBaseTaskIds = new HashSet<>();
         
-        // 遍历任务列表
+        // 用于跟踪任务状态 - 添加这部分代码来检查testing_status
+        Map<String, Boolean> taskPrefixStatusMap = new HashMap<>();
+        
+        // 获取当前用户的公司ID
+        String userCompanyId = sharedPrefsManager.getUserCompany();
+        
+        // 第一遍：检查所有任务的testing_status
         for (MixtureTaskResponse mixtureTask : tasks) {
+            // 跳过非本单位的任务
+            if (!userCompanyId.equals(mixtureTask.getTaskCompany())) {
+                continue;
+            }
+            
             String taskId = mixtureTask.getTaskId();
             
             // 提取基础UUID部分（去掉最后的"-数字"后缀）
@@ -508,7 +520,45 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 baseTaskId = taskId.substring(0, lastDashIndex);
             }
             
-            // 如果这个基础task_id已经处理过，则跳过
+            // 检查任务的测试状态
+            String testingStatus = mixtureTask.getTestingStatus();
+            Log.d(TAG, "任务ID: " + taskId + ", 前缀: " + baseTaskId + ", 测试状态: " + testingStatus);
+            
+            // 如果状态不是finished，标记该前缀的任务未完成
+            if (!"finished".equals(testingStatus)) {
+                taskPrefixStatusMap.put(baseTaskId, false);
+            } else if (!taskPrefixStatusMap.containsKey(baseTaskId)) {
+                // 如果之前没有设置过该前缀的状态，设置为已完成
+                taskPrefixStatusMap.put(baseTaskId, true);
+            }
+        }
+        
+        // 第二遍：处理任务，按照原有逻辑
+        for (MixtureTaskResponse mixtureTask : tasks) {
+            // 跳过非本单位的任务
+            if (!userCompanyId.equals(mixtureTask.getTaskCompany())){
+                continue;
+            }
+            
+            String taskId = mixtureTask.getTaskId();
+            
+            // 提取基础UUID部分（去掉最后的"-数字"后缀）
+            String baseTaskId = taskId;
+            int lastDashIndex = taskId.lastIndexOf("-");
+            if (lastDashIndex > 0) {
+                baseTaskId = taskId.substring(0, lastDashIndex);
+            }
+            
+            // 检查当前任务前缀是否所有任务都已完成
+            boolean allTasksFinished = taskPrefixStatusMap.getOrDefault(baseTaskId, true);
+            
+            // 如果所有任务都已完成，则跳过此任务
+            if (allTasksFinished) {
+                Log.d(TAG, "跳过已完成任务组，前缀: " + baseTaskId + ", 完整ID: " + taskId);
+                continue;
+            }
+            
+            // 如果这个基础task_id已经处理过，则跳过（保留原有的去重逻辑）
             if (processedBaseTaskIds.contains(baseTaskId)) {
                 Log.d(TAG, "跳过重复任务，基础ID: " + baseTaskId + ", 完整ID: " + taskId + ", 任务名称: " + mixtureTask.getTaskName());
                 continue;

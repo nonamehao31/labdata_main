@@ -15,6 +15,8 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -2182,18 +2184,32 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         }
         
         private void setupDataInput(TextInputEditText editText, String dataKey, long mixRatioId) {
+            // 为EditText设置Tag，以便后续能找到它
+            editText.setTag(dataKey);
+            
+            // 从保存的数据中恢复值（如果有）
+            String mixRatioIdStr = String.valueOf(mixRatioId);
+            Map<String, String> savedData = experimentData.get(mixRatioIdStr);
+            if (savedData != null && savedData.containsKey(dataKey)) {
+                String savedValue = savedData.get(dataKey);
+                if (savedValue != null && !savedValue.isEmpty()) {
+                    editText.setText(savedValue);
+                    Log.d("MixtureAdapter", "恢复输入框值: key=" + dataKey + ", value=" + savedValue);
+                }
+            }
+            
             editText.addTextChangedListener(new TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
+        
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
+        
                 @Override
                 public void afterTextChanged(Editable s) {
                     // 获取或创建该配比的数据Map
                     Map<String, String> mixRatioData = experimentData.computeIfAbsent(
-                            String.valueOf(mixRatioId),
+                            mixRatioIdStr,
                             k -> new HashMap<>()
                     );
                     // 保存实验数据
@@ -3399,8 +3415,12 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         // 更新实验数据值
         mixRatioExperiments.put(experimentKey, value);
         
-        // 通知数据集变化
-        notifyDataSetChanged();
+        Log.d("MixtureAdapter", "已更新数据: mixRatioId=" + mixRatioId + ", key=" + experimentKey + ", value=" + value);
+        
+        // 延迟一点时间让RecyclerView完全刷新
+        new Handler(Looper.getMainLooper()).post(() -> {
+            notifyDataSetChanged();
+        });
     }
     
     /**
@@ -3421,5 +3441,45 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
 
         // 通知数据集变化
         Log.d("MixtureAdapter", "更新实验数据: mixRatioId=" + mixRatioId + ", key=" + key + ", value=" + value);
+    }
+
+    /**
+     * 设置实验数据
+     * @param data 实验数据Map
+     */
+    public void setExperimentData(Map<String, Map<String, String>> data) {
+        if (data == null) return;
+        
+        Log.d("MixtureAdapter", "设置实验数据: " + data.size() + "个配比");
+        
+        // 遍历每个配比
+        for (Map.Entry<String, Map<String, String>> entry : data.entrySet()) {
+            String mixRatioId = entry.getKey();
+            Map<String, String> experimentValues = entry.getValue();
+            
+            // 遍历每个实验值
+            for (Map.Entry<String, String> valueEntry : experimentValues.entrySet()) {
+                String experimentKey = valueEntry.getKey();
+                String value = valueEntry.getValue();
+                
+                // 更新实验值
+                updateExperimentValue(mixRatioId, experimentKey, value);
+            }
+        }
+        
+        // 通知适配器数据已变更
+        notifyDataSetChanged();
+    }
+    
+    /**
+     * 刷新所有输入控件
+     */
+    public void refreshAllInputs() {
+        Log.d("MixtureAdapter", "刷新所有输入控件");
+        
+        // 在主线程上执行UI刷新
+        new Handler(Looper.getMainLooper()).post(() -> {
+            notifyDataSetChanged();
+        });
     }
 }
