@@ -35,6 +35,7 @@ import java.util.Set;
 import java.sql.Timestamp;
 import java.util.UUID;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 public class MixtureTaskService {
@@ -1156,10 +1157,11 @@ public class MixtureTaskService {
      */
     @Transactional
     public Map<String, Object> saveDynamicModulusTest(Map<String, Object> requestData) {
+        String taskId = (String) requestData.get("taskId");
         try {
             Map<String, Object> result = new HashMap<>();
             
-            String taskId = (String) requestData.get("taskId");
+            
             String mixRatioId = (String) requestData.get("mixRatioId");
             
             logger.info("保存动态模量试验数据: taskId={}, mixRatioId={}", taskId, mixRatioId);
@@ -1315,6 +1317,10 @@ public class MixtureTaskService {
             result.put("success", true);
             result.put("message", "动态模量试验数据保存成功");
             
+            // 更新任务状态
+            String taskAssignment = "动态模量试验";
+            updateExperimentTaskStatus(taskId, taskAssignment);
+            
             return result;
         } catch (Exception e) {
             logger.error("保存动态模量试验数据时出错: {}", e.getMessage(), e);
@@ -1442,6 +1448,10 @@ public Map<String, String> saveDirectStretchingFatigueTestData(Map<String, Objec
         result.put("message", "沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据保存成功");
         result.put("testId", testId.toString());
         
+        // 更新任务状态
+        String taskAssignment = "沥青混合料直接拉伸循环疲劳测黏弹损伤试验";
+        updateExperimentTaskStatus(taskId, taskAssignment);
+        
         return result;
     } catch (Exception e) {
         logger.error("保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据时出错: {}", e.getMessage(), e);
@@ -1479,7 +1489,7 @@ public Map<String, String> saveFourPointFatigueTestData(Map<String, Object> requ
         Double temperature = 25.0;  // 默认值
         Double frequency = 10.0;  // 默认值
         String loadingMode = "默认控制";  // 默认值
-        String notes = experimentName != null ? experimentName : "四点弯曲疲劳寿命试验";
+        String notes = experimentName != null ? experimentName : "沥青混合料四点弯曲疲劳寿命试验";
         
         // 保存测试基本信息
         String testSql = "INSERT INTO mixture_four_point_bending_test" +
@@ -1585,14 +1595,18 @@ public Map<String, String> saveFourPointFatigueTestData(Map<String, Object> requ
             }
         }
         
-        logger.info("成功保存四点弯曲疲劳寿命试验数据: testId={}", testId);
+        logger.info("成功保存沥青混合料弯曲试验数据: testId={}", testId);
         result.put("success", "true");
-        result.put("message", "四点弯曲疲劳寿命试验数据保存成功");
+        result.put("message", "沥青混合料弯曲试验数据保存成功");
+        
+        // 更新任务状态
+        String taskAssignment = "沥青混合料四点弯曲疲劳寿命试验";
+        updateExperimentTaskStatus(taskId, taskAssignment);
         
         return result;
     } catch (Exception e) {
-        logger.error("保存四点弯曲疲劳寿命试验数据时出错: {}", e.getMessage(), e);
-        throw new RuntimeException("保存四点弯曲疲劳寿命试验数据失败: " + e.getMessage(), e);
+        logger.error("保存沥青混合料四点弯曲疲劳寿命试验数据时出错: {}", e.getMessage(), e);
+        throw new RuntimeException("保存沥青混合料四点弯曲疲劳寿命试验数据失败: " + e.getMessage(), e);
     }
 }
 
@@ -1632,10 +1646,10 @@ private Double parseDoubleValue(Object value) {
      */
     public Map<String, String> saveSplittingTestData(Map<String, Object> requestData) {
         Map<String, String> result = new HashMap<>();
-
+String taskId = (String) requestData.get("taskId");
         try {
             // 提取基本信息
-            String taskId = (String) requestData.get("taskId");
+            
             String mixRatioId = (String) requestData.get("mixRatioId");
             String testId = (String) requestData.get("testId");
             String operator = (String) requestData.get("operator");
@@ -1739,6 +1753,10 @@ private Double parseDoubleValue(Object value) {
             result.put("message", "保存失败: " + e.getMessage());
         }
 
+        // 更新任务状态
+        String taskAssignment = "沥青混合料劈裂试验";
+        updateExperimentTaskStatus(taskId, taskAssignment);
+        
         return result;
     }
 
@@ -1751,10 +1769,10 @@ private Double parseDoubleValue(Object value) {
  */
 public Map<String, String> saveUniaxialCompressionTestData(Map<String, Object> requestData) {
     Map<String, String> result = new HashMap<>();
-    
+    String taskId = (String) requestData.get("taskId");
     try {
         // 提取基本信息
-        String taskId = (String) requestData.get("taskId");
+        
         String mixRatioId = (String) requestData.get("mixRatioId");
         Float testTemperature = requestData.get("testTemperature") != null ? 
             Float.parseFloat(requestData.get("testTemperature").toString()) : null;
@@ -1868,7 +1886,12 @@ String insertTestSql = "INSERT INTO mixture_uniaxial_compression_test " +
         result.put("success", "false");
         result.put("error", e.getMessage());
         throw e;
+        // 更新任务状态
+
     }
+
+    String taskAssignment = "沥青混合料单轴压缩试验(圆柱体法)";
+    updateExperimentTaskStatus(taskId, taskAssignment);
     
     return result;
 }
@@ -1900,22 +1923,54 @@ private BigDecimal getBigDecimalValue(Map<String, Object> data, String key) {
         }
 
         BigDecimal sum = BigDecimal.ZERO;
-        int count = 0;
-        
         for (BigDecimal value : values) {
             if (value != null) {
                 sum = sum.add(value);
-                count++;
             }
         }
-        
-        // 如果没有有效值，返回null而不是尝试除以零
-        if (count == 0) {
-            return null;
-        }
-        
-        // 使用实际的非null值数量作为除数
-        return sum.divide(new BigDecimal(count), 2, BigDecimal.ROUND_HALF_UP);
+
+        // 更新为
+        return sum.divide(new BigDecimal(values.length), RoundingMode.HALF_UP);
     }
 
+    /**
+     * 更新实验任务状态
+     * @param taskId 任务ID
+     * @param taskAssignment 实验类型
+     */
+    private void updateExperimentTaskStatus(String taskId, String taskAssignment) {
+        try {
+            // 提取任务前缀（如果任务ID包含连字符）
+            String taskIdPrefix = taskId;
+            int dashIndex = taskId.indexOf('-');
+            if (dashIndex > 0) {
+                taskIdPrefix = taskId.substring(0, dashIndex);
+            }
+            
+            // 使用JdbcTemplate直接更新数据库
+            String sql = "UPDATE mixture_task SET testing_status = 'finished' WHERE task_id = ? AND task_assignment = ?";
+             // 使用taskId进行精确匹配
+        int updatedRows = jdbcTemplate.update(sql, taskId, taskAssignment);
+        
+        if (updatedRows == 0) {
+            logger.warn("未找到匹配的任务(精确匹配)，尝试使用前缀匹配");
+            // 如果精确匹配未成功，尝试使用前缀匹配
+            sql = "UPDATE mixture_task SET testing_status = 'finished' WHERE task_id LIKE ? AND task_assignment = ?";
+            updatedRows = jdbcTemplate.update(sql, taskIdPrefix + "%", taskAssignment);
+        }
+        
+        if (updatedRows > 0) {
+            logger.info("成功更新任务ID: {} 的实验类型: {} 的状态为finished，影响行数: {}", taskId, taskAssignment, updatedRows);
+        } else {
+            logger.warn("没有找到匹配的任务记录: task_id={}, task_assignment={}", taskId, taskAssignment);
+            // 输出可能的任务分配值，以便调试
+            String checkSql = "SELECT DISTINCT task_assignment FROM mixture_task WHERE task_id = ? OR task_id LIKE ?";
+            List<String> assignments = jdbcTemplate.queryForList(checkSql, String.class, taskId, taskIdPrefix + "%");
+            logger.info("数据库中存在的任务分配: {}", assignments);
+        }
+    } catch (Exception e) {
+        logger.error("更新任务状态时出错: {}", e.getMessage(), e);
+    }
+    }
 }
+

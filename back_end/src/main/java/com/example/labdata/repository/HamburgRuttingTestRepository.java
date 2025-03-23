@@ -3,9 +3,15 @@ package com.example.labdata.repository;
 import com.example.labdata.model.HamburgRuttingTest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * 汉堡车辙实验数据访问接口
