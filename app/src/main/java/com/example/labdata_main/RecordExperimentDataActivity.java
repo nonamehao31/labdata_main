@@ -26,6 +26,7 @@ import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.AsphaltExperimentData;
 import com.example.labdata_main.api.request.PenetrationTestRequest;
 import com.example.labdata_main.api.request.SofteningPointTestRequest;
+import com.example.labdata_main.api.request.BrookfieldViscosityTestRequest;
 import com.example.labdata_main.model.Device;
 import com.example.labdata_main.model.DeviceInfo;
 import com.example.labdata_main.model.ExperimentData;
@@ -387,6 +388,9 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DUCTILITY)) {
                 experimentType = AsphaltExperimentData.TYPE_DUCTILITY;
                 Log.d("SaveData", "检测到延度实验数据，设置实验类型为: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
+                experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
+                Log.d("SaveData", "检测到布克菲尔粘度实验数据，设置实验类型为: " + experimentType);
             } else {
                 // 其他处理逻辑...
             }
@@ -401,6 +405,9 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DUCTILITY)) {
                 experimentType = AsphaltExperimentData.TYPE_DUCTILITY;
                 Log.d("SaveData", "检测到延度实验数据，设置实验类型为: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
+                experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
+                Log.d("SaveData", "检测到布克菲尔粘度实验数据，设置实验类型为: " + experimentType);
             } else {
                 // 如果只有一个实验类型，使用它
                 if (experimentData.size() == 1) {
@@ -444,6 +451,8 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             saveSofteningPointExperimentData();
         } else if (AsphaltExperimentData.TYPE_DUCTILITY.equals(experimentType)) {
             saveDuctilityExperimentData();
+        } else if (AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY.equals(experimentType)) {
+            saveBrookfieldViscosityExperimentData();
         } else {
             saveAsphaltExperimentData();
         }
@@ -945,6 +954,153 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                 runOnUiThread(() -> {
                     Toast.makeText(this,
                         String.format("保存数据时出错：%s", e.getMessage()),
+                        Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    /**
+     * 保存布鲁克菲尔德旋转黏度实验数据
+     */
+    private void saveBrookfieldViscosityExperimentData() {
+        Log.d("SaveData", "开始保存布鲁克菲尔德旋转黏度实验数据");
+        
+        // 验证数据
+        if (!validateExperimentData()) {
+            return;
+        }
+    
+        Map<String, Map<String, String>> experimentData = asphaltAdapter.getExperimentData();
+        
+        // 检查是否包含布鲁克菲尔德旋转黏度实验数据
+        if (!experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
+            Log.e("SaveData", "未找到布鲁克菲尔德旋转黏度实验数据，实验类型键值 = " + AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY);
+            Log.e("SaveData", "可用的实验数据键值: " + experimentData.keySet());
+            Toast.makeText(this, "未找到布鲁克菲尔德旋转黏度实验数据", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        Map<String, String> viscosityData = experimentData.get(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY);
+        
+        // 添加调试日志
+        Log.d("SaveData", "布鲁克菲尔德旋转黏度实验数据内容: " + viscosityData.toString());
+        
+        // 验证必要的数据字段 - 布鲁克菲尔德旋转黏度实验需要至少一个温度点和对应的黏度测量值
+        boolean hasTemperaturePoint = false;
+        
+        for (String key : viscosityData.keySet()) {
+            if (key.startsWith(AsphaltExperimentData.Fields.BrookfieldViscosity.TEMPERATURE_PREFIX)) {
+                hasTemperaturePoint = true;
+                
+                // 检查该温度点是否有对应的黏度值
+                String pointId = key.substring(AsphaltExperimentData.Fields.BrookfieldViscosity.TEMPERATURE_PREFIX.length());
+                boolean hasViscosityValue = false;
+                
+                for (String viscosityKey : viscosityData.keySet()) {
+                    if (viscosityKey.startsWith(AsphaltExperimentData.Fields.BrookfieldViscosity.VISCOSITY_PREFIX + pointId + "_")) {
+                        hasViscosityValue = true;
+                        break;
+                    }
+                }
+                
+                if (!hasViscosityValue) {
+                    Log.e("SaveData", "温度点 " + pointId + " 没有对应的黏度测量值");
+                    Toast.makeText(this, "温度点 " + pointId + " 没有对应的黏度测量值", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+        }
+        
+        if (!hasTemperaturePoint) {
+            Log.e("SaveData", "布鲁克菲尔德旋转黏度实验至少需要一个温度点");
+            Toast.makeText(this, "布鲁克菲尔德旋转黏度实验至少需要一个温度点", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        executor.execute(() -> {
+            try {
+                // 构建要提交的数据对象
+                BrookfieldViscosityTestRequest request = new BrookfieldViscosityTestRequest();
+                
+                // 使用原始字符串类型的taskIdString，避免大数值问题
+                Log.d("SaveData", "布鲁克菲尔德旋转黏度实验数据提交 - 任务ID字符串: " + taskIdString);
+                request.setTaskId(taskIdString);
+                request.setExperimenter(sharedPrefsManager.getUserName());
+                request.setTestDate(System.currentTimeMillis());
+                
+                // 设置设备信息
+                if (viscosityData.containsKey("device_id")) {
+                    request.setDeviceId(viscosityData.get("device_id"));
+                    if (viscosityData.containsKey("device_name")) {
+                        request.setDeviceName(viscosityData.get("device_name"));
+                    }
+                    if (viscosityData.containsKey("device_manufacturer")) {
+                        request.setDeviceManufacturer(viscosityData.get("device_manufacturer"));
+                    }
+                    if (viscosityData.containsKey("device_model")) {
+                        request.setDeviceModel(viscosityData.get("device_model"));
+                    }
+                }
+                
+                // 设置所有实验值
+                request.setExperimentValues(viscosityData);
+                
+                // 发送到服务器
+                if (asphaltTaskService != null) {
+                    Log.d("SaveData", "开始提交布鲁克菲尔德旋转黏度实验数据到服务器 - 请求内容: " + request.toString());
+                    Call<ApiResponse<Boolean>> call = asphaltTaskService.submitBrookfieldViscosityTest(request);
+                    call.enqueue(new Callback<ApiResponse<Boolean>>() {
+                        @Override
+                        public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                                Log.d("SaveData", "布鲁克菲尔德旋转黏度实验数据已成功提交到服务器");
+                                
+                                // 在主线程中显示成功消息并关闭页面
+                                runOnUiThread(() -> {
+                                    Toast.makeText(RecordExperimentDataActivity.this, 
+                                        "布鲁克菲尔德旋转黏度实验数据保存成功，任务已完成", Toast.LENGTH_SHORT).show();
+                                    setResult(RESULT_OK);
+                                    finish();
+                                });
+                            } else {
+                                String errorMsg = (response.body() != null) ? response.body().getMessage() : "未知错误";
+                                Log.e("SaveData", "提交布鲁克菲尔德旋转黏度实验数据到服务器失败: " + errorMsg);
+                                Log.e("SaveData", "HTTP状态码: " + response.code());
+                                
+                                runOnUiThread(() -> {
+                                    Toast.makeText(RecordExperimentDataActivity.this, 
+                                        "提交布鲁克菲尔德旋转黏度实验数据到服务器失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        }
+                        
+                        @Override
+                        public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                            Log.e("SaveData", "提交布鲁克菲尔德旋转黏度实验数据到服务器失败", t);
+                            runOnUiThread(() -> {
+                                Toast.makeText(RecordExperimentDataActivity.this, 
+                                    String.format("提交布鲁克菲尔德旋转黏度实验数据到服务器失败：%s", t.getMessage()), 
+                                    Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    });
+                } else {
+                    Log.e("SaveData", "asphaltTaskService is null");
+                    runOnUiThread(() -> {
+                        Toast.makeText(RecordExperimentDataActivity.this, 
+                            "无法连接到服务器，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    });
+                }
+                
+                // 发送广播通知更新任务列表
+                Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+                sendBroadcast(refreshIntent);
+            } catch (Exception e) {
+                Log.e("SaveData", "保存布鲁克菲尔德旋转黏度实验数据时出错", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(RecordExperimentDataActivity.this, 
+                        String.format("保存布鲁克菲尔德旋转黏度实验数据时出错：%s", e.getMessage()), 
                         Toast.LENGTH_SHORT).show();
                 });
             }

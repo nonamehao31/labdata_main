@@ -4,6 +4,7 @@ import com.example.labdata_main.api.model.AsphaltDetailResponse;
 import com.example.labdata_main.api.request.DuctilityTestRequest;
 import com.example.labdata_main.api.request.PenetrationTestRequest;
 import com.example.labdata_main.api.request.SofteningPointTestRequest;
+import com.example.labdata_main.api.request.BrookfieldViscosityTestRequest;
 import com.example.labdata_main.api.model.AsphaltTaskResponse;
 import com.example.labdata_main.api.model.ApiResponse;
 
@@ -94,4 +95,13 @@ public interface AsphaltTaskService {
      */
     @POST("api/ductility/submit")
     Call<ApiResponse<Boolean>> submitDuctilityTest(@Body DuctilityTestRequest request);
+
+
+    /**
+     * 提交布鲁克菲尔德试验数据
+     * @param request 延度试验数据请求
+     * @return API响应
+     */
+    @POST("api/brookfield-viscosity/submit")
+    Call<ApiResponse<Boolean>> submitBrookfieldViscosityTest(@Body BrookfieldViscosityTestRequest request);
 }
