@@ -37,6 +37,9 @@ public class AsphaltTask {
     @Column(name = "status", nullable = false)
     private String status;
     
+    @Column(name = "experiment_status", nullable = false, columnDefinition = "varchar(255) default 'unfinished'")
+    private String experimentStatus;
+    
     @Column(name = "acceptor")
     private String acceptor;
     
@@ -61,6 +64,7 @@ public class AsphaltTask {
     public AsphaltTask() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
+        this.experimentStatus = "unfinished"; // 默认为未完成
     }
 
     public Long getAsphaltExperimentId() {
@@ -183,10 +187,21 @@ public class AsphaltTask {
         this.updatedAt = updatedAt;
     }
 
+    public String getExperimentStatus() {
+        return experimentStatus;
+    }
+
+    public void setExperimentStatus(String experimentStatus) {
+        this.experimentStatus = experimentStatus;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
         updatedAt = Instant.now();
+        if (experimentStatus == null) {
+            experimentStatus = "unfinished";
+        }
     }
 
     @PreUpdate

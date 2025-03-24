@@ -584,6 +584,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "针入度实验数据已成功提交到服务器");
+                                updateExperimentStatusToFinished();
                             } else {
                                 Log.e("SaveData", "提交针入度实验数据到服务器失败: " +
                                       (response.body() != null ? response.body().getMessage() : "未知错误"));
@@ -705,6 +706,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "软化点试验数据已成功提交到服务器");
+                                updateExperimentStatusToFinished();
 
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
@@ -843,7 +845,8 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "延度试验数据已成功提交到服务器");
-                                
+                                updateExperimentStatusToFinished();
+
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
                                     Toast.makeText(RecordExperimentDataActivity.this, 
@@ -1075,7 +1078,8 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "布鲁克菲尔德旋转黏度实验数据已成功提交到服务器");
-                                
+                                updateExperimentStatusToFinished();
+
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
                                     Toast.makeText(RecordExperimentDataActivity.this, 
@@ -1233,7 +1237,8 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "BBR实验数据已成功提交到服务器");
-                                
+                                updateExperimentStatusToFinished();
+
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
                                     Toast.makeText(RecordExperimentDataActivity.this, 
@@ -1407,7 +1412,8 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "动态剪切流变仪实验数据已成功提交到服务器");
-                                
+                                updateExperimentStatusToFinished();
+
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
                                     Toast.makeText(RecordExperimentDataActivity.this, 
@@ -1477,5 +1483,35 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         runOnUiThread(() -> {
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         });
+    }
+
+    /**
+     * 更新实验状态为已完成
+     */
+    private void updateExperimentStatusToFinished() {
+        Log.d("SaveData", "更新实验状态为已完成: taskId=" + taskIdString + ", experimentType=" + experimentType);
+        
+        // 调用API更新实验状态
+        asphaltTaskService.updateExperimentStatus(taskIdString, experimentType)
+                .enqueue(new Callback<ApiResponse<Boolean>>() {
+                    @Override
+                    public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            ApiResponse<Boolean> apiResponse = response.body();
+                            if (apiResponse.isSuccess()) {
+                                Log.d("SaveData", "实验状态更新成功: " + taskIdString);
+                            } else {
+                                Log.w("SaveData", "实验状态更新失败: " + apiResponse.getMessage());
+                            }
+                        } else {
+                            Log.w("SaveData", "实验状态更新请求失败");
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                        Log.e("SaveData", "实验状态更新失败", t);
+                    }
+                });
     }
 }

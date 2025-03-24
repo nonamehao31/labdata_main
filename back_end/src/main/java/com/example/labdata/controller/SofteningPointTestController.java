@@ -2,6 +2,7 @@ package com.example.labdata.controller;
 
 import com.example.labdata.model.SofteningPointTest;
 import com.example.labdata.payload.request.SofteningPointTestRequest;
+import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.service.SofteningPointTestService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,14 +35,14 @@ public class SofteningPointTestController {
      */
     @PostMapping("/submit")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> submitSofteningPointTest(@RequestBody SofteningPointTestRequest request) {
+    public ResponseEntity<ApiResponse<Boolean>> submitSofteningPointTest(@RequestBody SofteningPointTestRequest request) {
         logger.info("用户 {} 提交软化点实验数据，任务ID: {}", request.getExperimenter(), request.getTaskId());
         
         boolean success = softeningPointTestService.submitSofteningPointTest(request);
         if (success) {
-            return ResponseEntity.ok().body("软化点试验数据提交成功");
+            return ResponseEntity.ok(new ApiResponse<>(true, "软化点试验数据提交成功", Boolean.TRUE));
         } else {
-            return ResponseEntity.badRequest().body("软化点试验数据提交失败");
+            return ResponseEntity.ok(new ApiResponse<>(false, "软化点试验数据提交失败", Boolean.FALSE));
         }
     }
     

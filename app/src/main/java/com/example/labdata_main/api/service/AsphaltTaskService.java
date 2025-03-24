@@ -122,4 +122,23 @@ public interface AsphaltTaskService {
      */
     @POST("api/dsr/submit")
     Call<ApiResponse<Boolean>> submitDynamicShearRheometerTest(@Body DynamicShearRheometerTestRequest request);
+    
+    /**
+     * 更新实验任务状态为已完成
+     * @param taskId 任务ID
+     * @param experimentType 实验类型
+     * @return API响应
+     */
+    @POST("api/asphalt/experiments/updateExperimentStatus/{taskId}")
+    Call<ApiResponse<Boolean>> updateExperimentStatus(
+            @Path("taskId") String taskId,
+            @Query("experimentType") String experimentType);
+    
+    /**
+     * 获取实验任务状态
+     * @param taskId 任务ID
+     * @return API响应
+     */
+    @GET("api/asphalt/experiments/experimentStatus/{taskId}")
+    Call<ApiResponse<String>> getExperimentStatus(@Path("taskId") String taskId);
 }

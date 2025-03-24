@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,6 +100,7 @@ public class AsphaltTaskService {
         asphaltTask.setAsphaltTaskAssignmentId(assignmentId);  // 设置任务分配ID
         asphaltTask.setStatus(status);
         asphaltTask.setTaskStatus(taskStatus);
+        asphaltTask.setExperimentStatus("unfinished"); // 设置实验状态为未完成
         
         // 设置沥青ID，并记录日志
         asphaltTask.setSelectedAsphaltId(selectedAsphaltId);
@@ -278,6 +281,225 @@ public class AsphaltTaskService {
                 task.getTaskStatus());
         
         return asphaltTaskRepository.save(task);
+    }
+
+    /**
+     * 接受沥青任务
+     *
+     * @param taskId 任务ID
+     * @param acceptor 接受者
+     * @param acceptTime 接受时间
+     * @return 更新后的沥青任务
+     */
+    public AsphaltTask acceptAsphaltTask(String taskId, String acceptor, Long acceptTime) {
+        logger.info("接受沥青任务: taskId={}, acceptor={}, acceptTime={}", taskId, acceptor, acceptTime);
+        
+        // 查找任务
+        List<AsphaltTask> tasks = getAsphaltTasksByAssignmentId(taskId);
+        if (tasks.isEmpty()) {
+            logger.warn("未找到分配ID为 {} 的沥青实验任务", taskId);
+            return null;
+        }
+        
+        AsphaltTask firstTask = tasks.get(0);
+        logger.info("找到 {} 个相关沥青任务，准备全部更新为 ONGOING 状态", tasks.size());
+        
+        // 更新所有关联任务的状态
+        for (AsphaltTask task : tasks) {
+            // 更新任务状态为ONGOING
+            task.setTaskStatus("ONGOING");
+            task.setStatus("ONGOING");
+            
+            // 设置接受人和接受时间
+            task.setAcceptor(acceptor);
+            task.setAcceptTime(acceptTime);
+            
+            // 保存更新后的任务
+            updateAsphaltTask(task);
+            logger.info("已更新沥青任务状态: ID={}, 名称={}, 新状态=ONGOING", 
+                    task.getAsphaltExperimentId(), task.getAsphaltTaskName());
+        }
+        
+        logger.info("沥青任务已被接受: ID={}, 接受人={}", taskId, acceptor);
+        
+        return firstTask;
+    }
+
+    /**
+     * 更新实验任务状态为已完成
+     * 
+     * @param taskId 任务ID
+     * @param experimentType 实验类型
+     * @return 更新后的任务
+     */
+    public AsphaltTask updateExperimentStatusToFinished(Long taskId, String experimentType) {
+        logger.info("更新实验任务状态为已完成: taskId={}, experimentType={}", taskId, experimentType);
+        
+        AsphaltTask task = getAsphaltExperimentById(taskId);
+        if (task == null) {
+            logger.warn("未找到ID为 {} 的沥青实验任务", taskId);
+            return null;
+        }
+        
+        // 确保实验类型匹配
+        if (!task.getAsphaltExperimentType().equals(experimentType)) {
+            logger.warn("实验类型不匹配: 请求类型={}, 任务类型={}", experimentType, task.getAsphaltExperimentType());
+            return null;
+        }
+        
+        task.setExperimentStatus("finished");
+        logger.info("实验任务状态已更新为已完成: taskId={}", taskId);
+        
+        return asphaltTaskRepository.save(task);
+    }
+
+    /**
+     * 根据任务ID获取实验状态
+     * 
+     * @param taskId 任务ID
+     * @return 实验状态
+     */
+    public String getExperimentStatus(Long taskId) {
+        logger.info("获取实验任务状态: taskId={}", taskId);
+        
+        AsphaltTask task = getAsphaltExperimentById(taskId);
+        if (task == null) {
+            logger.warn("未找到ID为 {} 的沥青实验任务", taskId);
+            return null;
+        }
+        
+        return task.getExperimentStatus();
+    }
+    
+    /**
+     * 更新实验任务状态为已完成（使用字符串ID）
+     * 
+     * @param taskId 任务ID（字符串）
+     * @param experimentType 实验类型
+     * @return 更新后的任务
+     */
+    public AsphaltTask updateExperimentStatusToFinishedByStringId(String taskId, String experimentType) {
+        logger.info("更新实验任务状态为已完成（使用字符串ID）: taskId={}, experimentType={}", taskId, experimentType);
+        
+        // 根据分配ID查找任务
+        List<AsphaltTask> tasks = getAsphaltTasksByAssignmentId(taskId);
+        if (tasks.isEmpty()) {
+            logger.warn("未找到分配ID为 {} 的沥青实验任务", taskId);
+            return null;
+        }
+        
+        // 记录找到的任务信息，用于调试
+        logger.info("找到 {} 个任务，详细信息如下:", tasks.size());
+        for (int i = 0; i < tasks.size(); i++) {
+            AsphaltTask task = tasks.get(i);
+            logger.info("任务 #{}: ID={}, 名称={}, 实验类型={}, 分配名称={}", 
+                   i+1, task.getAsphaltExperimentId(), task.getAsphaltTaskName(), 
+                   task.getAsphaltExperimentType(), task.getAsphaltTaskAssignment());
+        }
+        
+        // 创建实验类型映射（英文标识符 -> 中文实验名称）
+        Map<String, List<String>> experimentTypeMap = new HashMap<>();
+        experimentTypeMap.put("penetration", Arrays.asList("针入度试验", "针入度"));
+        experimentTypeMap.put("softening_point", Arrays.asList("软化点试验", "软化点", "软化点试验 (环状法)"));
+        experimentTypeMap.put("ductility", Arrays.asList("延度试验", "延度"));
+        experimentTypeMap.put("brookfield_viscosity", Arrays.asList("沥青旋转黏度试验", "布氏旋转黏度", "布鲁克菲尔德"));
+        experimentTypeMap.put("dynamic_shear_rheometer", Arrays.asList("动态剪切流变仪试验", "动态剪切", "动剪"));
+        experimentTypeMap.put("bending_beam_rheometer", Arrays.asList("沥青弯曲蠕变劲度试验", "BBR试验", "弯曲梁"));
+        
+        // 获取要查找的中文实验类型列表
+        List<String> targetTypesList = experimentTypeMap.get(experimentType);
+        if (targetTypesList == null) {
+            logger.warn("未在映射表中找到实验类型 {} 的对应中文名称", experimentType);
+            targetTypesList = Collections.singletonList(experimentType);
+        } else {
+            logger.info("实验类型 {} 对应的中文名称列表: {}", experimentType, targetTypesList);
+        }
+        
+        AsphaltTask taskToUpdate = null;
+        
+        // 使用asphalt_task_assignment字段进行匹配
+        for (AsphaltTask task : tasks) {
+            // 检查asphalt_task_assignment是否为空
+            String assignmentName = task.getAsphaltTaskAssignment();
+            if (assignmentName == null || assignmentName.isEmpty()) {
+                continue;
+            }
+            
+            // 检查assignment是否包含映射表中的任何一个中文名称
+            for (String targetType : targetTypesList) {
+                if (assignmentName.contains(targetType)) {
+                    taskToUpdate = task;
+                    logger.info("成功匹配: 任务分配名称 [{}] 包含目标类型 [{}]", assignmentName, targetType);
+                    break;
+                }
+            }
+            
+            if (taskToUpdate != null) {
+                break;
+            }
+        }
+        
+        // 如果asphalt_task_assignment匹配失败，尝试使用experiment_type匹配
+        if (taskToUpdate == null) {
+            for (AsphaltTask task : tasks) {
+                String taskType = task.getAsphaltExperimentType();
+                
+                // 检查任务类型是否包含映射表中的任何一个中文名称
+                for (String targetType : targetTypesList) {
+                    if (taskType != null && taskType.contains(targetType)) {
+                        taskToUpdate = task;
+                        logger.info("成功匹配: 任务类型 [{}] 包含目标类型 [{}]", taskType, targetType);
+                        break;
+                    }
+                }
+                
+                if (taskToUpdate != null) {
+                    break;
+                }
+            }
+        }
+        
+        // 如果没找到匹配的任务，使用第一个
+        if (taskToUpdate == null && !tasks.isEmpty()) {
+            taskToUpdate = tasks.get(0);
+            logger.warn("未找到与实验类型 {} 匹配的任务，使用第一个找到的任务: ID={}, 名称={}, 分配名称={}", 
+                   experimentType, taskToUpdate.getAsphaltExperimentId(), 
+                   taskToUpdate.getAsphaltTaskName(), taskToUpdate.getAsphaltTaskAssignment());
+        }
+        
+        if (taskToUpdate != null) {
+            taskToUpdate.setExperimentStatus("finished");
+            logger.info("实验任务状态已更新为已完成: taskId={}, 任务名称={}, 分配名称={}, 实验类型={}",
+                   taskToUpdate.getAsphaltExperimentId(), taskToUpdate.getAsphaltTaskName(),
+                   taskToUpdate.getAsphaltTaskAssignment(), experimentType);
+            
+            return asphaltTaskRepository.save(taskToUpdate);
+        }
+        
+        return null;
+    }
+
+    /**
+     * 根据任务ID（字符串）获取实验状态
+     * 
+     * @param taskId 任务ID（字符串）
+     * @return 实验状态
+     */
+    public String getExperimentStatusByStringId(String taskId) {
+        logger.info("获取实验任务状态（使用字符串ID）: taskId={}", taskId);
+        
+        // 根据分配ID查找任务
+        List<AsphaltTask> tasks = getAsphaltTasksByAssignmentId(taskId);
+        if (tasks.isEmpty()) {
+            logger.warn("未找到分配ID为 {} 的沥青实验任务", taskId);
+            return null;
+        }
+        
+        // 返回第一个找到的任务的状态
+        AsphaltTask task = tasks.get(0);
+        logger.info("找到实验任务，状态为: {}", task.getExperimentStatus());
+        
+        return task.getExperimentStatus();
     }
 
     /**
