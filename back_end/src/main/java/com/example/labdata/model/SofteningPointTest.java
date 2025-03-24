@@ -1,0 +1,89 @@
+package com.example.labdata.model;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import java.sql.Timestamp;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+/**
+ * 软化点试验实体类
+ */
+@Entity
+@Table(name = "asphalt_softening_point_test")
+@Data
+public class SofteningPointTest {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "softening_point_test_id_seq")
+    @SequenceGenerator(name = "softening_point_test_id_seq", sequenceName = "softening_point_test_id_seq", allocationSize = 1)
+    private Long id;
+    
+    /**
+     * 任务ID - 使用字符串类型存储，避免大数值问题
+     */
+    @Column(name = "task_id", nullable = false, length = 255)
+    private String taskId;
+    
+    /**
+     * 初始温度值
+     */
+    @Column(name = "temperature", nullable = false)
+    private String temperature;
+    
+    /**
+     * 软化温度值
+     */
+    @Column(name = "softening_temperature", nullable = false)
+    private String softeningTemperature;
+    
+    /**
+     * 试验操作人
+     */
+    @Column(name = "experimenter")
+    private String experimenter;
+    
+    /**
+     * 试验日期 - 使用Long类型存储毫秒时间戳
+     */
+    @Column(name = "test_date")
+    private Long testDate;
+    
+    /**
+     * 设备ID
+     */
+    @Column(name = "device_id")
+    private String deviceId;
+    
+    /**
+     * 设备名称
+     */
+    @Column(name = "device_name")
+    private String deviceName;
+    
+    /**
+     * 设备制造商
+     */
+    @Column(name = "device_manufacturer")
+    private String deviceManufacturer;
+    
+    /**
+     * 设备型号
+     */
+    @Column(name = "device_model")
+    private String deviceModel;
+    
+    /**
+     * 创建时间 - 使用Timestamp类型
+     */
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private Timestamp createdAt;
+    
+    /**
+     * 更新时间 - 使用Timestamp类型
+     */
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Timestamp updatedAt;
+}

@@ -785,7 +785,7 @@ public class RegisterActivity extends AppCompatActivity {
         Log.d(TAG, "开始检查邮箱是否已被注册: " + email);
         
         // 创建API服务
-        ApiService apiService = RetrofitClient.getInstance().createService(ApiService.class);
+        ApiService apiService = RetrofitClient.getInstance(this).createService(ApiService.class);
         
         // 创建注册请求
         String username = generateValidUsername(email);
@@ -1042,7 +1042,7 @@ public class RegisterActivity extends AppCompatActivity {
         Log.d(TAG, "开始检查邮箱是否已被注册: " + email);
         
         // 创建API服务
-        ApiService apiService = RetrofitClient.getInstance().createService(ApiService.class);
+        ApiService apiService = RetrofitClient.getInstance(this).createService(ApiService.class);
         
         // 发送检查邮箱请求
         Call<ApiResponse<Boolean>> call = apiService.checkEmailExists(email);

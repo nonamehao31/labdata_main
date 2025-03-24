@@ -14,6 +14,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -63,6 +64,42 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
                 experimentDataMap.put(type, new HashMap<>());
             }
         }
+        notifyDataSetChanged();
+    }
+    
+    /**
+     * 设置初始化数据
+     * @param initialData 实验类型到数据Map的映射
+     */
+    public void setInitialData(Map<String, Map<String, String>> initialData) {
+        if (initialData == null) {
+            return;
+        }
+        
+        // 合并初始数据到实验数据Map
+        for (Map.Entry<String, Map<String, String>> entry : initialData.entrySet()) {
+            String experimentType = entry.getKey();
+            Map<String, String> data = entry.getValue();
+            
+            // 确保实验类型存在于实验类型列表中
+            if (experimentTypes.contains(experimentType)) {
+                // 获取或创建该实验的数据Map
+                Map<String, String> existingData = experimentDataMap.get(experimentType);
+                if (existingData == null) {
+                    existingData = new HashMap<>();
+                    experimentDataMap.put(experimentType, existingData);
+                }
+                
+                // 合并数据，已有数据不覆盖
+                for (Map.Entry<String, String> dataEntry : data.entrySet()) {
+                    if (!existingData.containsKey(dataEntry.getKey())) {
+                        existingData.put(dataEntry.getKey(), dataEntry.getValue());
+                    }
+                }
+            }
+        }
+        
+        // 通知数据变化
         notifyDataSetChanged();
     }
 
@@ -143,7 +180,11 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
 
         void bind(String experimentType, DeviceInfo deviceInfo, int position) {
             // 设置实验标题
-            tvExperimentTitle.setText(getExperimentTitle(experimentType));
+            String title = getExperimentTitle(experimentType);
+            if (title == null || title.isEmpty()) {
+                title = "未知实验类型 (" + experimentType + ")";
+            }
+            tvExperimentTitle.setText(title);
             tvExperimentTitle.setTag(experimentType);
             
             // 设置扫描设备按钮点击事件
@@ -346,6 +387,23 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
         }
 
         private void addInputFieldsForExperiment(String experimentType) {
+            Log.d("AsphaltAdapter", "开始添加实验输入字段，实验类型: " + experimentType);
+            // 检查实验类型是否有效
+            if (experimentType == null || experimentType.isEmpty()) {
+                TextView errorText = new TextView(itemView.getContext());
+                errorText.setText("无效的实验类型");
+                errorText.setTextColor(Color.RED);
+                layoutDataInputs.addView(errorText);
+                return;
+            }
+            
+            // 获取实验数据的HashMap
+            Map<String, String> savedData = experimentDataMap.get(experimentType);
+            if (savedData == null) {
+                savedData = new HashMap<>();
+                experimentDataMap.put(experimentType, savedData);
+            }
+
             switch (experimentType) {
                 case AsphaltExperimentData.TYPE_DENSITY:
                     addInputField("temperature", "温度 (℃)", "0.1");
@@ -369,8 +427,8 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
                     break;
 
                 case AsphaltExperimentData.TYPE_SOFTENING_POINT:
-                    addInputField("temperature", "温度 (℃)", "0.1");
-                    addInputField(AsphaltExperimentData.Fields.SofteningPoint.SOFTENING_TEMP, "软化温度 (℃)", "0.5");
+                    addInputField(AsphaltExperimentData.Fields.SofteningPoint.TEMPERATURE, "温度 (℃)", "0.1");
+                    addInputField(AsphaltExperimentData.Fields.SofteningPoint.SOFTENING_TEMPERATURE, "软化温度 (℃)", "0.5");
                     break;
 
                 case AsphaltExperimentData.TYPE_TFOT:
@@ -616,37 +674,37 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
         private String getExperimentTitle(String experimentType) {
             switch (experimentType) {
                 case AsphaltExperimentData.TYPE_DENSITY:
-                    return "沥青密度与相对密度试验";
+                    return "密度与相对密度试验";
                 case AsphaltExperimentData.TYPE_PENETRATION:
-                    return "沥青针入度试验";
+                    return "针入度试验";
                 case AsphaltExperimentData.TYPE_DUCTILITY:
-                    return "沥青延度试验";
+                    return "延度试验";
                 case AsphaltExperimentData.TYPE_SOFTENING_POINT:
-                    return "沥青软化点试验（环球法）";
+                    return "软化点试验";
                 case AsphaltExperimentData.TYPE_TFOT:
-                    return "沥青薄膜加热试验";
+                    return "薄膜烘箱老化试验";
                 case AsphaltExperimentData.TYPE_RTFOT:
-                    return "沥青旋转薄膜加热试验";
+                    return "旋转薄膜烘箱老化试验";
                 case AsphaltExperimentData.TYPE_FLASH_POINT:
-                    return "沥青闪点与燃点试验（克利夫兰开口杯法）";
+                    return "闪点与燃点试验";
                 case AsphaltExperimentData.TYPE_VISCOSITY:
-                    return "沥青旋转黏度试验（布洛克菲尔德黏度计法）";
+                    return "标准粘度试验";
                 case AsphaltExperimentData.TYPE_BBR:
-                    return "沥青弯曲蠕变劲度试验（弯曲梁流变仪法）";
+                    return "弯曲梁流变仪试验";
                 case AsphaltExperimentData.TYPE_DSR:
-                    return "沥青流变性质试验（动态剪切流变仪法）";
+                    return "动态剪切流变仪试验";
                 case AsphaltExperimentData.TYPE_DTT:
-                    return "沥青断裂性能试验（直接拉伸法）";
+                    return "直接拉伸试验";
                 case AsphaltExperimentData.TYPE_PAV:
-                    return "压力老化容器加速沥青老化试验";
+                    return "压力老化试验";
                 case AsphaltExperimentData.TYPE_MSCR:
-                    return "沥青多重应力蠕变恢复试验（MSCR）";
+                    return "多重应力蠕变恢复试验";
                 case AsphaltExperimentData.TYPE_FORCE_DUCTILITY:
-                    return "沥青拉伸性能试验（测力延度仪法）";
+                    return "力延度试验";
                 case AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY:
-                    return "沥青布鲁克菲尔德旋转黏度试验";
+                    return "布鲁克菲尔德旋转黏度试验";
                 default:
-                    return "未知实验类型";
+                    return "未知实验类型 (" + experimentType + ")";
             }
         }
 

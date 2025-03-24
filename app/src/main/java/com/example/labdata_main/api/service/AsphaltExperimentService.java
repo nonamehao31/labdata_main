@@ -1,6 +1,7 @@
 package com.example.labdata_main.api.service;
 
 import com.example.labdata_main.api.request.AsphaltExperimentRequest;
+import com.example.labdata_main.api.request.PenetrationTestRequest;
 import com.example.labdata_main.api.response.ApiResponse;
 import com.example.labdata_main.api.response.AsphaltExperimentResponse;
 
@@ -38,4 +39,7 @@ public interface AsphaltExperimentService {
      */
     @GET("api/asphalt/experiments")
     Call<ApiResponse<List<AsphaltExperimentResponse>>> getAsphaltExperiments();
+
+    @POST("api/asphalt/penetration")
+    Call<ApiResponse<Boolean>> submitPenetrationTest(@Body PenetrationTestRequest request);
 }

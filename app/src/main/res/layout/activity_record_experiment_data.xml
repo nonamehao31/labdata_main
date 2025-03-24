@@ -44,13 +44,27 @@
         android:textSize="14sp"
         android:textStyle="normal" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvExperiments"
+    <!-- 添加进度条 -->
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="16dp"
-        android:clipToPadding="false" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvExperiments"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="16dp"
+            android:clipToPadding="false" />
+
+        <!-- 添加的进度条，使用同样的ID "progressBar" -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:visibility="gone" />
+    </RelativeLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSave"

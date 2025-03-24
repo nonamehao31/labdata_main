@@ -95,14 +95,15 @@ public class AsphaltExperimentData {
             public static final String READING = "reading"; // 读数，单位mm
         }
 
+        // 软化点试验
+        public static class SofteningPoint {
+            public static final String TEMPERATURE = "temperature"; // 初始温度
+            public static final String SOFTENING_TEMPERATURE = "softening_temperature"; // 软化温度
+        }
+
         // 延度试验
         public static class Ductility {
             public static final String DISPLACEMENT = "displacement"; // 拉长位移，单位cm
-        }
-
-        // 软化点试验
-        public static class SofteningPoint {
-            public static final String SOFTENING_TEMP = "softening_temp"; // 软化温度
         }
 
         // 薄膜加热试验

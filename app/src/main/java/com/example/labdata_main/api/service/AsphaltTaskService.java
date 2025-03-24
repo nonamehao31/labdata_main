@@ -1,6 +1,9 @@
 package com.example.labdata_main.api.service;
 
 import com.example.labdata_main.api.model.AsphaltDetailResponse;
+import com.example.labdata_main.api.request.DuctilityTestRequest;
+import com.example.labdata_main.api.request.PenetrationTestRequest;
+import com.example.labdata_main.api.request.SofteningPointTestRequest;
 import com.example.labdata_main.api.model.AsphaltTaskResponse;
 import com.example.labdata_main.api.model.ApiResponse;
 
@@ -8,6 +11,7 @@ import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
+import retrofit2.http.Body;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
@@ -65,4 +69,29 @@ public interface AsphaltTaskService {
             @Path("taskId") String taskId,
             @Query("acceptor") String acceptor,
             @Query("acceptTime") Long acceptTime);
+
+
+    /**
+     * 提交针入度试验数据
+     * @param request 软化点试验数据请求
+     * @return API响应
+     */
+    @POST("api/asphalt/penetration")
+    Call<ApiResponse<Boolean>> submitPenetrationTest(@Body PenetrationTestRequest request);
+
+    /**
+     * 提交软化点试验数据
+     * @param request 软化点试验数据请求
+     * @return API响应
+     */
+    @POST("api/softening-point/submit")
+    Call<ApiResponse<Boolean>> submitSofteningPointTest(@Body SofteningPointTestRequest request);
+
+    /**
+     * 提交延度试验数据
+     * @param request 延度试验数据请求
+     * @return API响应
+     */
+    @POST("api/ductility/submit")
+    Call<ApiResponse<Boolean>> submitDuctilityTest(@Body DuctilityTestRequest request);
 }
