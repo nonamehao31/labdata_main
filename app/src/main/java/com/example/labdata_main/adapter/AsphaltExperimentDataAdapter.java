@@ -41,6 +41,18 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
     private Map<String, Map<String, String>> experimentDataMap;
     private Map<String, DeviceInfo> deviceInfoMap;
     private OnDeviceScanListener onDeviceScanListener;
+    private OnDataValidityChangeListener dataValidityChangeListener;
+    private boolean isAllDataValid = false;
+
+    // 数据有效性监听接口
+    public interface OnDataValidityChangeListener {
+        void onDataValidityChanged(boolean isValid);
+    }
+
+    // 设置数据有效性监听器
+    public void setOnDataValidityChangeListener(OnDataValidityChangeListener listener) {
+        this.dataValidityChangeListener = listener;
+    }
 
     public AsphaltExperimentDataAdapter() {
         this.experimentTypes = new ArrayList<>();
@@ -304,6 +316,9 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
                     if (!isCalculating && AsphaltExperimentData.TYPE_BBR.equals(experimentType)) {
                         calculateBBRResults(experimentType);
                     }
+
+                    // 验证实验数据完整性
+                    validateExperimentData();
                 }
             };
             editText.addTextChangedListener(textWatcher);
@@ -1765,5 +1780,113 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
                 }
             }
         }
+
+        /**
+         * 验证当前实验数据是否完整有效
+         * @return 如果所有必填字段都已填写，返回true；否则返回false
+         */
+        public boolean validateExperimentData() {
+            boolean isValid = true;
+            // 获取所有实验数据
+            Map<String, Map<String, String>> data = getExperimentData();
+            
+            // 如果没有实验数据，则无效
+            if (data == null || data.isEmpty()) {
+                return false;
+            }
+            
+            // 检查每个实验类型
+            for (String experimentType : experimentTypes) {
+                Map<String, String> experimentValues = data.get(experimentType);
+                // 如果某个实验类型没有数据，则无效
+                if (experimentValues == null || experimentValues.isEmpty()) {
+                    isValid = false;
+                    break;
+                }
+                
+                // 根据实验类型检查必填字段
+                if (AsphaltExperimentData.TYPE_PENETRATION.equals(experimentType)) {
+                    // 针入度实验：检查温度和读数
+                    if (!isValidField(experimentValues, "temperature") || 
+                        !isValidField(experimentValues, AsphaltExperimentData.Fields.Penetration.READING)) {
+                        isValid = false;
+                        break;
+                    }
+                } else if (AsphaltExperimentData.TYPE_SOFTENING_POINT.equals(experimentType)) {
+                    // 软化点实验：检查温度和软化温度
+                    if (!isValidField(experimentValues, AsphaltExperimentData.Fields.SofteningPoint.TEMPERATURE) || 
+                        !isValidField(experimentValues, AsphaltExperimentData.Fields.SofteningPoint.SOFTENING_TEMPERATURE)) {
+                        isValid = false;
+                        break;
+                    }
+                } else if (AsphaltExperimentData.TYPE_DUCTILITY.equals(experimentType)) {
+                    // 延度实验：检查温度和位移
+                    if (!isValidField(experimentValues, "temperature") || 
+                        !isValidField(experimentValues, AsphaltExperimentData.Fields.Ductility.DISPLACEMENT)) {
+                        isValid = false;
+                        break;
+                    }
+                }
+                // 可以根据需要添加其他类型的实验验证
+            }
+            
+            // 更新数据有效性状态
+            if (isAllDataValid != isValid) {
+                isAllDataValid = isValid;
+                // 通知监听器数据有效性已更改
+                if (dataValidityChangeListener != null) {
+                    dataValidityChangeListener.onDataValidityChanged(isValid);
+                }
+            }
+            
+            return isValid;
+        }
+        
+        /**
+         * 检查字段是否有效（不为空且不全是空格）
+         */
+        private boolean isValidField(Map<String, String> data, String fieldKey) {
+            String value = data.get(fieldKey);
+            return value != null && !value.trim().isEmpty();
+        }
+    }
+
+    /**
+     * 更新实验类型列表，并刷新UI
+     * @param newExperimentTypes 新的实验类型列表
+     */
+    public void updateExperimentTypes(List<String> newExperimentTypes) {
+        if (newExperimentTypes == null) {
+            return;
+        }
+        
+        // 清除已经完成但不在新列表中的实验数据
+        List<String> typesToRemove = new ArrayList<>();
+        for (String type : experimentTypes) {
+            if (!newExperimentTypes.contains(type)) {
+                typesToRemove.add(type);
+            }
+        }
+        
+        for (String typeToRemove : typesToRemove) {
+            experimentDataMap.remove(typeToRemove);
+            deviceInfoMap.remove(typeToRemove);
+        }
+        Log.d("AsphaltAdapter", "更新实验类型列表: 原列表=" + experimentTypes.size() + "项, 新列表=" + newExperimentTypes.size() + "项");
+        // 更新实验类型列表
+        this.experimentTypes.clear();
+        this.experimentTypes.addAll(newExperimentTypes);
+        
+        // 刷新UI
+        notifyDataSetChanged();
+        Log.d("AsphaltAdapter", "实验类型列表更新完成，通知UI更新");
+    }
+    
+    /**
+     * 获取当前的实验类型列表
+     * @return 实验类型列表
+     */
+    public List<String> getExperimentTypes() {
+        return new ArrayList<>(experimentTypes);
     }
 }

@@ -193,6 +193,19 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         asphaltAdapter.setOnDeviceScanListener(this);
         rvExperiments.setAdapter(asphaltAdapter);
 
+        // 添加数据验证监听器
+        asphaltAdapter.setOnDataValidityChangeListener(isValid -> {
+            // 根据数据有效性设置保存按钮的启用状态
+            if (btnSave != null) {
+                btnSave.setEnabled(isValid);
+            }
+        });
+
+        // 初始状态下禁用保存按钮
+        if (btnSave != null) {
+            btnSave.setEnabled(false);
+        }
+
         // 加载沥青实验数据，使用API而不是本地数据库
         Log.d("SetupAsphalt", "开始从API加载沥青实验类型...");
         Log.d("SetupAsphalt", "使用任务ID: " + taskIdString);
@@ -306,6 +319,9 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         // 设置实验类型列表和初始数据到适配器
         asphaltAdapter.setExperimentTypes(experimentTypesList);
         asphaltAdapter.setInitialData(initialDataMap);
+
+        // 在设置完初始实验类型后获取状态并过滤已完成的实验
+        fetchExperimentStatus();
     }
 
     private void processScannedDevice(String deviceCode) {
@@ -584,7 +600,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "针入度实验数据已成功提交到服务器");
-                                updateExperimentStatusToFinished();
+                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_PENETRATION);
                             } else {
                                 Log.e("SaveData", "提交针入度实验数据到服务器失败: " +
                                       (response.body() != null ? response.body().getMessage() : "未知错误"));
@@ -706,7 +722,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "软化点试验数据已成功提交到服务器");
-                                updateExperimentStatusToFinished();
+                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_SOFTENING_POINT);
 
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
@@ -845,7 +861,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "延度试验数据已成功提交到服务器");
-                                updateExperimentStatusToFinished();
+                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_DUCTILITY);
 
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
@@ -1078,7 +1094,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "布鲁克菲尔德旋转黏度实验数据已成功提交到服务器");
-                                updateExperimentStatusToFinished();
+                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY);
 
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
@@ -1237,7 +1253,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "BBR实验数据已成功提交到服务器");
-                                updateExperimentStatusToFinished();
+                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_BBR);
 
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
@@ -1412,7 +1428,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "动态剪切流变仪实验数据已成功提交到服务器");
-                                updateExperimentStatusToFinished();
+                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_BBR);
 
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
@@ -1487,31 +1503,191 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
 
     /**
      * 更新实验状态为已完成
+     * @param experimentTypeParam 特定的实验类型，如果为null则更新整个任务状态
      */
-    private void updateExperimentStatusToFinished() {
-        Log.d("SaveData", "更新实验状态为已完成: taskId=" + taskIdString + ", experimentType=" + experimentType);
-        
-        // 调用API更新实验状态
-        asphaltTaskService.updateExperimentStatus(taskIdString, experimentType)
+    private void updateExperimentStatusToFinished(String experimentTypeParam) {
+        if (taskIdString == null || taskIdString.isEmpty()) {
+            Log.e("UpdateStatus", "任务ID为空，无法更新状态");
+            return;
+        }
+    
+        showLoading(true);
+        Log.d("UpdateStatus", "正在更新实验状态为已完成，任务ID: " + taskIdString + ", 实验类型: " 
+              + (experimentTypeParam != null ? experimentTypeParam : "全部"));
+    
+        // 使用API更新实验状态
+        if (experimentTypeParam != null) {
+            // 更新特定实验类型的状态
+            asphaltTaskService.updateExperimentTypeStatusToFinished(taskIdString, experimentTypeParam)
                 .enqueue(new Callback<ApiResponse<Boolean>>() {
                     @Override
                     public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            ApiResponse<Boolean> apiResponse = response.body();
-                            if (apiResponse.isSuccess()) {
-                                Log.d("SaveData", "实验状态更新成功: " + taskIdString);
-                            } else {
-                                Log.w("SaveData", "实验状态更新失败: " + apiResponse.getMessage());
-                            }
+                        showLoading(false);
+                        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                            Log.d("UpdateStatus", "成功更新" + experimentTypeParam + "实验状态为已完成");
                         } else {
-                            Log.w("SaveData", "实验状态更新请求失败");
+                            Log.e("UpdateStatus", "更新" + experimentTypeParam + "实验状态失败: " 
+                                  + (response.body() != null ? response.body().getMessage() : "未知错误"));
                         }
                     }
-
+    
                     @Override
                     public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
-                        Log.e("SaveData", "实验状态更新失败", t);
+                        showLoading(false);
+                        Log.e("UpdateStatus", "更新" + experimentTypeParam + "实验状态请求失败", t);
                     }
                 });
+        } else {
+            // 更新整个任务的状态
+            asphaltTaskService.updateExperimentStatus(taskIdString, null)
+                .enqueue(new Callback<ApiResponse<Boolean>>() {
+                    @Override
+                    public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                        showLoading(false);
+                        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                            Log.d("UpdateStatus", "成功更新任务状态为已完成");
+                        } else {
+                            Log.e("UpdateStatus", "更新任务状态失败: " 
+                                  + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                        }
+                    }
+    
+                    @Override
+                    public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                        showLoading(false);
+                        Log.e("UpdateStatus", "更新任务状态请求失败", t);
+                    }
+                });
+        }
+    }
+    
+    // 为了兼容现有代码，保留原来的无参方法
+    private void updateExperimentStatusToFinished() {
+        updateExperimentStatusToFinished(null);
+    }
+
+    // 在RecordExperimentDataActivity.java中添加一个新方法来获取实验状态
+    private void fetchExperimentStatus() {
+        if (taskIdString == null || taskIdString.isEmpty()) {
+            Log.e("FetchStatus", "任务ID为空，无法获取实验状态");
+            return;
+        }
+        
+        showLoading(true);
+        Log.d("FetchStatus", "正在获取实验状态，任务ID: " + taskIdString);
+        
+        // 使用API获取实验状态信息
+        asphaltTaskService.getExperimentStatus(taskIdString)
+            .enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<Map<String, String>>> call, 
+                                      Response<ApiResponse<Map<String, String>>> response) {
+                    showLoading(false);
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        Map<String, String> statusMap = response.body().getData();
+                        if (statusMap != null) {
+                            Log.d("FetchStatus", "成功获取实验状态: " + statusMap);
+                            filterExperimentTypes(statusMap);
+                        } else {
+                            Log.w("FetchStatus", "实验状态数据为空");
+                        }
+                    } else {
+                        Log.e("FetchStatus", "获取实验状态失败: " + 
+                              (response.body() != null ? response.body().getMessage() : "未知错误"));
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                    showLoading(false);
+                    Log.e("FetchStatus", "获取实验状态请求失败", t);
+                }
+            });
+    }
+    
+    private void filterExperimentTypes(Map<String, String> statusMap) {
+        if (asphaltAdapter == null) {
+            Log.e("FilterExperiments", "适配器为空，无法过滤实验类型");
+            return;
+        }
+        
+        List<String> allExperimentTypes = asphaltAdapter.getExperimentTypes();
+        List<String> filteredExperimentTypes = new ArrayList<>();
+        
+        // 打印完整的状态映射和实验类型以便调试
+        Log.d("FilterExperiments", "状态映射: " + statusMap);
+        Log.d("FilterExperiments", "所有实验类型: " + allExperimentTypes);
+        
+        // 创建实验类型映射（规范化后的名称 -> 原始名称）
+        Map<String, String> normalizedTypeMap = new HashMap<>();
+        for (String expType : allExperimentTypes) {
+            String normalized = normalizeExperimentType(expType);
+            normalizedTypeMap.put(normalized, expType);
+            Log.d("FilterExperiments", "实验类型标准化: " + expType + " -> " + normalized);
+        }
+        
+        // 创建状态映射的标准化版本
+        Map<String, String> normalizedStatusMap = new HashMap<>();
+        for (Map.Entry<String, String> entry : statusMap.entrySet()) {
+            String normalized = normalizeExperimentType(entry.getKey());
+            normalizedStatusMap.put(normalized, entry.getValue());
+            Log.d("FilterExperiments", "状态键标准化: " + entry.getKey() + " -> " + normalized + " = " + entry.getValue());
+        }
+        
+        // 遍历所有实验类型，只保留未完成的
+        for (String expType : allExperimentTypes) {
+            String normalized = normalizeExperimentType(expType);
+            
+            // 首先尝试直接匹配
+            String status = statusMap.get(expType);
+            
+            // 如果直接匹配失败，尝试标准化后匹配
+            if (status == null) {
+                status = normalizedStatusMap.get(normalized);
+                if (status != null) {
+                    Log.d("FilterExperiments", "通过标准化匹配成功: " + expType + " -> " + normalized + " = " + status);
+                }
+            }
+            
+            // 如果仍然匹配失败，尝试遍历检查是否包含
+            if (status == null) {
+                for (Map.Entry<String, String> entry : statusMap.entrySet()) {
+                    String normalizedKey = normalizeExperimentType(entry.getKey());
+                    if (normalized.contains(normalizedKey) || normalizedKey.contains(normalized)) {
+                        status = entry.getValue();
+                        Log.d("FilterExperiments", "通过部分匹配成功: " + expType + " 与 " + entry.getKey() + " = " + status);
+                        break;
+                    }
+                }
+            }
+            
+            // 根据状态决定是否保留
+            if (status == null || !status.equals("finished")) {
+                filteredExperimentTypes.add(expType);
+                Log.d("FilterExperiments", "保留未完成实验: " + expType + " (状态: " + (status == null ? "未知" : status) + ")");
+            } else {
+                Log.d("FilterExperiments", "过滤已完成实验: " + expType + " (状态: " + status + ")");
+            }
+        }
+        
+        Log.d("FilterExperiments", "过滤前: " + allExperimentTypes.size() + "项, 过滤后: " + filteredExperimentTypes.size() + "项");
+        asphaltAdapter.updateExperimentTypes(filteredExperimentTypes);
+    }
+    
+    // 添加实验类型标准化方法
+    private String normalizeExperimentType(String type) {
+        if (type == null) return "";
+        
+        // 转为小写并移除空格和标点
+        return type.toLowerCase().replaceAll("\\s+", "").replaceAll("[^a-z0-9\u4e00-\u9fa5]", "");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 每次页面恢复时获取最新状态，确保实验完成后返回页面时能过滤掉
+        if (taskIdString != null && !taskIdString.isEmpty()) {
+            fetchExperimentStatus();
+        }
     }
 }
