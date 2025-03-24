@@ -22,6 +22,8 @@ import com.example.labdata_main.api.model.ApiResponse;
 import com.example.labdata_main.api.model.AsphaltDetailResponse;
 import com.example.labdata_main.api.service.AsphaltTaskService;
 import com.example.labdata_main.api.request.DuctilityTestRequest;
+import com.example.labdata_main.api.request.BbrTestRequest;
+import com.example.labdata_main.api.request.DynamicShearRheometerTestRequest;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.AsphaltExperimentData;
 import com.example.labdata_main.api.request.PenetrationTestRequest;
@@ -47,6 +49,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -391,6 +395,12 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
                 experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
                 Log.d("SaveData", "检测到布克菲尔粘度实验数据，设置实验类型为: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
+                experimentType = AsphaltExperimentData.TYPE_BBR;
+                Log.d("SaveData", "检测到弯曲蠕变劲度实验数据，设置实验类型为: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
+                experimentType = AsphaltExperimentData.TYPE_DSR;
+                Log.d("SaveData", "检测到动态剪切流变仪实验数据，设置实验类型为: " + experimentType);
             } else {
                 // 其他处理逻辑...
             }
@@ -408,6 +418,12 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
                 experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
                 Log.d("SaveData", "检测到布克菲尔粘度实验数据，设置实验类型为: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
+                experimentType = AsphaltExperimentData.TYPE_BBR;
+                Log.d("SaveData", "检测到弯曲蠕变劲度实验数据，设置实验类型为: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
+                experimentType = AsphaltExperimentData.TYPE_DSR;
+                Log.d("SaveData", "检测到动态剪切流变仪实验数据，设置实验类型为: " + experimentType);
             } else {
                 // 如果只有一个实验类型，使用它
                 if (experimentData.size() == 1) {
@@ -453,6 +469,10 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             saveDuctilityExperimentData();
         } else if (AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY.equals(experimentType)) {
             saveBrookfieldViscosityExperimentData();
+        } else if (AsphaltExperimentData.TYPE_BBR.equals(experimentType)) {
+            saveBbrExperimentData();
+        } else if (AsphaltExperimentData.TYPE_DSR.equals(experimentType)) {
+            saveDynamicShearRheometerExperimentData();
         } else {
             saveAsphaltExperimentData();
         }
@@ -1158,6 +1178,285 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         // 如果无法匹配，返回原始类型，让适配器处理
         Log.w("SetupAsphalt", "无法标准化实验类型: " + experimentType);
         return experimentType;
+    }
+
+    /**
+     * 保存沥青弯曲蠕变劲度试验（弯曲梁流变仪法）数据
+     */
+    private void saveBbrExperimentData() {
+        Log.d("SaveData", "开始保存BBR实验数据");
+        
+        // 验证数据
+        if (!validateExperimentData()) {
+            return;
+        }
+    
+        Map<String, Map<String, String>> experimentData = asphaltAdapter.getExperimentData();
+        
+        // 检查是否包含BBR实验数据
+        if (!experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
+            Log.e("SaveData", "未找到BBR实验数据，实验类型键值 = " + AsphaltExperimentData.TYPE_BBR);
+            Log.e("SaveData", "可用的实验数据键值: " + experimentData.keySet());
+            Toast.makeText(this, "未找到BBR实验数据", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        Map<String, String> bbrData = experimentData.get(AsphaltExperimentData.TYPE_BBR);
+        
+        // 添加调试日志
+        Log.d("SaveData", "BBR实验数据内容: " + bbrData.toString());
+        
+        executor.execute(() -> {
+            try {
+                // 构建要提交的数据对象
+                BbrTestRequest request = new BbrTestRequest(
+                    taskIdString,
+                    sharedPrefsManager.getUserName(),
+                    bbrData.getOrDefault("specimen_id", ""),
+                    bbrData.getOrDefault("specimen_type", ""),
+                    bbrData.getOrDefault("material_type", ""),
+                    bbrData.getOrDefault("remarks", ""),
+                    bbrData
+                );
+                
+                // 设置设备信息
+                if (bbrData.containsKey("device_id")) {
+                    // 设备信息已经包含在experimentValues中，无需额外处理
+                }
+                
+                // 发送到服务器
+                if (asphaltTaskService != null) {
+                    Log.d("SaveData", "开始提交BBR实验数据到服务器 - 请求内容: " + request.toString());
+                    Call<ApiResponse<Boolean>> call = asphaltTaskService.submitBbrTest(request);
+                    call.enqueue(new Callback<ApiResponse<Boolean>>() {
+                        @Override
+                        public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                                Log.d("SaveData", "BBR实验数据已成功提交到服务器");
+                                
+                                // 在主线程中显示成功消息并关闭页面
+                                runOnUiThread(() -> {
+                                    Toast.makeText(RecordExperimentDataActivity.this, 
+                                        "BBR实验数据保存成功，任务已完成", Toast.LENGTH_SHORT).show();
+                                    setResult(RESULT_OK);
+                                    finish();
+                                });
+                            } else {
+                                String errorMsg = (response.body() != null) ? response.body().getMessage() : "未知错误";
+                                Log.e("SaveData", "提交BBR实验数据到服务器失败: " + errorMsg);
+                                Log.e("SaveData", "HTTP状态码: " + response.code());
+                                
+                                runOnUiThread(() -> {
+                                    Toast.makeText(RecordExperimentDataActivity.this, 
+                                        "提交BBR实验数据到服务器失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        }
+                        
+                        @Override
+                        public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                            Log.e("SaveData", "提交BBR实验数据到服务器失败", t);
+                            runOnUiThread(() -> {
+                                Toast.makeText(RecordExperimentDataActivity.this, 
+                                    String.format("提交BBR实验数据到服务器失败：%s", t.getMessage()), 
+                                    Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    });
+                } else {
+                    Log.e("SaveData", "asphaltTaskService is null");
+                    runOnUiThread(() -> {
+                        Toast.makeText(RecordExperimentDataActivity.this, 
+                            "无法连接到服务器，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    });
+                }
+                
+                // 发送广播通知更新任务列表
+                Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+                sendBroadcast(refreshIntent);
+            } catch (Exception e) {
+                Log.e("SaveData", "保存BBR实验数据时出错", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(RecordExperimentDataActivity.this, 
+                        String.format("保存BBR实验数据时出错：%s", e.getMessage()), 
+                        Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    /**
+     * 保存动态剪切流变仪实验数据
+     */
+    private void saveDynamicShearRheometerExperimentData() {
+        Log.d("SaveData", "开始保存动态剪切流变仪实验数据");
+        
+        // 验证数据
+        if (!validateExperimentData()) {
+            return;
+        }
+    
+        Map<String, Map<String, String>> experimentData = asphaltAdapter.getExperimentData();
+        
+        // 检查是否包含动态剪切流变仪实验数据
+        if (!experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
+            Log.e("SaveData", "未找到动态剪切流变仪实验数据，实验类型键值 = " + AsphaltExperimentData.TYPE_DSR);
+            Log.e("SaveData", "可用的实验数据键值: " + experimentData.keySet());
+            Toast.makeText(this, "未找到动态剪切流变仪实验数据", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        Map<String, String> dsrData = experimentData.get(AsphaltExperimentData.TYPE_DSR);
+        
+        // 添加调试日志
+        Log.d("SaveData", "动态剪切流变仪实验数据内容: " + dsrData.toString());
+        
+        // 重新组织温度点数据，确保符合后端期望的格式
+        Map<String, String> formattedData = new HashMap<>();
+        
+        // 先处理基本参数
+        for (Map.Entry<String, String> entry : dsrData.entrySet()) {
+            String key = entry.getKey();
+            // 将基本参数直接复制到新的map
+            if (!key.contains("temperature_point_")) {
+                formattedData.put(key, entry.getValue());
+            }
+        }
+        
+        // 处理温度点数据
+        int pointIndex = 1; // 温度点索引从1开始
+        Pattern pattern = Pattern.compile("temperature_point_(\\d+)_(.+)");
+        
+        // 先找出所有温度点
+        Set<Integer> pointNumbers = new HashSet<>();
+        for (String key : dsrData.keySet()) {
+            if (key.startsWith("temperature_point_")) {
+                Matcher matcher = pattern.matcher(key);
+                if (matcher.matches()) {
+                    pointNumbers.add(Integer.parseInt(matcher.group(1)));
+                }
+            }
+        }
+        
+        // 对每个温度点，提取参数并按照新格式重新命名
+        for (Integer pointNum : pointNumbers) {
+            // 提取该温度点的所有参数
+            for (Map.Entry<String, String> entry : dsrData.entrySet()) {
+                String key = entry.getKey();
+                Matcher matcher = pattern.matcher(key);
+                
+                if (matcher.matches() && Integer.parseInt(matcher.group(1)) == pointNum) {
+                    String paramName = matcher.group(2);
+                    String value = entry.getValue();
+                    
+                    // 使用新格式为参数命名
+                    if ("temperature".equals(paramName)) {
+                        formattedData.put("temperature_" + pointIndex, value);
+                    } else if ("frequency".equals(paramName)) {
+                        formattedData.put("frequency_" + pointIndex, value);
+                    } else if ("max_shear_stress".equals(paramName)) {
+                        formattedData.put("max_shear_stress_" + pointIndex, value);
+                    } else if ("max_shear_strain".equals(paramName)) {
+                        formattedData.put("max_shear_strain_" + pointIndex, value);
+                    } else if ("phase_angle".equals(paramName)) {
+                        formattedData.put("phase_angle_" + pointIndex, value);
+                    } else if ("complex_shear_modulus".equals(paramName)) {
+                        formattedData.put("complex_shear_modulus_" + pointIndex, value);
+                    }
+                }
+            }
+            pointIndex++; // 移到下一个索引
+        }
+        
+        // 添加调试日志，查看重新格式化后的数据
+        Log.d("SaveData", "格式化后的动态剪切流变仪数据: " + formattedData.toString());
+        
+        executor.execute(() -> {
+            try {
+                // 解析基本参数
+                Double testRadius = null;
+                if (formattedData.containsKey("test_radius") && !formattedData.get("test_radius").isEmpty()) {
+                    testRadius = Double.parseDouble(formattedData.get("test_radius"));
+                }
+                
+                Double plateGap = null;
+                if (formattedData.containsKey("plate_gap") && !formattedData.get("plate_gap").isEmpty()) {
+                    plateGap = Double.parseDouble(formattedData.get("plate_gap"));
+                }
+                
+                // 构建要提交的数据对象
+                DynamicShearRheometerTestRequest request = new DynamicShearRheometerTestRequest(
+                    taskIdString,
+                    sharedPrefsManager.getUserName(),
+                    formattedData.getOrDefault("specimen_id", ""),
+                    formattedData.getOrDefault("specimen_type", ""),
+                    formattedData.getOrDefault("material_type", ""),
+                    formattedData.getOrDefault("control_mode", ""),
+                    testRadius,
+                    plateGap,
+                    formattedData.getOrDefault("remarks", ""),
+                    formattedData  // 使用格式化后的数据
+                );
+                
+                // 发送到服务器
+                if (asphaltTaskService != null) {
+                    Log.d("SaveData", "开始提交动态剪切流变仪实验数据到服务器 - 请求内容: " + request.toString());
+                    Call<ApiResponse<Boolean>> call = asphaltTaskService.submitDynamicShearRheometerTest(request);
+                    call.enqueue(new Callback<ApiResponse<Boolean>>() {
+                        @Override
+                        public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                                Log.d("SaveData", "动态剪切流变仪实验数据已成功提交到服务器");
+                                
+                                // 在主线程中显示成功消息并关闭页面
+                                runOnUiThread(() -> {
+                                    Toast.makeText(RecordExperimentDataActivity.this, 
+                                        "动态剪切流变仪实验数据保存成功，任务已完成", Toast.LENGTH_SHORT).show();
+                                    setResult(RESULT_OK);
+                                    finish();
+                                });
+                            } else {
+                                String errorMsg = (response.body() != null) ? response.body().getMessage() : "未知错误";
+                                Log.e("SaveData", "提交动态剪切流变仪实验数据到服务器失败: " + errorMsg);
+                                Log.e("SaveData", "HTTP状态码: " + response.code());
+                                
+                                runOnUiThread(() -> {
+                                    Toast.makeText(RecordExperimentDataActivity.this, 
+                                        "提交动态剪切流变仪实验数据到服务器失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        }
+                        
+                        @Override
+                        public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                            Log.e("SaveData", "提交动态剪切流变仪实验数据到服务器失败", t);
+                            runOnUiThread(() -> {
+                                Toast.makeText(RecordExperimentDataActivity.this, 
+                                    String.format("提交动态剪切流变仪实验数据到服务器失败：%s", t.getMessage()), 
+                                    Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    });
+                } else {
+                    Log.e("SaveData", "asphaltTaskService is null");
+                    runOnUiThread(() -> {
+                        Toast.makeText(RecordExperimentDataActivity.this, 
+                            "无法连接到服务器，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    });
+                }
+                
+                // 发送广播通知更新任务列表
+                Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
+                sendBroadcast(refreshIntent);
+            } catch (Exception e) {
+                Log.e("SaveData", "保存动态剪切流变仪实验数据时出错", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(RecordExperimentDataActivity.this, 
+                        String.format("保存动态剪切流变仪实验数据时出错：%s", e.getMessage()), 
+                        Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     @Override

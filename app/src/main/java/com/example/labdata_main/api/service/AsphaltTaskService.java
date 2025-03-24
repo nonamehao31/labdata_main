@@ -5,6 +5,8 @@ import com.example.labdata_main.api.request.DuctilityTestRequest;
 import com.example.labdata_main.api.request.PenetrationTestRequest;
 import com.example.labdata_main.api.request.SofteningPointTestRequest;
 import com.example.labdata_main.api.request.BrookfieldViscosityTestRequest;
+import com.example.labdata_main.api.request.DynamicShearRheometerTestRequest;
+import com.example.labdata_main.api.request.BbrTestRequest;
 import com.example.labdata_main.api.model.AsphaltTaskResponse;
 import com.example.labdata_main.api.model.ApiResponse;
 
@@ -104,4 +106,20 @@ public interface AsphaltTaskService {
      */
     @POST("api/brookfield-viscosity/submit")
     Call<ApiResponse<Boolean>> submitBrookfieldViscosityTest(@Body BrookfieldViscosityTestRequest request);
+    
+    /**
+     * 提交沥青弯曲蠕变劲度试验（弯曲梁流变仪法）数据
+     * @param request 弯曲梁流变仪试验数据请求
+     * @return API响应
+     */
+    @POST("api/bbr/submit")
+    Call<ApiResponse<Boolean>> submitBbrTest(@Body BbrTestRequest request);
+
+    /**
+     * 提交动态剪切流变仪实验数据
+     * @param request 动态剪切流变仪实验数据请求
+     * @return API响应
+     */
+    @POST("api/dsr/submit")
+    Call<ApiResponse<Boolean>> submitDynamicShearRheometerTest(@Body DynamicShearRheometerTestRequest request);
 }
