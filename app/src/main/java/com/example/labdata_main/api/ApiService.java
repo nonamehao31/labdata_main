@@ -11,6 +11,8 @@ import com.example.labdata_main.api.request.SandMaterialRequest;
 import com.example.labdata_main.api.request.StoneMaterialRequest;
 import com.example.labdata_main.api.response.ApiResponse;
 import com.example.labdata_main.api.response.AsphaltMaterialResponse;
+import com.example.labdata_main.api.response.CompletedAsphaltTaskResponse;
+import com.example.labdata_main.api.response.CompletedMixtureTaskResponse;
 import com.example.labdata_main.api.response.DeviceResponse;
 import com.example.labdata_main.api.response.LoginResponse;
 import com.example.labdata_main.api.response.ProjectResponse;
@@ -307,4 +309,20 @@ public interface ApiService {
      */
     @GET(ApiConfig.GET_COMPANY_MIXTURE_TASKS_URL)
     Call<ApiResponse<List<MixtureTaskModel>>> getCompanyMixtureTasks();
+    
+    /**
+     * 获取已完成的混合料任务
+     * @param companyId 公司ID
+     * @return 已完成的混合料任务列表
+     */
+    @GET(ApiConfig.GET_COMPLETED_MIXTURE_TASKS_URL)
+    Call<ApiResponse<List<CompletedMixtureTaskResponse>>> getCompletedMixtureTasks(@Query("companyId") String companyId);
+    
+    /**
+     * 获取已完成的沥青任务
+     * @param companyId 公司ID
+     * @return 已完成的沥青任务列表
+     */
+    @GET(ApiConfig.GET_COMPLETED_ASPHALT_TASKS_URL)
+    Call<ApiResponse<List<CompletedAsphaltTaskResponse>>> getCompletedAsphaltTasks(@Query("companyId") String companyId);
 }

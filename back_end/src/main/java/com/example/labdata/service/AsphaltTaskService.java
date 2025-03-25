@@ -476,8 +476,35 @@ public class AsphaltTaskService {
             logger.info("实验任务状态已更新为已完成: taskId={}, 任务名称={}, 分配名称={}, 实验类型={}",
                    taskToUpdate.getAsphaltExperimentId(), taskToUpdate.getAsphaltTaskName(),
                    taskToUpdate.getAsphaltTaskAssignment(), experimentType);
-
-            return asphaltTaskRepository.save(taskToUpdate);
+            
+            // 保存当前更新的任务
+            AsphaltTask savedTask = asphaltTaskRepository.save(taskToUpdate);
+            
+            // 检查该任务组中的所有实验是否全部完成
+            boolean allExperimentsFinished = true;
+            for (AsphaltTask task : tasks) {
+                // 重新从数据库获取最新状态
+                Optional<AsphaltTask> refreshedTask = asphaltTaskRepository.findById(task.getAsphaltExperimentId());
+                if (refreshedTask.isPresent() && !"finished".equalsIgnoreCase(refreshedTask.get().getExperimentStatus())) {
+                    allExperimentsFinished = false;
+                    logger.info("任务组中还有未完成的实验: taskId={}, 名称={}, 状态={}",
+                            task.getAsphaltExperimentId(), task.getAsphaltTaskName(), refreshedTask.get().getExperimentStatus());
+                    break;
+                }
+            }
+            
+            // 如果所有实验都已完成，更新整个任务组的状态
+            if (allExperimentsFinished) {
+                logger.info("任务组中所有实验均已完成，更新整个任务组状态为COMPLETED");
+                for (AsphaltTask task : tasks) {
+                    task.setTaskStatus("COMPLETED");
+                    asphaltTaskRepository.save(task);
+                    logger.info("更新任务状态为COMPLETED: taskId={}, 名称={}",
+                            task.getAsphaltExperimentId(), task.getAsphaltTaskName());
+                }
+            }
+            
+            return savedTask;
         }
 
         return null;
@@ -492,18 +519,86 @@ public class AsphaltTaskService {
     public String getExperimentStatusByStringId(String taskId) {
         logger.info("获取实验任务状态（使用字符串ID）: taskId={}", taskId);
 
-        // 根据分配ID查找任务
         List<AsphaltTask> tasks = getAsphaltTasksByAssignmentId(taskId);
         if (tasks.isEmpty()) {
             logger.warn("未找到分配ID为 {} 的沥青实验任务", taskId);
             return null;
         }
 
-        // 返回第一个找到的任务的状态
+        // 如果任务组中有任务，返回第一个任务的状态
         AsphaltTask task = tasks.get(0);
-        logger.info("找到实验任务，状态为: {}", task.getExperimentStatus());
-
+        logger.info("获取到任务状态: taskId={}, 状态={}", taskId, task.getExperimentStatus());
         return task.getExperimentStatus();
+    }
+
+    /**
+     * 根据任务ID获取所有实验类型的状态
+     *
+     * @param taskId 任务ID（字符串）
+     * @return 实验类型到状态的映射
+     */
+    public Map<String, String> getExperimentTypeStatusByStringId(String taskId) {
+        logger.info("获取实验类型状态（使用字符串ID）: taskId={}", taskId);
+
+        List<AsphaltTask> tasks = getAsphaltTasksByAssignmentId(taskId);
+        if (tasks.isEmpty()) {
+            logger.warn("未找到分配ID为 {} 的沥青实验任务", taskId);
+            return new HashMap<>();
+        }
+
+        // 创建实验类型映射（中文实验名称 -> 英文标识符）
+        Map<String, String> experimentTypeMapReverse = new HashMap<>();
+        experimentTypeMapReverse.put("针入度试验", "penetration");
+        experimentTypeMapReverse.put("针入度", "penetration");
+        experimentTypeMapReverse.put("软化点试验", "softening_point");
+        experimentTypeMapReverse.put("软化点", "softening_point");
+        experimentTypeMapReverse.put("软化点试验 (环状法)", "softening_point");
+        experimentTypeMapReverse.put("延度试验", "ductility");
+        experimentTypeMapReverse.put("延度", "ductility");
+        experimentTypeMapReverse.put("沥青旋转黏度试验", "brookfield_viscosity");
+        experimentTypeMapReverse.put("布氏旋转黏度", "brookfield_viscosity");
+        experimentTypeMapReverse.put("布鲁克菲尔德", "brookfield_viscosity");
+        experimentTypeMapReverse.put("动态剪切流变仪试验", "dynamic_shear_rheometer");
+        experimentTypeMapReverse.put("动态剪切", "dynamic_shear_rheometer");
+        experimentTypeMapReverse.put("动剪", "dynamic_shear_rheometer");
+        experimentTypeMapReverse.put("沥青弯曲蠕变劲度试验", "bending_beam_rheometer");
+        experimentTypeMapReverse.put("BBR试验", "bending_beam_rheometer");
+        experimentTypeMapReverse.put("弯曲梁", "bending_beam_rheometer");
+
+        // 创建结果映射
+        Map<String, String> result = new HashMap<>();
+        
+        // 针对每个任务，获取实验类型和状态
+        for (AsphaltTask task : tasks) {
+            String assignmentName = task.getAsphaltTaskAssignment();
+            String experimentStatus = task.getExperimentStatus();
+            
+            if (assignmentName == null || assignmentName.isEmpty() || experimentStatus == null) {
+                continue;
+            }
+            
+            // 尝试从任务分配名称中提取实验类型
+            String experimentTypeKey = null;
+            for (Map.Entry<String, String> entry : experimentTypeMapReverse.entrySet()) {
+                if (assignmentName.contains(entry.getKey())) {
+                    experimentTypeKey = entry.getValue();
+                    break;
+                }
+            }
+            
+            // 如果找到了实验类型，添加到结果映射
+            if (experimentTypeKey != null) {
+                logger.info("实验类型状态: 类型={}, 状态={}", experimentTypeKey, experimentStatus);
+                result.put(experimentTypeKey, experimentStatus);
+            } else {
+                // 如果没有找到，尝试使用整个分配名称作为键
+                logger.info("未识别的实验类型: 名称={}, 状态={}", assignmentName, experimentStatus);
+                result.put(assignmentName, experimentStatus);
+            }
+        }
+        
+        logger.info("获取到 {} 个实验类型状态", result.size());
+        return result;
     }
 
     /**

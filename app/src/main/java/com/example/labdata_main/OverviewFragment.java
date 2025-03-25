@@ -1,7 +1,10 @@
 package com.example.labdata_main;
 
-import android.content.BroadcastReceiver;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
@@ -18,6 +21,10 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -101,6 +108,18 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private List<ExperimentTask> apiAsphaltUnacceptedTasks = new ArrayList<>();
     private List<ExperimentTask> apiAsphaltAcceptedTasks = new ArrayList<>();
     private boolean hasLoadedApiData = false;
+
+    // 添加ActivityResultLauncher，用于处理从实验数据录入界面返回的结果
+    private ActivityResultLauncher<Intent> recordExperimentLauncher = registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> {
+            // 当返回结果为RESULT_OK时，表示实验已完成或状态已更新，需要刷新数据
+            if (result.getResultCode() == Activity.RESULT_OK) {
+                Log.d(TAG, "从实验数据录入界面返回，刷新任务列表");
+                refreshData();
+            }
+        }
+    );
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -455,7 +474,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                         apiAsphaltAcceptedTasks.clear();
                         
                         // 处理任务响应
-                        handleAsphaltTaskResponse(taskResponses);
+                        processAsphaltTasks(taskResponses);
                     } else {
                         Log.d(TAG, "没有沥青任务");
                         // 清空旧数据并显示空状态
@@ -498,42 +517,19 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 用于跟踪已处理的task_id基础部分，避免重复
         Set<String> processedBaseTaskIds = new HashSet<>();
         
-        // 用于跟踪任务状态 - 添加这部分代码来检查testing_status
+        // 用于跟踪任务组前缀及其状态 - key是基础taskId前缀，value是该组所有任务是否都已完成
         Map<String, Boolean> taskPrefixStatusMap = new HashMap<>();
+        
+        // 用于统计每个任务组的任务总数和各状态已完成任务数
+        Map<String, Integer> taskPrefixTotalCount = new HashMap<>();
+        Map<String, Integer> taskPrefixTestingFinishedCount = new HashMap<>();
+        Map<String, Boolean> taskPrefixPrepareFinishedMap = new HashMap<>();
+        Map<String, Boolean> taskPrefixMakingFinishedMap = new HashMap<>();
         
         // 获取当前用户的公司ID
         String userCompanyId = sharedPrefsManager.getUserCompany();
         
-        // 第一遍：检查所有任务的testing_status
-        for (MixtureTaskResponse mixtureTask : tasks) {
-            // 跳过非本单位的任务
-            if (!userCompanyId.equals(mixtureTask.getTaskCompany())) {
-                continue;
-            }
-            
-            String taskId = mixtureTask.getTaskId();
-            
-            // 提取基础UUID部分（去掉最后的"-数字"后缀）
-            String baseTaskId = taskId;
-            int lastDashIndex = taskId.lastIndexOf("-");
-            if (lastDashIndex > 0) {
-                baseTaskId = taskId.substring(0, lastDashIndex);
-            }
-            
-            // 检查任务的测试状态
-            String testingStatus = mixtureTask.getTestingStatus();
-            Log.d(TAG, "任务ID: " + taskId + ", 前缀: " + baseTaskId + ", 测试状态: " + testingStatus);
-            
-            // 如果状态不是finished，标记该前缀的任务未完成
-            if (!"finished".equals(testingStatus)) {
-                taskPrefixStatusMap.put(baseTaskId, false);
-            } else if (!taskPrefixStatusMap.containsKey(baseTaskId)) {
-                // 如果之前没有设置过该前缀的状态，设置为已完成
-                taskPrefixStatusMap.put(baseTaskId, true);
-            }
-        }
-        
-        // 第二遍：处理任务，按照原有逻辑
+        // 第一遍：统计每个任务组的任务数量和已完成任务数量
         for (MixtureTaskResponse mixtureTask : tasks) {
             // 跳过非本单位的任务
             if (!userCompanyId.equals(mixtureTask.getTaskCompany())){
@@ -549,12 +545,94 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 baseTaskId = taskId.substring(0, lastDashIndex);
             }
             
-            // 检查当前任务前缀是否所有任务都已完成
-            boolean allTasksFinished = taskPrefixStatusMap.getOrDefault(baseTaskId, true);
+            // 更新该前缀的任务总数
+            taskPrefixTotalCount.put(baseTaskId, taskPrefixTotalCount.getOrDefault(baseTaskId, 0) + 1);
             
-            // 如果所有任务都已完成，则跳过此任务
+            // 检查任务的三种状态（大小写不敏感）
+            String testingStatus = mixtureTask.getTestingStatus();
+            String prepareStatus = mixtureTask.getPrepareStatus();
+            String makingStatus = mixtureTask.getMakingStatus();
+            
+            Log.d(TAG, "任务ID: " + taskId + ", 前缀: " + baseTaskId + 
+                  ", 准备状态: " + prepareStatus + 
+                  ", 制件状态: " + makingStatus + 
+                  ", 测试状态: " + testingStatus);
+            
+            // 检查测试状态是否为"finished"
+            boolean isTestingFinished = testingStatus != null && testingStatus.toLowerCase().equals("finished");
+            
+            // 如果测试状态已完成，更新已完成测试任务计数
+            if (isTestingFinished) {
+                taskPrefixTestingFinishedCount.put(baseTaskId, taskPrefixTestingFinishedCount.getOrDefault(baseTaskId, 0) + 1);
+                Log.d(TAG, "任务测试已完成: " + taskId + ", 前缀: " + baseTaskId);
+            }
+            
+            // 检查准备状态是否为"finished"并更新映射
+            boolean isPrepareFinished = prepareStatus != null && prepareStatus.toLowerCase().equals("finished");
+            if (isPrepareFinished) {
+                taskPrefixPrepareFinishedMap.put(baseTaskId, true);
+                Log.d(TAG, "任务准备已完成: " + taskId + ", 前缀: " + baseTaskId);
+            } else if (!taskPrefixPrepareFinishedMap.containsKey(baseTaskId)) {
+                // 如果没有记录过，或者之前记录为false，则设置为false
+                taskPrefixPrepareFinishedMap.put(baseTaskId, false);
+            }
+            
+            // 检查制件状态是否为"finished"并更新映射
+            boolean isMakingFinished = makingStatus != null && makingStatus.toLowerCase().equals("finished");
+            if (isMakingFinished) {
+                taskPrefixMakingFinishedMap.put(baseTaskId, true);
+                Log.d(TAG, "任务制件已完成: " + taskId + ", 前缀: " + baseTaskId);
+            } else if (!taskPrefixMakingFinishedMap.containsKey(baseTaskId)) {
+                // 如果没有记录过，或者之前记录为false，则设置为false
+                taskPrefixMakingFinishedMap.put(baseTaskId, false);
+            }
+        }
+        
+        // 确定每个任务组是否全部完成（三个状态都为finished）
+        for (String baseTaskId : taskPrefixTotalCount.keySet()) {
+            int totalCount = taskPrefixTotalCount.get(baseTaskId);
+            int testingFinishedCount = taskPrefixTestingFinishedCount.getOrDefault(baseTaskId, 0);
+            boolean prepareFinished = taskPrefixPrepareFinishedMap.getOrDefault(baseTaskId, false);
+            boolean makingFinished = taskPrefixMakingFinishedMap.getOrDefault(baseTaskId, false);
+            
+            // 只有当所有任务的测试状态都已完成，并且准备状态和制件状态也都完成时，才认为任务组已完成
+            boolean allFinished = (totalCount > 0) && 
+                                 (testingFinishedCount == totalCount) && 
+                                 prepareFinished && 
+                                 makingFinished;
+            
+            taskPrefixStatusMap.put(baseTaskId, allFinished);
+            
+            Log.d(TAG, "任务组前缀: " + baseTaskId + 
+                  ", 总任务数: " + totalCount + 
+                  ", 已完成测试任务数: " + testingFinishedCount + 
+                  ", 准备已完成: " + prepareFinished +
+                  ", 制件已完成: " + makingFinished +
+                  ", 是否全部完成: " + allFinished);
+        }
+        
+        // 第二遍：处理任务，按照原有逻辑，但跳过全部完成的任务组
+        for (MixtureTaskResponse mixtureTask : tasks) {
+            // 跳过非本单位的任务
+            if (!userCompanyId.equals(mixtureTask.getTaskCompany())){
+                continue;
+            }
+            
+            String taskId = mixtureTask.getTaskId();
+            
+            // 提取基础UUID部分（去掉最后的"-数字"后缀）
+            String baseTaskId = taskId;
+            int lastDashIndex = taskId.lastIndexOf("-");
+            if (lastDashIndex > 0) {
+                baseTaskId = taskId.substring(0, lastDashIndex);
+            }
+            
+            // 检查当前任务前缀是否所有任务都已完成（包括三个状态）
+            boolean allTasksFinished = taskPrefixStatusMap.getOrDefault(baseTaskId, false);
+            
+            // 如果所有任务都已完成（三个状态都为finished），则跳过此任务
             if (allTasksFinished) {
-                Log.d(TAG, "跳过已完成任务组，前缀: " + baseTaskId + ", 完整ID: " + taskId);
+                Log.d(TAG, "跳过已完成任务组（所有状态均已完成），前缀: " + baseTaskId + ", 完整ID: " + taskId);
                 continue;
             }
             
@@ -586,6 +664,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 task.setStatus("未接受");
                 unacceptedTasks.add(task);
                 Log.d(TAG, "添加到未接受任务: " + task.getTaskName());
+            } else if (status != null && status.equals("COMPLETE")) {
+                // 已完成的任务不添加到任何列表
+                Log.d(TAG, "任务已完成，不添加到任何列表: " + task.getTaskName());
             } else {
                 // 默认处理为未接受
                 Log.d(TAG, "未知状态，默认设置为'未接受': " + status);
@@ -618,8 +699,64 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         // 用于跟踪已处理的assignment_id，避免重复
         Set<String> processedAssignmentIds = new HashSet<>();
         
-        // 处理每个任务
+        // 用于跟踪每个任务组（按asphalt_task_name分组）的完成状态
+        Map<String, Integer> taskNameTotalCount = new HashMap<>();
+        Map<String, Integer> taskNameFinishedCount = new HashMap<>();
+        Map<String, Boolean> taskNameCompletionStatus = new HashMap<>();
+        
+        // 第一遍：扫描所有任务，统计每个任务组（按asphalt_task_name分组）的完成情况
         for (AsphaltTaskResponse asphaltTask : tasks) {
+            String taskName = asphaltTask.getAsphaltTaskName();
+            if (taskName == null || taskName.trim().isEmpty()) {
+                continue; // 跳过没有任务名称的任务
+            }
+            
+            // 更新该任务名称组的任务总数
+            taskNameTotalCount.put(taskName, taskNameTotalCount.getOrDefault(taskName, 0) + 1);
+            
+            // 检查实验状态（大小写不敏感）
+            String experimentStatus = asphaltTask.getExperimentStatus();
+            Log.d(TAG, "任务名称: " + taskName + ", 实验状态: " + experimentStatus);
+            
+            // 大小写不敏感地检查状态是否为"finished"
+            boolean isFinished = experimentStatus != null && experimentStatus.toLowerCase().equals("finished");
+            
+            // 如果实验已完成，更新已完成实验计数
+            if (isFinished) {
+                taskNameFinishedCount.put(taskName, taskNameFinishedCount.getOrDefault(taskName, 0) + 1);
+                Log.d(TAG, "实验已完成: " + taskName);
+            }
+        }
+        
+        // 确定每个任务组是否全部完成
+        for (String taskName : taskNameTotalCount.keySet()) {
+            int totalCount = taskNameTotalCount.get(taskName);
+            int finishedCount = taskNameFinishedCount.getOrDefault(taskName, 0);
+            
+            // 如果所有实验都已完成，标记该组为完成状态
+            boolean allFinished = (totalCount > 0) && (finishedCount == totalCount);
+            taskNameCompletionStatus.put(taskName, allFinished);
+            
+            Log.d(TAG, "任务组: " + taskName + 
+                  ", 总任务数: " + totalCount + 
+                  ", 已完成任务数: " + finishedCount + 
+                  ", 是否全部完成: " + allFinished);
+        }
+        
+        // 处理每个任务，按照原有逻辑但跳过已完成的任务组
+        for (AsphaltTaskResponse asphaltTask : tasks) {
+            String taskName = asphaltTask.getAsphaltTaskName();
+            if (taskName == null || taskName.trim().isEmpty()) {
+                continue; // 跳过没有任务名称的任务
+            }
+            
+            // 检查该任务所属组是否全部完成，如果是，则跳过
+            boolean isTaskGroupCompleted = taskNameCompletionStatus.getOrDefault(taskName, false);
+            if (isTaskGroupCompleted) {
+                Log.d(TAG, "跳过已完成任务组: " + taskName);
+                continue;
+            }
+            
             String assignmentId = asphaltTask.getAsphaltTaskAssignmentId();
             
             // 如果没有分配ID，则使用实验ID作为唯一标识
@@ -638,6 +775,12 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             processedAssignmentIds.add(assignmentId);
             
             Log.d(TAG, "处理沥青任务: " + asphaltTask.getAsphaltTaskName() + ", 状态: " + asphaltTask.getStatus() + ", 分配ID: " + assignmentId + ", taskStatus=" + asphaltTask.getTaskStatus());
+            
+            // 直接跳过已完成的任务
+            if ("COMPLETED".equalsIgnoreCase(asphaltTask.getTaskStatus())) {
+                Log.d(TAG, "直接跳过已完成任务: " + asphaltTask.getAsphaltTaskName() + ", taskStatus=" + asphaltTask.getTaskStatus());
+                continue;
+            }
             
             // 转换为通用实验任务模型
             ExperimentTask task = convertAsphaltTaskToExperimentTask(asphaltTask);
@@ -659,10 +802,6 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 unacceptedTasks.add(task);
                 Log.d(TAG, "添加到未接受任务: " + task.getTaskName());
             } 
-            // 完成状态的任务不显示
-            else if ("COMPLETED".equalsIgnoreCase(taskStatus)) {
-                Log.d(TAG, "已完成任务不显示: " + task.getTaskName());
-            }
             // 默认情况，添加到未接受任务
             else {
                 unacceptedTasks.add(task);
@@ -1269,7 +1408,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         }
         
         intent.putExtra("experiment_type", "ASPHALT");
-        startActivity(intent);
+        recordExperimentLauncher.launch(intent);
     }
     
     // 显示混合料实验信息
@@ -1299,7 +1438,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         Intent intent = new Intent(requireContext(), RecordExperimentDataActivity.class);
         intent.putExtra("taskId", task.getTaskId());  // 这里也需要修改为 "taskId"
         intent.putExtra("experiment_type", "MIXTURE");
-        startActivity(intent);
+        recordExperimentLauncher.launch(intent);
     }
 
     /**
@@ -1432,5 +1571,135 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                     Toast.makeText(requireContext(), "网络错误，请重试", Toast.LENGTH_SHORT).show();
                 }
             });
+    }
+    
+    private void processAsphaltTasks(List<AsphaltTaskResponse> tasks) {
+        // 清空已有数据
+        List<ExperimentTask> unacceptedTasks = new ArrayList<>();
+        List<ExperimentTask> acceptedTasks = new ArrayList<>();
+        
+        // 用于跟踪已处理的任务分配ID，避免重复处理
+        Set<String> processedAssignmentIds = new HashSet<>();
+        
+        // 用于跟踪每个任务组（按asphalt_task_name分组）的完成状态
+        Map<String, Integer> taskNameTotalCount = new HashMap<>();
+        Map<String, Integer> taskNameFinishedCount = new HashMap<>();
+        Map<String, Boolean> taskNameCompletionStatus = new HashMap<>();
+        
+        // 第一遍：扫描所有任务，统计每个任务组（按asphalt_task_name分组）的完成情况
+        for (AsphaltTaskResponse asphaltTask : tasks) {
+            String taskName = asphaltTask.getAsphaltTaskName();
+            if (taskName == null || taskName.trim().isEmpty()) {
+                continue; // 跳过没有任务名称的任务
+            }
+            
+            // 更新该任务名称组的任务总数
+            taskNameTotalCount.put(taskName, taskNameTotalCount.getOrDefault(taskName, 0) + 1);
+            
+            // 检查实验状态（大小写不敏感）
+            String experimentStatus = asphaltTask.getExperimentStatus();
+            Log.d(TAG, "任务名称: " + taskName + ", 实验状态: " + experimentStatus);
+            
+            // 大小写不敏感地检查状态是否为"finished"
+            boolean isFinished = experimentStatus != null && experimentStatus.toLowerCase().equals("finished");
+            
+            // 如果实验已完成，更新已完成实验计数
+            if (isFinished) {
+                taskNameFinishedCount.put(taskName, taskNameFinishedCount.getOrDefault(taskName, 0) + 1);
+                Log.d(TAG, "实验已完成: " + taskName);
+            }
+        }
+        
+        // 确定每个任务组是否全部完成
+        for (String taskName : taskNameTotalCount.keySet()) {
+            int totalCount = taskNameTotalCount.get(taskName);
+            int finishedCount = taskNameFinishedCount.getOrDefault(taskName, 0);
+            
+            // 如果所有实验都已完成，标记该组为完成状态
+            boolean allFinished = (totalCount > 0) && (finishedCount == totalCount);
+            taskNameCompletionStatus.put(taskName, allFinished);
+            
+            Log.d(TAG, "任务组: " + taskName + 
+                  ", 总任务数: " + totalCount + 
+                  ", 已完成任务数: " + finishedCount + 
+                  ", 是否全部完成: " + allFinished);
+        }
+        
+        // 处理每个任务，按照原有逻辑但跳过已完成的任务组
+        for (AsphaltTaskResponse asphaltTask : tasks) {
+            String taskName = asphaltTask.getAsphaltTaskName();
+            if (taskName == null || taskName.trim().isEmpty()) {
+                continue; // 跳过没有任务名称的任务
+            }
+            
+            // 检查该任务所属组是否全部完成，如果是，则跳过
+            boolean isTaskGroupCompleted = taskNameCompletionStatus.getOrDefault(taskName, false);
+            if (isTaskGroupCompleted) {
+                Log.d(TAG, "跳过已完成任务组: " + taskName);
+                continue;
+            }
+            
+            String assignmentId = asphaltTask.getAsphaltTaskAssignmentId();
+            
+            // 如果没有分配ID，则使用实验ID作为唯一标识
+            if (assignmentId == null || assignmentId.trim().isEmpty()) {
+                assignmentId = String.valueOf(asphaltTask.getAsphaltExperimentId());
+                Log.d(TAG, "任务没有分配ID，使用实验ID作为唯一标识: " + assignmentId);
+            }
+            
+            // 如果这个assignment_id已经处理过，则跳过
+            if (processedAssignmentIds.contains(assignmentId)) {
+                Log.d(TAG, "跳过重复任务，分配ID: " + assignmentId + ", 任务名称: " + asphaltTask.getAsphaltTaskName());
+                continue;
+            }
+            
+            // 记录这个assignment_id已经处理
+            processedAssignmentIds.add(assignmentId);
+            
+            Log.d(TAG, "处理沥青任务: " + asphaltTask.getAsphaltTaskName() + ", 状态: " + asphaltTask.getStatus() + ", 分配ID: " + assignmentId + ", taskStatus=" + asphaltTask.getTaskStatus());
+            
+            // 直接跳过已完成的任务
+            if ("COMPLETED".equalsIgnoreCase(asphaltTask.getTaskStatus())) {
+                Log.d(TAG, "直接跳过已完成任务: " + asphaltTask.getAsphaltTaskName() + ", taskStatus=" + asphaltTask.getTaskStatus());
+                continue;
+            }
+            
+            // 转换为通用实验任务模型
+            ExperimentTask task = convertAsphaltTaskToExperimentTask(asphaltTask);
+            
+            // 根据状态分类 - 优先使用 taskStatus，其次使用 status
+            String taskStatus = asphaltTask.getTaskStatus();
+            String status = asphaltTask.getStatus();
+            
+            // 如果 taskStatus 为 ONGOING 或者 status 为 ONGOING，则添加到已接受任务
+            if ("ONGOING".equalsIgnoreCase(taskStatus) || 
+                "ACCEPTED".equalsIgnoreCase(taskStatus) || 
+                "PROCESSING".equalsIgnoreCase(taskStatus) ||
+                "ONGOING".equalsIgnoreCase(status)) {
+                acceptedTasks.add(task);
+                Log.d(TAG, "添加到已接受任务: " + task.getTaskName());
+            } 
+            // 如果是 CREATED 状态，则添加到未接受任务
+            else if ("CREATED".equalsIgnoreCase(taskStatus)) {
+                unacceptedTasks.add(task);
+                Log.d(TAG, "添加到未接受任务: " + task.getTaskName());
+            } 
+            // 默认情况，添加到未接受任务
+            else {
+                unacceptedTasks.add(task);
+                Log.d(TAG, "状态未知，默认添加到未接受任务: " + task.getTaskName());
+            }
+        }
+        
+        // 更新集合
+        apiAsphaltUnacceptedTasks.clear();  // 先清空，避免添加重复数据
+        apiAsphaltUnacceptedTasks.addAll(unacceptedTasks);
+        apiAsphaltAcceptedTasks.clear();  // 先清空，避免添加重复数据
+        apiAsphaltAcceptedTasks.addAll(acceptedTasks);
+        
+        Log.d(TAG, "共转换 " + unacceptedTasks.size() + " 个未接受任务和 " + acceptedTasks.size() + " 个已接受任务");
+        
+        // 更新UI
+        updateTaskUI(unacceptedTasks, acceptedTasks, "ASPHALT");
     }
 }

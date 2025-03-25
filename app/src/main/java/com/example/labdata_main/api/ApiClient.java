@@ -14,6 +14,8 @@ import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 /**
  * API客户端配置类，使用Retrofit和OkHttp创建API服务
@@ -66,10 +68,15 @@ public class ApiClient {
                     .addInterceptor(loggingInterceptor)
                     .build();
             
+            // 配置Gson，使其能正确处理ISO 8601格式的日期字符串
+            Gson gson = new GsonBuilder()
+                    .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+                    .create();
+            
             // 创建Retrofit实例
             retrofit = new Retrofit.Builder()
                     .baseUrl(ApiConfig.BASE_URL)
-                    .addConverterFactory(GsonConverterFactory.create())
+                    .addConverterFactory(GsonConverterFactory.create(gson))
                     .client(okHttpClient)
                     .build();
         }
@@ -123,10 +130,15 @@ public class ApiClient {
                 .addInterceptor(loggingInterceptor)
                 .build();
         
+        // 配置Gson，使其能正确处理ISO 8601格式的日期字符串
+        Gson gson = new GsonBuilder()
+                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+                .create();
+        
         // 创建Retrofit实例
         Retrofit customRetrofit = new Retrofit.Builder()
                 .baseUrl(ApiConfig.BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gson))
                 .client(okHttpClient)
                 .build();
         

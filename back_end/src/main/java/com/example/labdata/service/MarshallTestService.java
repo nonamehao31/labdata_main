@@ -94,19 +94,19 @@ public class MarshallTestService {
             }
             
             // 使用JdbcTemplate直接更新数据库
-            String sql = "UPDATE mixture_task SET testing_status = 'finished' WHERE task_id = ? AND task_assignment = ?";
+            String sql = "UPDATE mixture_task SET testing_status = 'finished', status = 'COMPLETE' WHERE task_id = ? AND task_assignment = ?";
              // 使用taskId进行精确匹配
         int updatedRows = jdbcTemplate.update(sql, taskId, taskAssignment);
         
         if (updatedRows == 0) {
             logger.warn("未找到匹配的任务(精确匹配)，尝试使用前缀匹配");
             // 如果精确匹配未成功，尝试使用前缀匹配
-            sql = "UPDATE mixture_task SET testing_status = 'finished' WHERE task_id LIKE ? AND task_assignment = ?";
+            sql = "UPDATE mixture_task SET testing_status = 'finished', status = 'COMPLETE' WHERE task_id LIKE ? AND task_assignment = ?";
             updatedRows = jdbcTemplate.update(sql, taskIdPrefix + "%", taskAssignment);
         }
         
         if (updatedRows > 0) {
-            logger.info("成功更新任务ID: {} 的实验类型: {} 的状态为finished，影响行数: {}", taskId, taskAssignment, updatedRows);
+            logger.info("成功更新任务ID: {} 的实验类型: {} 的状态为finished/COMPLETE，影响行数: {}", taskId, taskAssignment, updatedRows);
         } else {
             logger.warn("没有找到匹配的任务记录: task_id={}, task_assignment={}", taskId, taskAssignment);
             // 输出可能的任务分配值，以便调试

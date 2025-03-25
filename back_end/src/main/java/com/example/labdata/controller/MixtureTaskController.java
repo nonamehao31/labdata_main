@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api")
@@ -33,10 +34,46 @@ public class MixtureTaskController {
 
     private static final Logger logger = LoggerFactory.getLogger(MixtureTaskController.class);
     private static final Logger log = LoggerFactory.getLogger(MixtureTaskController.class);
+    
 
     @Autowired
     private MixtureTaskService mixtureTaskService;
 
+    /**
+     * 获取混合料任务的测试状态
+     *
+     * @param taskId 任务ID
+     * @return 测试状态
+     */
+    @GetMapping("/mixture-tasks/{taskId}/testing-status")
+    public ApiResponse<String> getTestingStatus(@PathVariable String taskId) {
+        try {
+            String status = mixtureTaskService.getTestingStatus(taskId);
+            return new ApiResponse<>(true, "成功获取测试状态", status);
+        } catch (Exception e) {
+            logger.error("获取测试状态时发生错误: ", e);
+            return new ApiResponse<>(false, "获取测试状态时发生错误: " + e.getMessage(), "error");
+        }
+    }
+
+    /**
+     * 获取混合料任务中各实验类型的状态
+     *
+     * @param taskId 任务ID
+     * @return 各实验类型的状态映射（实验类型 -> 状态）
+     */
+    @GetMapping("/mixture-tasks/{taskId}/experiment-type-status")
+    public ApiResponse<List<Map<String, String>>> getExperimentTypeStatus(@PathVariable String taskId) {
+        try {
+            logger.info("正在获取任务ID为 {} 的实验类型状态", taskId);
+            List<Map<String, String>> statusList = mixtureTaskService.getExperimentTypeStatusByTaskId(taskId);
+            logger.info("成功获取任务ID为 {} 的实验类型状态: {}", taskId, statusList);
+            return new ApiResponse<>(true, "成功获取任务状态信息", statusList);
+        } catch (Exception e) {
+            logger.error("获取实验类型状态时发生错误: ", e);
+            return new ApiResponse<>(false, "获取实验类型状态时发生错误: " + e.getMessage(), new ArrayList<>());
+        }
+    }
 
     @GetMapping("/mixtureTask/list")
     public ResponseEntity<List<MixtureTask>> getAllMixtureTasks() {
@@ -47,6 +84,9 @@ public class MixtureTaskController {
     public ResponseEntity<List<MixtureTask>> getMixtureTasksByType(@RequestParam String taskType) {
         return ResponseEntity.ok(mixtureTaskService.getMixtureTasksByType(taskType));
     }
+    
+
+
     
     /**
      * 获取支持的混合料任务类型列表

@@ -1,5 +1,10 @@
 package com.example.labdata_main;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -1525,9 +1530,46 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         showLoading(false);
                         if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                             Log.d("UpdateStatus", "成功更新" + experimentTypeParam + "实验状态为已完成");
+                            
+                            // 成功更新状态后，提示用户并返回
+                            if (!isFinishing() && !isDestroyed()) {
+                                Toast.makeText(RecordExperimentDataActivity.this, experimentTypeParam + "实验已标记为完成", Toast.LENGTH_SHORT).show();
+                            }
+                            
+                            // 延迟刷新实验状态，确保UI更新反映最新状态
+                            new Handler().postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (!isFinishing() && !isDestroyed()) {
+                                        fetchExperimentStatus();
+                                    }
+                                }
+                            }, 500);
+                            
+                            // 提示用户是否返回任务列表
+                            // 检查Activity是否已经被销毁
+                            if (!isFinishing() && !isDestroyed()) {
+                                new AlertDialog.Builder(RecordExperimentDataActivity.this)
+                                    .setTitle("实验完成")
+                                    .setMessage("实验已标记为完成，是否返回任务列表？")
+                                    .setPositiveButton("返回列表", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            setResult(RESULT_OK);
+                                            finish();
+                                        }
+                                    })
+                                    .setNegativeButton("继续操作", null)
+                                    .show();
+                            } else {
+                                // Activity已结束，直接设置结果并关闭
+                                Log.d("UpdateStatus", "Activity已结束，不显示对话框");
+                                setResult(RESULT_OK);
+                                finish();
+                            }
                         } else {
-                            Log.e("UpdateStatus", "更新" + experimentTypeParam + "实验状态失败: " 
-                                  + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                            Log.e("UpdateStatus", "更新" + experimentTypeParam + "实验状态失败: " +
+                                  (response.body() != null ? response.body().getMessage() : "未知错误"));
                         }
                     }
     
@@ -1546,9 +1588,46 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         showLoading(false);
                         if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                             Log.d("UpdateStatus", "成功更新任务状态为已完成");
+                            
+                            // 成功更新状态后，提示用户并返回
+                            if (!isFinishing() && !isDestroyed()) {
+                                Toast.makeText(RecordExperimentDataActivity.this, "实验已标记为完成", Toast.LENGTH_SHORT).show();
+                            }
+                            
+                            // 延迟刷新实验状态，确保UI更新反映最新状态
+                            new Handler().postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (!isFinishing() && !isDestroyed()) {
+                                        fetchExperimentStatus();
+                                    }
+                                }
+                            }, 500);
+                            
+                            // 提示用户是否返回任务列表
+                            // 检查Activity是否已经被销毁
+                            if (!isFinishing() && !isDestroyed()) {
+                                new AlertDialog.Builder(RecordExperimentDataActivity.this)
+                                    .setTitle("实验完成")
+                                    .setMessage("实验已标记为完成，是否返回任务列表？")
+                                    .setPositiveButton("返回列表", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            setResult(RESULT_OK);
+                                            finish();
+                                        }
+                                    })
+                                    .setNegativeButton("继续操作", null)
+                                    .show();
+                            } else {
+                                // Activity已结束，直接设置结果并关闭
+                                Log.d("UpdateStatus", "Activity已结束，不显示对话框");
+                                setResult(RESULT_OK);
+                                finish();
+                            }
                         } else {
-                            Log.e("UpdateStatus", "更新任务状态失败: " 
-                                  + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                            Log.e("UpdateStatus", "更新任务状态失败: " +
+                                  (response.body() != null ? response.body().getMessage() : "未知错误"));
                         }
                     }
     
@@ -1574,33 +1653,73 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         }
         
         showLoading(true);
-        Log.d("FetchStatus", "正在获取实验状态，任务ID: " + taskIdString);
+        Log.d("FetchStatus", "正在获取实验类型状态，任务ID: " + taskIdString);
         
-        // 使用API获取实验状态信息
-        asphaltTaskService.getExperimentStatus(taskIdString)
+        // 使用新API获取每个实验类型的状态信息
+        asphaltTaskService.getExperimentTypeStatus(taskIdString)
             .enqueue(new Callback<ApiResponse<Map<String, String>>>() {
                 @Override
-                public void onResponse(Call<ApiResponse<Map<String, String>>> call, 
-                                      Response<ApiResponse<Map<String, String>>> response) {
-                    showLoading(false);
+                public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                         Map<String, String> statusMap = response.body().getData();
-                        if (statusMap != null) {
-                            Log.d("FetchStatus", "成功获取实验状态: " + statusMap);
+                        if (statusMap != null && !statusMap.isEmpty()) {
+                            Log.d("FetchStatus", "成功获取实验类型状态: " + statusMap);
                             filterExperimentTypes(statusMap);
+                            showLoading(false);
                         } else {
-                            Log.w("FetchStatus", "实验状态数据为空");
+                            Log.w("FetchStatus", "实验类型状态数据为空，尝试获取全局状态");
+                            // 如果获取不到详细状态，回退到获取全局状态
+                            fetchGlobalExperimentStatus();
                         }
                     } else {
-                        Log.e("FetchStatus", "获取实验状态失败: " + 
-                              (response.body() != null ? response.body().getMessage() : "未知错误"));
+                        Log.e("FetchStatus", "获取实验类型状态失败: " +
+                              (response.body() != null ? response.body().getMessage() : "未知错误") + 
+                              "，尝试获取全局状态");
+                        // 获取失败时，回退到获取全局状态
+                        fetchGlobalExperimentStatus();
                     }
                 }
                 
                 @Override
                 public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                    Log.e("FetchStatus", "获取实验类型状态请求失败，尝试获取全局状态", t);
+                    // 请求失败时，回退到获取全局状态
+                    fetchGlobalExperimentStatus();
+                }
+            });
+    }
+    
+    // 添加获取全局状态的回退方法
+    private void fetchGlobalExperimentStatus() {
+        Log.d("FetchStatus", "使用全局状态API作为回退，任务ID: " + taskIdString);
+        
+        // 使用原API获取全局实验状态
+        asphaltTaskService.getExperimentStatus(taskIdString)
+            .enqueue(new Callback<ApiResponse<String>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
                     showLoading(false);
-                    Log.e("FetchStatus", "获取实验状态请求失败", t);
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        String status = response.body().getData();
+                        if (status != null) {
+                            Log.d("FetchStatus", "成功获取全局实验状态: " + status);
+                            // 创建包含单个状态的Map以兼容现有的filterExperimentTypes方法
+                            Map<String, String> statusMap = new HashMap<>();
+                            statusMap.put("status", status);
+                            filterExperimentTypes(statusMap);
+                        } else {
+                            Log.w("FetchStatus", "实验状态数据为空");
+                        }
+                    } else {
+                        Log.e("FetchStatus", "获取全局实验状态也失败: " +
+                              (response.body() != null ? response.body().getMessage() : "未知错误"));
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                    showLoading(false);
+                    Log.e("FetchStatus", "获取全局实验状态请求失败", t);
                 }
             });
     }
@@ -1674,6 +1793,36 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         asphaltAdapter.updateExperimentTypes(filteredExperimentTypes);
     }
     
+    private void filterExperimentTypesOld(Map<String, String> statusMap) {
+        if (asphaltAdapter == null) {
+            Log.e("FilterExperiments", "适配器为空，无法过滤实验类型");
+            return;
+        }
+        
+        List<String> allExperimentTypes = asphaltAdapter.getExperimentTypes();
+        List<String> filteredExperimentTypes = new ArrayList<>();
+        
+        // 打印完整的状态映射和实验类型以便调试
+        Log.d("FilterExperiments", "状态映射: " + statusMap);
+        Log.d("FilterExperiments", "所有实验类型: " + allExperimentTypes);
+        
+        // 遍历所有实验类型，只保留未完成的
+        for (String expType : allExperimentTypes) {
+            String status = statusMap.get(expType);
+            
+            // 根据状态决定是否保留
+            if (status == null || !status.equals("finished")) {
+                filteredExperimentTypes.add(expType);
+                Log.d("FilterExperiments", "保留未完成实验: " + expType + " (状态: " + (status == null ? "未知" : status) + ")");
+            } else {
+                Log.d("FilterExperiments", "过滤已完成实验: " + expType + " (状态: " + status + ")");
+            }
+        }
+        
+        Log.d("FilterExperiments", "过滤前: " + allExperimentTypes.size() + "项, 过滤后: " + filteredExperimentTypes.size() + "项");
+        asphaltAdapter.updateExperimentTypes(filteredExperimentTypes);
+    }
+
     // 添加实验类型标准化方法
     private String normalizeExperimentType(String type) {
         if (type == null) return "";

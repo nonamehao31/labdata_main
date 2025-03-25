@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -307,6 +309,74 @@ public class AsphaltTaskController {
         } catch (Exception e) {
             logger.error("获取实验任务状态失败", e);
             return ResponseEntity.ok(new ApiResponse<>(false, "获取实验任务状态失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 获取实验类型状态
+     *
+     * @param taskId 任务ID
+     * @param currentUser 当前用户
+     * @return 响应，包含实验类型到状态的映射
+     */
+    @GetMapping("/experiment-type-status/{taskId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getExperimentTypeStatus(
+            @PathVariable String taskId,
+            @CurrentUser UserPrincipal currentUser) {
+        logger.info("用户 {} 获取实验类型状态, 任务ID: {}", currentUser.getUsername(), taskId);
+        
+        try {
+            // 使用支持字符串ID的方法获取各个实验类型的状态
+            Map<String, String> statusMap = asphaltTaskService.getExperimentTypeStatusByStringId(taskId);
+            
+            if (statusMap != null && !statusMap.isEmpty()) {
+                logger.info("获取实验类型状态成功: taskId={}, 状态数量={}", taskId, statusMap.size());
+                for (Map.Entry<String, String> entry : statusMap.entrySet()) {
+                    logger.debug("实验类型: {}, 状态: {}", entry.getKey(), entry.getValue());
+                }
+                return ResponseEntity.ok(new ApiResponse<>(true, "获取实验类型状态成功", statusMap));
+            } else {
+                logger.warn("获取实验类型状态失败，未找到匹配的任务或无实验类型: {}", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(false, "未找到匹配的实验任务或无实验类型", new HashMap<>()));
+            }
+        } catch (Exception e) {
+            logger.error("获取实验类型状态失败", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "获取实验类型状态失败: " + e.getMessage(), new HashMap<>()));
+        }
+    }
+
+    /**
+     * 更新特定实验类型的状态为已完成（新接口，使用查询参数）
+     *
+     * @param taskId 任务ID（查询参数）
+     * @param experimentType 实验类型（查询参数）
+     * @param currentUser 当前用户
+     * @return 响应
+     */
+    @PostMapping("/update-experiment-type-status")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Boolean>> updateExperimentTypeStatusToFinished(
+            @RequestParam String taskId,
+            @RequestParam String experimentType,
+            @CurrentUser UserPrincipal currentUser) {
+        logger.info("用户 {} 通过新接口更新实验任务状态为已完成, 任务ID: {}, 实验类型: {}", 
+            currentUser.getUsername(), taskId, experimentType);
+        
+        try {
+            // 使用支持字符串ID的方法，避免Long类型转换错误
+            AsphaltTask updatedTask = asphaltTaskService.updateExperimentStatusToFinishedByStringId(taskId, experimentType);
+            
+            if (updatedTask != null) {
+                logger.info("成功更新实验任务状态为已完成: {}", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(true, "实验任务状态更新成功", true));
+            } else {
+                logger.warn("更新实验任务状态失败，未找到匹配的任务: {}", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(false, "未找到匹配的实验任务", false));
+            }
+        } catch (Exception e) {
+            logger.error("更新实验任务状态失败", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "更新实验任务状态失败: " + e.getMessage(), false));
         }
     }
 }

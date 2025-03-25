@@ -299,4 +299,22 @@ public interface MixtureTaskService {
      */
     @POST("api/mixtureTask/saveSplittingTestData")
     Call<ApiResponse<Map<String, String>>> saveSplittingTestData(@Body Map<String, Object> requestData);
+
+    /**
+     * 获取混合料任务的测试状态
+     * 
+     * @param taskId 任务ID
+     * @return 实验状态（测试状态）
+     */
+    @GET("api/mixture-tasks/{taskId}/testing-status")
+    Call<ApiResponse<String>> getTestingStatus(@Path("taskId") String taskId);
+
+    /**
+     * 获取混合料任务中各实验类型的状态
+     * 
+     * @param taskId 任务ID
+     * @return 任务状态列表，包含该前缀下所有相关任务的状态
+     */
+    @GET("api/mixture-tasks/{taskId}/experiment-type-status")
+    Call<ApiResponse<List<Map<String, String>>>> getExperimentTypeStatus(@Path("taskId") String taskId);
 }

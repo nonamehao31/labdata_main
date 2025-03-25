@@ -52,6 +52,12 @@ public class MixtureTaskResponse {
     @SerializedName("testing_status")
     private String testingStatus;
     
+    @SerializedName("prepare_status")
+    private String prepareStatus;
+    
+    @SerializedName("making_status")
+    private String makingStatus;
+    
     @SerializedName("dueDate")
     private String dueDate;
     
@@ -179,6 +185,22 @@ public class MixtureTaskResponse {
     
     public void setTestingStatus(String testingStatus) {
         this.testingStatus = testingStatus;
+    }
+    
+    public String getPrepareStatus() {
+        return prepareStatus;
+    }
+    
+    public void setPrepareStatus(String prepareStatus) {
+        this.prepareStatus = prepareStatus;
+    }
+    
+    public String getMakingStatus() {
+        return makingStatus;
+    }
+    
+    public void setMakingStatus(String makingStatus) {
+        this.makingStatus = makingStatus;
     }
     
     public String getDueDate() {

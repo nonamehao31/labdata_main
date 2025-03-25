@@ -13,7 +13,6 @@ import com.example.labdata_main.api.model.ApiResponse;
 import java.util.List;
 import java.util.Map;
 
-
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Body;
@@ -142,7 +141,15 @@ public interface AsphaltTaskService {
      * @return API响应
      */
     @GET("api/asphalt/experiments/experimentStatus/{taskId}")
-    Call<ApiResponse<Map<String, String>>> getExperimentStatus(@Path("taskId") String taskId);
+    Call<ApiResponse<String>> getExperimentStatus(@Path("taskId") String taskId);
+
+    /**
+     * 获取任务中各实验类型的状态
+     * @param taskId 任务ID
+     * @return API响应，包含实验类型到状态的映射
+     */
+    @GET("api/asphalt/experiments/experiment-type-status/{taskId}")
+    Call<ApiResponse<Map<String, String>>> getExperimentTypeStatus(@Path("taskId") String taskId);
 
     /**
      * 将特定实验类型的状态更新为已完成
@@ -156,4 +163,3 @@ public interface AsphaltTaskService {
         @Query("experimentType") String experimentType
     );
 }
-

@@ -9,7 +9,10 @@ import com.example.labdata.repository.DsrTemperaturePointRepository;
 import com.example.labdata.repository.DynamicShearRheometerTestRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
@@ -24,6 +27,8 @@ import java.util.regex.Pattern;
 @Service
 public class DynamicShearRheometerTestService {
 
+    private static final Logger logger = LoggerFactory.getLogger(DynamicShearRheometerTestService.class);
+
     @Autowired
     private DynamicShearRheometerTestRepository testRepository;
 
@@ -35,6 +40,9 @@ public class DynamicShearRheometerTestService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private static final Pattern TEMPERATURE_PATTERN = Pattern.compile("temperature_(\\d+)");
 

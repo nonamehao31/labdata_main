@@ -18,6 +18,7 @@ public class AsphaltTaskResponse {
     private String asphaltTaskAssignmentId;
     private String taskStatus;
     private String status;
+    private String experimentStatus; 
     private Long selectedAsphaltId;
     private String companyId;
     private String createdAt;
@@ -87,6 +88,14 @@ public class AsphaltTaskResponse {
     
     public void setStatus(String status) {
         this.status = status;
+    }
+    
+    public String getExperimentStatus() {
+        return experimentStatus;
+    }
+    
+    public void setExperimentStatus(String experimentStatus) {
+        this.experimentStatus = experimentStatus;
     }
     
     public Long getSelectedAsphaltId() {

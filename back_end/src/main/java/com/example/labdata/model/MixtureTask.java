@@ -52,6 +52,10 @@ public class MixtureTask {
     
     @Column(name = "testing_equipment_manufacturer")
     private String testingEquipmentManufacturer;
+
+    
+    // Getter和Setter
+
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", insertable = false, updatable = false)

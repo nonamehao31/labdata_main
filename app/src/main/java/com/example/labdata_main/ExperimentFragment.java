@@ -1,190 +1,250 @@
 package com.example.labdata_main;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.labdata_main.adapter.CompletedExperimentAdapter;
-import com.example.labdata_main.database.AppDatabase;
-import com.example.labdata_main.model.ExperimentData;
-import com.example.labdata_main.model.ExperimentTask;
-import com.example.labdata_main.model.AsphaltExperimentData;
+import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.api.ApiService;
+import com.example.labdata_main.api.response.ApiResponse;
+import com.example.labdata_main.api.response.CompletedAsphaltTaskResponse;
+import com.example.labdata_main.api.response.CompletedMixtureTaskResponse;
+import com.example.labdata_main.model.CompletedExperimentTask;
+import com.example.labdata_main.util.SPUtils;
+import com.example.labdata_main.util.PreferenceManager;
 import com.example.labdata_main.utils.SharedPrefsManager;
-import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+/**
+ * 实验记录Fragment
+ */
 public class ExperimentFragment extends Fragment {
-    private RecyclerView experimentRecyclerView;
-    private TextView emptyExperimentText;
-    private CompletedExperimentAdapter experimentAdapter;
-    private AppDatabase database;
+    private static final String TAG = "ExperimentFragment";
+    
+    // SharedPreferences管理器
     private SharedPrefsManager sharedPrefsManager;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private BroadcastReceiver taskRefreshReceiver;
 
+    // UI组件
+    private SwipeRefreshLayout swipeRefreshLayout;
+    private RecyclerView rvExperiments;
+    private TextView tvNoData;
+    private CompletedExperimentAdapter adapter;
+    private final List<CompletedExperimentTask> allTasks = new ArrayList<>();
+    
+    // API服务
+    private ApiService apiService;
+    private String companyId;
+    
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        apiService = ApiClient.getClient().create(ApiService.class);
         
-        // 注册广播接收器
-        taskRefreshReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if ("com.example.labdata_main.REFRESH_TASKS".equals(intent.getAction())) {
-                    loadCompletedExperiments();
-                }
-            }
-        };
-        // 注册广播接收器时添加兼容性检查，支持Android 13+
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(taskRefreshReceiver, 
-                new IntentFilter("com.example.labdata_main.REFRESH_TASKS"),
-                android.content.Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            requireContext().registerReceiver(taskRefreshReceiver, 
-                new IntentFilter("com.example.labdata_main.REFRESH_TASKS"));
-        }
+        // 使用SharedPrefsManager替代PreferenceManager
+        sharedPrefsManager = new SharedPrefsManager(context);
+        companyId = sharedPrefsManager.getUserCompany();
+        
+        // 记录日志以便调试
+        Log.d(TAG, "使用SharedPrefsManager获取到公司ID: " + companyId);
     }
 
+    @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.experiment, container, false);
-
-        experimentRecyclerView = view.findViewById(R.id.rvCompletedExperiments);
-        emptyExperimentText = view.findViewById(R.id.empty_experiment_text);
-        
-        // 数据筛选按钮
-        MaterialButton btnDataFilter = view.findViewById(R.id.btnDataFilter);
-        btnDataFilter.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), ExperimentAnalysisActivity.class);
-            startActivity(intent);
-        });
-
-        // 数据分析按钮
-        MaterialButton btnDataAnalysis = view.findViewById(R.id.btnDataAnalysis);
-        btnDataAnalysis.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), RealExperimentAnalysisActivity.class);
-            startActivity(intent);
-        });
-
+        initViews(view);
         return view;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        database = AppDatabase.getInstance(requireContext());
-        sharedPrefsManager = new SharedPrefsManager(requireContext());
-
-        setupExperimentRecyclerView();
-        loadCompletedExperiments();
+        loadData();
     }
 
-    private void setupExperimentRecyclerView() {
-        experimentRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        experimentAdapter = new CompletedExperimentAdapter(requireContext());
-        experimentRecyclerView.setAdapter(experimentAdapter);
-    }
-
-    private void loadCompletedExperiments() {
-        executor.execute(() -> {
-            try {
-                String companyId = sharedPrefsManager.getUserCompany();
-                if (companyId == null) {
-                    Log.e("ExperimentFragment", "Company ID is null");
-                    return;
-                }
-
-                // 获取已完成的任务
-                List<ExperimentTask> completedTasks = database.experimentTaskDao().getCompletedTasksByCompany(companyId);
-                List<CompletedExperimentAdapter.TaskWithData> tasksWithData = new ArrayList<>();
-
-                for (ExperimentTask task : completedTasks) {
-                    Log.d("ExperimentFragment", String.format(
-                        "Processing task - ID: %d, TaskId: %s, Name: %s, Type: %s, Status: %s",
-                        task.getId(),
-                        task.getTaskId(),
-                        task.getTaskName(),
-                        task.getExperimentType(),
-                        task.getStatus()
-                    ));
-
-                    // 根据实验类型获取对应的实验数据
-                    if ("ASPHALT".equals(task.getExperimentType())) {
-                        // 获取沥青实验数据
-                        List<AsphaltExperimentData> asphaltData = 
-                            database.asphaltExperimentDataDao().getByTaskId(task.getId());
-                        if (!asphaltData.isEmpty()) {
-                            tasksWithData.add(new CompletedExperimentAdapter.TaskWithData(task, asphaltData));
-                        }
-                    } else if ("MIXTURE".equals(task.getExperimentType())) {
-                        // 获取混合料实验数据
-                        List<ExperimentData> mixtureData = 
-                            database.experimentDataDao().getExperimentDataByTaskId(task.getId());
-                        if (!mixtureData.isEmpty()) {
-                            tasksWithData.add(new CompletedExperimentAdapter.TaskWithData(task, mixtureData));
-                        }
-                    } else {
-                        // 获取其他类型的实验数据
-                        List<ExperimentData> experimentDataList = 
-                            database.experimentDataDao().getExperimentDataByTaskId(task.getId());
-                        if (!experimentDataList.isEmpty()) {
-                            tasksWithData.add(new CompletedExperimentAdapter.TaskWithData(task, experimentDataList));
-                        }
-                    }
-                }
-
-                Log.d("ExperimentFragment", "Loaded " + tasksWithData.size() + " completed tasks with data");
-
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    if (tasksWithData.isEmpty()) {
-                        emptyExperimentText.setVisibility(View.VISIBLE);
-                        experimentRecyclerView.setVisibility(View.GONE);
-                    } else {
-                        emptyExperimentText.setVisibility(View.GONE);
-                        experimentRecyclerView.setVisibility(View.VISIBLE);
-                        experimentAdapter.setTasks(tasksWithData);
-                    }
-                });
-            } catch (Exception e) {
-                Log.e("ExperimentFragment", "Error loading completed tasks", e);
-            }
+    /**
+     * 初始化视图
+     */
+    private void initViews(View view) {
+        rvExperiments = view.findViewById(R.id.rvExperiments);
+        tvNoData = view.findViewById(R.id.tvNoData);
+        swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
+        
+        // 初始化适配器
+        adapter = new CompletedExperimentAdapter(getContext());
+        rvExperiments.setLayoutManager(new LinearLayoutManager(getContext()));
+        rvExperiments.setAdapter(adapter);
+        
+        // 设置点击监听器
+        adapter.setOnItemClickListener((task, position) -> {
+            // 这里可以处理任务点击事件，例如显示详情对话框
+            Toast.makeText(getContext(), "查看任务ID: " + task.getTaskId(), Toast.LENGTH_SHORT).show();
+        });
+        
+        // 设置下拉刷新监听器
+        swipeRefreshLayout.setOnRefreshListener(this::loadData);
+        
+        // 处理筛选按钮
+        Button btnFilter = view.findViewById(R.id.btnFilter);
+        btnFilter.setOnClickListener(v -> {
+            // 暂不实现筛选功能，可以在这里添加筛选逻辑
+            Toast.makeText(getContext(), "筛选功能暂未实现", Toast.LENGTH_SHORT).show();
+        });
+        
+        // 处理分析按钮
+        Button btnAnalyze = view.findViewById(R.id.btnAnalyze);
+        btnAnalyze.setOnClickListener(v -> {
+            // 暂不实现分析功能，可以在这里添加分析逻辑
+            Toast.makeText(getContext(), "分析功能暂未实现", Toast.LENGTH_SHORT).show();
         });
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        loadCompletedExperiments();
+    /**
+     * 加载数据
+     */
+    private void loadData() {
+        Log.d(TAG, "开始加载已完成实验数据");
+        swipeRefreshLayout.setRefreshing(true);
+        allTasks.clear();
+        
+        // 并行加载混合料和沥青任务
+        fetchCompletedMixtureTasks();
+        fetchCompletedAsphaltTasks();
     }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (taskRefreshReceiver != null) {
-            requireContext().unregisterReceiver(taskRefreshReceiver);
+    
+    /**
+     * 获取已完成的混合料任务
+     */
+    private void fetchCompletedMixtureTasks() {
+        if (apiService == null) {
+            Log.e(TAG, "API服务未初始化");
+            return;
         }
-        executor.shutdown();
+
+        // 获取公司ID
+        companyId = sharedPrefsManager.getUserCompany();
+        Log.d(TAG, "获取混合料任务，使用公司ID: " + companyId);
+        
+        apiService.getCompletedMixtureTasks(companyId).enqueue(new Callback<ApiResponse<List<CompletedMixtureTaskResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<CompletedMixtureTaskResponse>>> call, Response<ApiResponse<List<CompletedMixtureTaskResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    List<CompletedMixtureTaskResponse> mixtureTasks = response.body().getData();
+                    Log.d(TAG, "成功获取混合料任务: " + (mixtureTasks != null ? mixtureTasks.size() : 0) + "个");
+                    
+                    // 转换为通用任务模型
+                    if (mixtureTasks != null) {
+                        for (CompletedMixtureTaskResponse task : mixtureTasks) {
+                            allTasks.add(CompletedExperimentTask.fromMixtureTask(task));
+                        }
+                    }
+                    
+                    // 更新UI
+                    updateUI();
+                } else {
+                    Log.e(TAG, "获取混合料任务失败: " + (response.body() != null ? response.body().getMessage() : "Unknown error"));
+                    Toast.makeText(getContext(), "获取混合料任务失败", Toast.LENGTH_SHORT).show();
+                    updateUI();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<List<CompletedMixtureTaskResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取混合料任务请求失败", t);
+                Toast.makeText(getContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                updateUI();
+            }
+        });
+    }
+    
+    /**
+     * 获取已完成的沥青任务
+     */
+    private void fetchCompletedAsphaltTasks() {
+        if (apiService == null) {
+            Log.e(TAG, "API服务未初始化");
+            return;
+        }
+
+        // 获取公司ID
+        companyId = sharedPrefsManager.getUserCompany();
+        Log.d(TAG, "获取沥青任务，使用公司ID: " + companyId);
+        
+        apiService.getCompletedAsphaltTasks(companyId).enqueue(new Callback<ApiResponse<List<CompletedAsphaltTaskResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<CompletedAsphaltTaskResponse>>> call, Response<ApiResponse<List<CompletedAsphaltTaskResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    List<CompletedAsphaltTaskResponse> asphaltTasks = response.body().getData();
+                    Log.d(TAG, "成功获取沥青任务: " + (asphaltTasks != null ? asphaltTasks.size() : 0) + "个");
+                    
+                    // 转换为通用任务模型
+                    if (asphaltTasks != null) {
+                        for (CompletedAsphaltTaskResponse task : asphaltTasks) {
+                            allTasks.add(CompletedExperimentTask.fromAsphaltTask(task));
+                        }
+                    }
+                    
+                    // 更新UI
+                    updateUI();
+                } else {
+                    Log.e(TAG, "获取沥青任务失败: " + (response.body() != null ? response.body().getMessage() : "Unknown error"));
+                    Toast.makeText(getContext(), "获取沥青任务失败", Toast.LENGTH_SHORT).show();
+                    updateUI();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<List<CompletedAsphaltTaskResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取沥青任务请求失败", t);
+                Toast.makeText(getContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                updateUI();
+            }
+        });
+    }
+    
+    /**
+     * 更新UI显示
+     */
+    private void updateUI() {
+        if (getActivity() == null) return;
+        
+        getActivity().runOnUiThread(() -> {
+            // 停止刷新动画
+            swipeRefreshLayout.setRefreshing(false);
+            
+            // 更新数据列表
+            adapter.updateData(allTasks);
+            
+            // 显示/隐藏空数据提示
+            if (allTasks.isEmpty()) {
+                tvNoData.setVisibility(View.VISIBLE);
+                rvExperiments.setVisibility(View.GONE);
+            } else {
+                tvNoData.setVisibility(View.GONE);
+                rvExperiments.setVisibility(View.VISIBLE);
+            }
+            
+            Log.d(TAG, "UI更新完成，显示 " + allTasks.size() + " 个任务");
+        });
     }
 }
