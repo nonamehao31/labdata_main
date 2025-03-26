@@ -217,8 +217,8 @@ public class BrookfieldViscosityTestService {
      */
     public List<BrookfieldViscosityTest> getTestsByTaskId(String taskId) {
         try {
-            // 尝试使用原生SQL查询避免Long类型转换问题
-            return testRepository.findByTaskId(taskId);
+            // 使用优化的查询方法，一次性获取所有关联数据
+            return testRepository.findByTaskIdWithDetails(taskId);
         } catch (Exception e) {
             // 如果出错，记录错误并返回空列表
             System.err.println("Error retrieving tests by task ID: " + e.getMessage());

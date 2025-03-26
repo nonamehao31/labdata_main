@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+        <!-- 试件尺寸区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="试件尺寸"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tvBeamSpan"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="弯曲梁跨度: " />
+
+            <TextView
+                android:id="@+id/tvSpecimenWidth"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="试件宽度: " />
+
+            <TextView
+                android:id="@+id/tvSpecimenHeight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="试件高度: " />
+        </LinearLayout>
+
+        <!-- 计算结果区域（突出显示） -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="6dp"
+            app:cardBackgroundColor="#E3F2FD"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="计算结果"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    android:textColor="#0D47A1"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tvCreepRate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="蠕变速率(m值): "
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- 测量数据表格 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="时间点数据"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TableLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:stretchColumns="*">
+
+                <!-- 表头 -->
+                <TableRow
+                    android:background="#EEEEEE"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        android:text="时间(s)" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        android:text="温度(°C)" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        android:text="荷载(N)" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        android:text="挠度(mm)" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        android:text="劲度模量(MPa)" />
+                </TableRow>
+
+                <!-- 8秒时间点数据 -->
+                <TableRow android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="8" />
+
+                    <TextView
+                        android:id="@+id/tvTemperature8s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvLoad8s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvDeflection8s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvStiffness8s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+                </TableRow>
+
+                <!-- 15秒时间点数据 -->
+                <TableRow
+                    android:background="#F5F5F5"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="15" />
+
+                    <TextView
+                        android:id="@+id/tvTemperature15s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvLoad15s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvDeflection15s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvStiffness15s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+                </TableRow>
+
+                <!-- 30秒时间点数据 -->
+                <TableRow android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="30" />
+
+                    <TextView
+                        android:id="@+id/tvTemperature30s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvLoad30s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvDeflection30s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvStiffness30s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+                </TableRow>
+
+                <!-- 60秒时间点数据 -->
+                <TableRow
+                    android:background="#F5F5F5"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="60" />
+
+                    <TextView
+                        android:id="@+id/tvTemperature60s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvLoad60s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvDeflection60s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvStiffness60s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+                </TableRow>
+
+                <!-- 120秒时间点数据 -->
+                <TableRow android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="120" />
+
+                    <TextView
+                        android:id="@+id/tvTemperature120s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvLoad120s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvDeflection120s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvStiffness120s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+                </TableRow>
+
+                <!-- 240秒时间点数据 -->
+                <TableRow
+                    android:background="#F5F5F5"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="240" />
+
+                    <TextView
+                        android:id="@+id/tvTemperature240s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvLoad240s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvDeflection240s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+
+                    <TextView
+                        android:id="@+id/tvStiffness240s"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--" />
+                </TableRow>
+            </TableLayout>
+        </HorizontalScrollView>
+
+        <!-- 备注区域 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="备注"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tvRemarks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="无" />
+    </LinearLayout>

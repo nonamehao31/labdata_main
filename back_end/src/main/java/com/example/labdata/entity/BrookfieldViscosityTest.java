@@ -1,9 +1,11 @@
 package com.example.labdata.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import jakarta.persistence.*;
 import java.time.Instant;
@@ -13,7 +15,8 @@ import java.util.Set;
 /**
  * 布鲁克菲尔德旋转黏度实验实体类
  */
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -54,6 +57,7 @@ public class BrookfieldViscosityTest {
     
     @OneToMany(mappedBy = "test", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonManagedReference("test-temperature-points")
     private Set<BrookfieldViscosityTemperaturePoint> temperaturePoints = new HashSet<>();
     
     // 添加和移除温度点的辅助方法

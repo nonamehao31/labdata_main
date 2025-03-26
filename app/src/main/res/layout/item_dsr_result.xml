@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <!-- 试验参数区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="8dp"
+        android:background="#F5F5F5"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="试验参数"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tvTestRadius"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="试验板半径(R): " />
+
+        <TextView
+            android:id="@+id/tvPlateGap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="试验平板间距(h): " />
+
+        <TextView
+            android:id="@+id/tvControlMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="控制方式: " />
+    </LinearLayout>
+
+    <!-- 实验数据表头 -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- 表头 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="#E0E0E0"
+                android:padding="8dp">
+
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:text="温度 (°C)"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:text="频率 (Hz)"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="复数模量G* (Pa)"
+                    android:textStyle="bold"
+                    android:textColor="#D32F2F"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="储能模量G' (Pa)"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="损耗模量G&quot; (Pa)"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:text="相位角δ (°)"
+                    android:textStyle="bold"
+                    android:textColor="#D32F2F"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="110dp"
+                    android:layout_height="wrap_content"
+                    android:text="黏弹性等级"
+                    android:textStyle="bold"
+                    android:textColor="#D32F2F"
+                    android:gravity="center" />
+            </LinearLayout>
+
+            <!-- 数据区域 -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvDsrDataPoints"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                android:orientation="vertical" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- 备注区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="备注"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tvRemarks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="无" />
+    </LinearLayout>
+</LinearLayout>

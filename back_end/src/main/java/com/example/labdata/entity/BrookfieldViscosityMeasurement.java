@@ -1,9 +1,11 @@
 package com.example.labdata.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import jakarta.persistence.*;
 import java.time.Instant;
@@ -11,7 +13,8 @@ import java.time.Instant;
 /**
  * 布鲁克菲尔德旋转黏度实验粘度测量值实体类
  */
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -40,6 +43,7 @@ public class BrookfieldViscosityMeasurement {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "temperature_point_id", nullable = false)
+    @JsonBackReference("temperature-point-measurements")
     private BrookfieldViscosityTemperaturePoint temperaturePoint;
     
     @PrePersist

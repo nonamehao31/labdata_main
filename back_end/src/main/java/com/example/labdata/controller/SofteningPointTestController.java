@@ -64,6 +64,25 @@ public class SofteningPointTestController {
     }
     
     /**
+     * 获取指定任务ID的软化点试验数据 (与针入度实验API格式保持一致)
+     * 
+     * @param taskId 任务ID
+     * @return 响应结果
+     */
+    @GetMapping("/{taskId}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<SofteningPointTest>> getSofteningPointByTaskId(@PathVariable String taskId) {
+        logger.info("通过统一格式API查询任务ID为{}的软化点试验数据", taskId);
+        
+        Optional<SofteningPointTest> softeningPointTest = softeningPointTestService.getSofteningPointTestByTaskId(taskId);
+        if (softeningPointTest.isPresent()) {
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取软化点试验数据成功", softeningPointTest.get()));
+        } else {
+            return ResponseEntity.ok(new ApiResponse<>(false, "未找到任务ID为" + taskId + "的软化点试验数据", null));
+        }
+    }
+    
+    /**
      * 获取所有软化点试验数据
      * 
      * @return 响应结果

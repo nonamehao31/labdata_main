@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/tvTemperature"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvFrequency"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvComplexModulus"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textStyle="bold"
+        android:textColor="#D32F2F"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvStorageModulus"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvLossModulus"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvPhaseAngle"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textStyle="bold"
+        android:textColor="#D32F2F"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvViscoelasticGrade"
+        android:layout_width="110dp"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textStyle="bold"
+        android:textColor="#D32F2F"
+        android:gravity="center" />
+</LinearLayout>

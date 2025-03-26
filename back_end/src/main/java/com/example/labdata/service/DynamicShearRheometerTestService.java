@@ -3,6 +3,8 @@ package com.example.labdata.service;
 import com.example.labdata.entity.DsrMeasurement;
 import com.example.labdata.entity.DsrTemperaturePoint;
 import com.example.labdata.entity.DynamicShearRheometerTest;
+import com.example.labdata.payload.dto.DsrDataPoint;
+import com.example.labdata.payload.dto.DsrTestResult;
 import com.example.labdata.payload.request.DynamicShearRheometerTestRequest;
 import com.example.labdata.repository.DsrMeasurementRepository;
 import com.example.labdata.repository.DsrTemperaturePointRepository;
@@ -173,9 +175,74 @@ public class DynamicShearRheometerTestService {
      * 根据任务ID获取实验数据
      *
      * @param taskId 任务ID
-     * @return 实验数据列表
+     * @return 实验数据结果列表
      */
-    public List<DynamicShearRheometerTest> getTestDataByTaskId(String taskId) {
-        return testRepository.findByTaskId(taskId);
+    public List<DsrTestResult> getTestDataByTaskId(String taskId) {
+        // 1. 查询主表获取实验基本信息
+        List<DynamicShearRheometerTest> testList = testRepository.findByTaskId(taskId);
+        List<DsrTestResult> resultList = new ArrayList<>();
+        
+        for (DynamicShearRheometerTest test : testList) {
+            DsrTestResult result = new DsrTestResult();
+            
+            // 复制基本信息
+            result.setId(test.getId());
+            result.setTaskId(test.getTaskId());
+            result.setOperatorId(test.getOperatorId());
+            result.setSpecimenId(test.getSpecimenId());
+            result.setSpecimenType(test.getSpecimenType());
+            result.setMaterialType(test.getMaterialType());
+            result.setControlMode(test.getControlMode());
+            result.setTestRadius(test.getTestRadius());
+            result.setPlateGap(test.getPlateGap());
+            result.setRemarks(test.getRemarks());
+            
+            // 2. 查询该实验的所有温度点
+            List<DsrTemperaturePoint> tempPoints = temperaturePointRepository.findByTestId(test.getId());
+            List<DsrDataPoint> dataPoints = new ArrayList<>();
+            
+            for (DsrTemperaturePoint tempPoint : tempPoints) {
+                // 3. 查询每个温度点的所有测量值
+                List<DsrMeasurement> measurements = measurementRepository.findByTemperaturePointId(tempPoint.getId());
+                
+                for (DsrMeasurement measurement : measurements) {
+                    DsrDataPoint dataPoint = new DsrDataPoint();
+                    
+                    // 设置温度和频率
+                    dataPoint.setTemperature(tempPoint.getTemperature());
+                    dataPoint.setFrequency(measurement.getLoadFrequency());
+                    
+                    // 设置原始测量值
+                    dataPoint.setMaxShearStress(measurement.getMaxShearStress());
+                    dataPoint.setMaxShearStrain(measurement.getMaxShearStrain());
+                    dataPoint.setPhaseAngle(measurement.getPhaseAngle());
+                    
+                    // 直接使用数据库中存储的复合剪切模量值
+                    dataPoint.setComplexModulus(measurement.getComplexShearModulus());
+                    
+                    // 如果数据库中的复合剪切模量为空，则尝试计算
+                    if (dataPoint.getComplexModulus() == null && 
+                        measurement.getMaxShearStrain() != null && 
+                        measurement.getMaxShearStrain() != 0 &&
+                        measurement.getMaxShearStress() != null) {
+                        double calculatedModulus = measurement.getMaxShearStress() / measurement.getMaxShearStrain();
+                        dataPoint.setComplexModulus(calculatedModulus);
+                        logger.info("计算复合剪切模量: {}", calculatedModulus);
+                    }
+                    
+                    dataPoints.add(dataPoint);
+                }
+            }
+            
+            // 4. 将所有数据点设置到结果对象中
+            result.setDataPoints(dataPoints);
+            resultList.add(result);
+        }
+        
+        logger.info("根据任务ID获取DSR实验数据: 找到{}个实验, 共{}个数据点", 
+                resultList.size(), 
+                resultList.stream().mapToInt(r -> r.getDataPoints().size()).sum());
+        
+        return resultList;
     }
 }

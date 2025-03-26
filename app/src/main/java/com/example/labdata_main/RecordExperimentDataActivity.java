@@ -398,80 +398,30 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         // 打印所有实验类型
         Log.d("SaveData", "实验数据包含的类型: " + experimentData.keySet());
 
-        // 验证实验类型
+        // 处理两种主要情况：1. 实验类型未指定 2. 已指定但需要验证
         if (experimentType == null || experimentType.isEmpty()) {
-            Log.w("SaveData", "实验类型未指定，尝试从数据中检测");
-
-            // 在这段代码中添加延度实验类型处理（大约在第370行左右）
-            // 从数据中检测实验类型
-            if (experimentData.containsKey(AsphaltExperimentData.TYPE_SOFTENING_POINT)) {
-                experimentType = AsphaltExperimentData.TYPE_SOFTENING_POINT;
-                Log.d("SaveData", "检测到软化点实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_PENETRATION)) {
-                experimentType = AsphaltExperimentData.TYPE_PENETRATION;
-                Log.d("SaveData", "检测到针入度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DUCTILITY)) {
-                experimentType = AsphaltExperimentData.TYPE_DUCTILITY;
-                Log.d("SaveData", "检测到延度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
-                experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
-                Log.d("SaveData", "检测到布克菲尔粘度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
-                experimentType = AsphaltExperimentData.TYPE_BBR;
-                Log.d("SaveData", "检测到弯曲蠕变劲度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
-                experimentType = AsphaltExperimentData.TYPE_DSR;
-                Log.d("SaveData", "检测到动态剪切流变仪实验数据，设置实验类型为: " + experimentType);
-            } else {
-                // 其他处理逻辑...
-            }
-            
-            // 从数据中检测实验类型
-            if (experimentData.containsKey(AsphaltExperimentData.TYPE_SOFTENING_POINT)) {
-                experimentType = AsphaltExperimentData.TYPE_SOFTENING_POINT;
-                Log.d("SaveData", "检测到软化点实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_PENETRATION)) {
-                experimentType = AsphaltExperimentData.TYPE_PENETRATION;
-                Log.d("SaveData", "检测到针入度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DUCTILITY)) {
-                experimentType = AsphaltExperimentData.TYPE_DUCTILITY;
-                Log.d("SaveData", "检测到延度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
-                experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
-                Log.d("SaveData", "检测到布克菲尔粘度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
-                experimentType = AsphaltExperimentData.TYPE_BBR;
-                Log.d("SaveData", "检测到弯曲蠕变劲度实验数据，设置实验类型为: " + experimentType);
-            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
-                experimentType = AsphaltExperimentData.TYPE_DSR;
-                Log.d("SaveData", "检测到动态剪切流变仪实验数据，设置实验类型为: " + experimentType);
-            } else {
-                // 如果只有一个实验类型，使用它
-                if (experimentData.size() == 1) {
-                    experimentType = experimentData.keySet().iterator().next();
-                    Log.d("SaveData", "数据中只有一个实验类型，设置为: " + experimentType);
-                } else {
-                    Toast.makeText(this, "无法确定实验类型", Toast.LENGTH_SHORT).show();
-                    Log.e("SaveData", "无法确定实验类型，数据包含: " + experimentData.keySet());
-                    return;
-                }
+            // 从数据中自动检测实验类型
+            if (!selectExperimentTypeFromData(experimentData)) {
+                // 如果没有找到合适的类型，提示用户并返回
+                return;
             }
         } else {
-            // 确认数据中是否包含该实验类型
+            // 已有实验类型，验证是否存在对应数据
             if (!experimentData.containsKey(experimentType)) {
                 Log.w("SaveData", "数据中不包含当前实验类型: " + experimentType + "，尝试查找替代类型");
 
-                // 检查是否有软化点数据
-                if (experimentData.containsKey(AsphaltExperimentData.TYPE_SOFTENING_POINT)) {
-                    experimentType = AsphaltExperimentData.TYPE_SOFTENING_POINT;
-                    Log.d("SaveData", "找到软化点实验数据，使用该类型: " + experimentType);
-                } else if (experimentData.size() == 1) {
-                    experimentType = experimentData.keySet().iterator().next();
-                    Log.d("SaveData", "使用唯一可用的实验类型: " + experimentType);
+                // 特殊处理ASPHALT总类型
+                if ("ASPHALT".equals(experimentType)) {
+                    if (!selectAsphaltSubtypeFromData(experimentData)) {
+                        // 找不到任何沥青相关子类型
+                        return;
+                    }
                 } else {
-                    Toast.makeText(this, "找不到匹配的实验数据", Toast.LENGTH_SHORT).show();
-                    Log.e("SaveData", "找不到匹配的实验数据，当前类型: " + experimentType + "，可用类型: " + experimentData.keySet());
-                    return;
+                    // 尝试找到替代类型
+                    if (!findAlternativeExperimentType(experimentData)) {
+                        // 找不到替代类型
+                        return;
+                    }
                 }
             } else {
                 Log.d("SaveData", "确认使用当前实验类型: " + experimentType);
@@ -495,8 +445,123 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         } else if (AsphaltExperimentData.TYPE_DSR.equals(experimentType)) {
             saveDynamicShearRheometerExperimentData();
         } else {
-            saveAsphaltExperimentData();
+            Toast.makeText(this, "未知的实验类型: " + experimentType, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * 从数据中自动检测实验类型
+     * @param experimentData 实验数据
+     * @return 是否成功选择了实验类型
+     */
+    private boolean selectExperimentTypeFromData(Map<String, Map<String, String>> experimentData) {
+        if (experimentData.containsKey(AsphaltExperimentData.TYPE_SOFTENING_POINT)) {
+            experimentType = AsphaltExperimentData.TYPE_SOFTENING_POINT;
+            Log.d("SaveData", "检测到软化点实验数据，设置实验类型为: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_PENETRATION)) {
+            experimentType = AsphaltExperimentData.TYPE_PENETRATION;
+            Log.d("SaveData", "检测到针入度实验数据，设置实验类型为: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DUCTILITY)) {
+            experimentType = AsphaltExperimentData.TYPE_DUCTILITY;
+            Log.d("SaveData", "检测到延度实验数据，设置实验类型为: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
+            experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
+            Log.d("SaveData", "检测到布鲁克菲尔德旋转粘度实验数据，设置实验类型为: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
+            experimentType = AsphaltExperimentData.TYPE_BBR;
+            Log.d("SaveData", "检测到弯曲蠕变劲度实验数据，设置实验类型为: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
+            experimentType = AsphaltExperimentData.TYPE_DSR;
+            Log.d("SaveData", "检测到动态剪切流变仪实验数据，设置实验类型为: " + experimentType);
+        } else if (experimentData.size() == 1) {
+            // 如果只有一个实验类型，直接使用
+            experimentType = experimentData.keySet().iterator().next();
+            Log.d("SaveData", "数据中只有一个实验类型，设置为: " + experimentType);
+        } else {
+            // 没有找到合适的实验类型
+            Toast.makeText(this, "无法确定实验类型", Toast.LENGTH_SHORT).show();
+            Log.e("SaveData", "无法确定实验类型，数据包含: " + experimentData.keySet());
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 当实验类型为ASPHALT时，从数据中选择合适的子类型
+     * @param experimentData 实验数据
+     * @return 是否成功选择了实验类型
+     */
+    private boolean selectAsphaltSubtypeFromData(Map<String, Map<String, String>> experimentData) {
+        Log.d("SaveData", "检测到ASPHALT总类型，尝试使用可用的子类型实验数据");
+        
+        // 按优先级尝试不同的沥青实验子类型
+        if (experimentData.containsKey(AsphaltExperimentData.TYPE_PENETRATION)) {
+            experimentType = AsphaltExperimentData.TYPE_PENETRATION;
+            Log.d("SaveData", "找到针入度实验数据，使用该类型: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_SOFTENING_POINT)) {
+            experimentType = AsphaltExperimentData.TYPE_SOFTENING_POINT;
+            Log.d("SaveData", "找到软化点实验数据，使用该类型: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
+            experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
+            Log.d("SaveData", "找到布鲁克菲尔德旋转粘度实验数据，使用该类型: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DUCTILITY)) {
+            experimentType = AsphaltExperimentData.TYPE_DUCTILITY;
+            Log.d("SaveData", "找到延度实验数据，使用该类型: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
+            experimentType = AsphaltExperimentData.TYPE_BBR;
+            Log.d("SaveData", "找到弯曲蠕变劲度实验数据，使用该类型: " + experimentType);
+        } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
+            experimentType = AsphaltExperimentData.TYPE_DSR;
+            Log.d("SaveData", "找到动态剪切流变仪实验数据，使用该类型: " + experimentType);
+        } else if (experimentData.size() == 1) {
+            experimentType = experimentData.keySet().iterator().next();
+            Log.d("SaveData", "使用唯一可用的实验类型: " + experimentType);
+        } else {
+            Toast.makeText(this, "找不到匹配的实验数据", Toast.LENGTH_SHORT).show();
+            Log.e("SaveData", "找不到匹配的实验数据，当前类型: " + experimentType + "，可用类型: " + experimentData.keySet());
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 尝试找到替代实验类型
+     * @param experimentData 实验数据
+     * @return 是否成功找到替代类型
+     */
+    private boolean findAlternativeExperimentType(Map<String, Map<String, String>> experimentData) {
+        // 优先使用软化点数据
+        if (experimentData.containsKey(AsphaltExperimentData.TYPE_SOFTENING_POINT)) {
+            experimentType = AsphaltExperimentData.TYPE_SOFTENING_POINT;
+            Log.d("SaveData", "找到软化点实验数据，使用该类型: " + experimentType);
+        } else if (experimentData.size() == 1) {
+            // 如果只有一个可用的实验类型，使用它
+            experimentType = experimentData.keySet().iterator().next();
+            Log.d("SaveData", "使用唯一可用的实验类型: " + experimentType);
+        } else {
+            // 尝试按优先级顺序查找
+            if (experimentData.containsKey(AsphaltExperimentData.TYPE_PENETRATION)) {
+                experimentType = AsphaltExperimentData.TYPE_PENETRATION;
+                Log.d("SaveData", "找到针入度实验数据，使用该类型: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY)) {
+                experimentType = AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
+                Log.d("SaveData", "找到布鲁克菲尔德旋转粘度实验数据，使用该类型: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DUCTILITY)) {
+                experimentType = AsphaltExperimentData.TYPE_DUCTILITY;
+                Log.d("SaveData", "找到延度实验数据，使用该类型: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_BBR)) {
+                experimentType = AsphaltExperimentData.TYPE_BBR;
+                Log.d("SaveData", "找到弯曲蠕变劲度实验数据，使用该类型: " + experimentType);
+            } else if (experimentData.containsKey(AsphaltExperimentData.TYPE_DSR)) {
+                experimentType = AsphaltExperimentData.TYPE_DSR;
+                Log.d("SaveData", "找到动态剪切流变仪实验数据，使用该类型: " + experimentType);
+            } else {
+                Toast.makeText(this, "找不到匹配的实验数据", Toast.LENGTH_SHORT).show();
+                Log.e("SaveData", "找不到匹配的实验数据，当前类型: " + experimentType + "，可用类型: " + experimentData.keySet());
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

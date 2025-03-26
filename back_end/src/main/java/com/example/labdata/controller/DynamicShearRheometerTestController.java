@@ -1,6 +1,7 @@
 package com.example.labdata.controller;
 
 import com.example.labdata.entity.DynamicShearRheometerTest;
+import com.example.labdata.payload.dto.DsrTestResult;
 import com.example.labdata.payload.request.DynamicShearRheometerTestRequest;
 import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.service.DynamicShearRheometerTestService;
@@ -43,8 +44,8 @@ public class DynamicShearRheometerTestController {
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse> getTestDataByTaskId(@PathVariable String taskId) {
         try {
-            List<DynamicShearRheometerTest> testData = dynamicShearRheometerTestService.getTestDataByTaskId(taskId);
-            return ResponseEntity.ok(new ApiResponse(true, "成功获取动态剪切流变仪实验数据", testData));
+            List<DsrTestResult> testResults = dynamicShearRheometerTestService.getTestDataByTaskId(taskId);
+            return ResponseEntity.ok(new ApiResponse(true, "成功获取动态剪切流变仪实验数据", testResults));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse(false, "获取动态剪切流变仪实验数据失败: " + e.getMessage()));
         }
