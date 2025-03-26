@@ -157,7 +157,19 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
-            
+
+        <activity
+            android:name=".MixtureTaskResultActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".AsphaltTaskResultActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".AddAsphaltActivity"
             android:exported="false"

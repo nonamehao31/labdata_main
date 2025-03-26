@@ -222,26 +222,13 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="4dp"/>
                 
-            <LinearLayout
+            <TextView
+                android:id="@+id/tvAsphaltExperimentType"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-                
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="实验类型："
-                    android:textSize="14sp"/>
-                    
-                <TextView
-                    android:id="@+id/tvAsphaltExperimentType"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="针入度"
-                    android:textSize="14sp"/>
-            </LinearLayout>
+                android:text="针入度"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp"/>
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

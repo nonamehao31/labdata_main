@@ -33,6 +33,11 @@ public interface MixtureTaskRepository extends JpaRepository<MixtureTask, String
            "FROM mixture_task WHERE task_id LIKE :taskIdPrefix || '%'", 
            nativeQuery = true)
     List<Map<String, Object>> findAllByTaskIdPrefixNative(@Param("taskIdPrefix") String taskIdPrefix);
+
+    //查询任务指派名称
+    @Query(value = "SELECT task_assignment FROM mixture_task WHERE task_id = :taskId", 
+           nativeQuery = true)
+    String findTaskAssignmentById(@Param("taskId") String taskId);
     
     // 通过任务ID精确查找任务
     Optional<MixtureTask> findByTaskId(String taskId);

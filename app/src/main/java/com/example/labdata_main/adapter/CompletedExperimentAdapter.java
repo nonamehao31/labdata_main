@@ -77,15 +77,17 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
                   ", 配比: " + task.getMixName() + 
                   ", 压实方法: " + task.getCompactionMethod());
         } else {
-            // 显示沥青特有信息
+            // 沥青任务，隐藏混合料信息，显示沥青信息
             holder.llMixtureInfo.setVisibility(View.GONE);
             holder.llAsphaltInfo.setVisibility(View.VISIBLE);
             
-            holder.tvAsphaltExperimentType.setText(task.getAsphaltExperimentType());
+            // 显示沥青实验类型
+            String asphaltType = task.getTaskName() != null ? task.getTaskName() : "未知沥青实验";
+            holder.tvAsphaltExperimentType.setText(asphaltType);
             
             // 记录日志以便调试
-            Log.d(TAG, "绑定沥青任务: " + task.getTaskId() + 
-                  ", 实验类型: " + task.getAsphaltExperimentType());
+            Log.d(TAG, "绑定沥青任务: " + task.getTaskId() +
+                 ", 实验类型: " + asphaltType);
         }
         
         // 设置点击事件

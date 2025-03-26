@@ -5,7 +5,9 @@ import com.example.labdata.model.SupportMixtureTask;
 import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.payload.response.MixratioSpecimenPairResponse;
 import com.example.labdata.payload.response.MixRatioDetailResponse;
+import com.example.labdata.payload.response.MixratioAndCompactionResponse;
 import com.example.labdata.payload.response.ProjectNameResponse;
+import com.example.labdata.payload.response.TaskAssignmentResponse;
 import com.example.labdata.service.MixtureTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +55,28 @@ public class MixtureTaskController {
         } catch (Exception e) {
             logger.error("获取测试状态时发生错误: ", e);
             return new ApiResponse<>(false, "获取测试状态时发生错误: " + e.getMessage(), "error");
+        }
+    }
+
+    /**
+     * 获取混合料任务的配比名称和压实方法
+     *
+     * @param taskId 任务ID
+     * @return 配比名称和压实方法信息
+     */
+    @GetMapping("/mixtureTask/getMixratioAndCompaction/{taskId}")
+    public ResponseEntity<MixratioAndCompactionResponse> getMixratioAndCompaction(@PathVariable String taskId) {
+        try {
+            MixratioAndCompactionResponse result = mixtureTaskService.getMixratioAndCompaction(taskId);
+            if (result != null) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.ok(new MixratioAndCompactionResponse(404, "未找到配比和压实方法信息"));
+            }
+        } catch (Exception e) {
+            logger.error("获取配比和压实方法信息失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MixratioAndCompactionResponse(500, "获取配比和压实方法信息失败: " + e.getMessage()));
         }
     }
 
@@ -408,6 +432,28 @@ public class MixtureTaskController {
             log.error("保存劈裂试验数据时发生错误: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "保存劈裂试验数据失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 获取混合料任务的任务指派信息
+     *
+     * @param taskId 任务ID
+     * @return 任务指派信息
+     */
+    @GetMapping("/mixtureTask/getTaskAssignment/{taskId}")
+    public ResponseEntity<TaskAssignmentResponse> getTaskAssignment(@PathVariable String taskId) {
+        try {
+            String taskAssignment = mixtureTaskService.getTaskAssignment(taskId);
+            if (taskAssignment != null) {
+                return ResponseEntity.ok(new TaskAssignmentResponse(taskAssignment));
+            } else {
+                return ResponseEntity.ok(new TaskAssignmentResponse(404, "未找到任务指派信息"));
+            }
+        } catch (Exception e) {
+            logger.error("获取任务指派信息失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new TaskAssignmentResponse(500, "获取任务指派信息失败: " + e.getMessage()));
         }
     }
 }

@@ -37,6 +37,9 @@ public class CompletedMixtureTaskResponse {
     @SerializedName("compaction_method")
     private String compactionMethod;
     
+    @SerializedName("task_assignment")
+    private String taskAssignment;
+    
     // Getters and Setters
     public String getTaskId() {
         return taskId;
@@ -116,5 +119,13 @@ public class CompletedMixtureTaskResponse {
     
     public void setCompactionMethod(String compactionMethod) {
         this.compactionMethod = compactionMethod;
+    }
+    
+    public String getTaskAssignment() {
+        return taskAssignment;
+    }
+    
+    public void setTaskAssignment(String taskAssignment) {
+        this.taskAssignment = taskAssignment;
     }
 }

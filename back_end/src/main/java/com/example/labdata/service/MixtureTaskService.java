@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import com.example.labdata.payload.response.MixratioSpecimenPairResponse;
 import com.example.labdata.payload.response.MixRatioDetailResponse;
+import com.example.labdata.payload.response.MixratioAndCompactionResponse;
 import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.repository.MixtureTaskRepository;
 import com.example.labdata.repository.MixRatioRepository;
@@ -2080,4 +2081,125 @@ private BigDecimal getBigDecimalValue(Map<String, Object> data, String key) {
             return statusList;
         }
     }
+    /**
+     * 获取任务指派信息
+     *
+     * @param taskId 任务ID
+     * @return 任务指派信息
+     */
+    public String getTaskAssignment(String taskId) {
+        if (taskId == null || taskId.isEmpty()) {
+            logger.error("任务ID为空，无法获取任务指派信息");
+            return null;
+        }
+    
+        try {
+            // 不使用Hibernate直接查询，而是使用JDBC参数化查询
+            String sql = "SELECT task_assignment FROM mixture_task WHERE task_id = ?";
+            Object[] params = new Object[]{taskId};
+            int[] types = new int[]{java.sql.Types.VARCHAR}; // 明确指定参数类型为VARCHAR
+            
+            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, params, types);
+    
+            if (!results.isEmpty() && results.get(0).get("task_assignment") != null) {
+                return (String) results.get(0).get("task_assignment");
+            }
+    
+            // 如果获取不到，尝试模糊查询（针对包含通配符的任务ID）
+            String taskIdPrefix = taskId.split("-")[0] + "%";
+            String wildcardSql = "SELECT task_assignment FROM mixture_task WHERE task_id LIKE ?";
+            Object[] wildcardParams = new Object[]{taskIdPrefix};
+            int[] wildcardTypes = new int[]{java.sql.Types.VARCHAR};
+            
+            List<Map<String, Object>> wildcardResults = jdbcTemplate.queryForList(wildcardSql, wildcardParams, wildcardTypes);
+    
+            if (!wildcardResults.isEmpty() && wildcardResults.get(0).get("task_assignment") != null) {
+                return (String) wildcardResults.get(0).get("task_assignment");
+            }
+    
+            return null;
+        } catch (Exception e) {
+            logger.error("获取任务指派信息失败", e);
+            return null;
+        }
+    }
+
+    /**
+     * 获取配比名称和压实方法
+     *
+     * @param taskId 任务ID
+     * @return 配比和压实方法信息
+     */
+    public MixratioAndCompactionResponse getMixratioAndCompaction(String taskId) {
+        if (taskId == null || taskId.isEmpty()) {
+            logger.error("任务ID为空，无法获取配比和压实方法信息");
+            return null;
+        }
+    
+        try {
+            // 首先从mixture_task表获取mixratio_id和specimen_id
+            String sql = "SELECT mixratio_id, specimen_id FROM mixture_task WHERE task_id = ?";
+            Object[] params = new Object[]{taskId};
+            int[] types = new int[]{java.sql.Types.VARCHAR}; // 确保任务ID作为VARCHAR处理
+    
+            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, params, types);
+    
+            if (results.isEmpty()) {
+                logger.warn("未找到任务 {} 的mixratio_id和specimen_id", taskId);
+                return null;
+            }
+    
+            // 获取mixratio_id和specimen_id并尝试转换为Long
+            Long mixratioId = null;
+            Long specimenId = null;
+            
+            if (results.get(0).get("mixratio_id") != null) {
+                try {
+                    mixratioId = Long.parseLong(results.get(0).get("mixratio_id").toString());
+                } catch (NumberFormatException e) {
+                    logger.warn("无法将mixratio_id转换为Long: {}", results.get(0).get("mixratio_id"));
+                }
+            }
+            
+            if (results.get(0).get("specimen_id") != null) {
+                try {
+                    specimenId = Long.parseLong(results.get(0).get("specimen_id").toString());
+                } catch (NumberFormatException e) {
+                    logger.warn("无法将specimen_id转换为Long: {}", results.get(0).get("specimen_id"));
+                }
+            }
+    
+            String mixName = null;
+            String compactionMethod = null;
+    
+            // 根据mixratio_id查询mixratio表获取mix_name
+            if (mixratioId != null) {
+                String mixratioSql = "SELECT mix_name FROM mixratio WHERE id = ?";
+                List<Map<String, Object>> mixratioResults = jdbcTemplate.queryForList(mixratioSql, mixratioId);
+                
+                if (!mixratioResults.isEmpty() && mixratioResults.get(0).get("mix_name") != null) {
+                    mixName = mixratioResults.get(0).get("mix_name").toString();
+                    logger.info("找到配比 {} 的名称: {}", mixratioId, mixName);
+                }
+            }
+    
+            // 根据specimen_id查询specimens表获取compaction_method
+            if (specimenId != null) {
+                String specimenSql = "SELECT compaction_method FROM specimens WHERE id = ?";
+                List<Map<String, Object>> specimenResults = jdbcTemplate.queryForList(specimenSql, specimenId);
+                
+                if (!specimenResults.isEmpty() && specimenResults.get(0).get("compaction_method") != null) {
+                    compactionMethod = specimenResults.get(0).get("compaction_method").toString();
+                    logger.info("找到试件 {} 的压实方法: {}", specimenId, compactionMethod);
+                }
+            }
+    
+            return new MixratioAndCompactionResponse(mixName, compactionMethod);
+        } catch (Exception e) {
+            logger.error("获取配比和压实方法信息失败", e);
+            return null;
+        }
+    }
+
 }
+

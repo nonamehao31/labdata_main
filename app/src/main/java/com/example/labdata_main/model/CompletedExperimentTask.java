@@ -1,5 +1,6 @@
 package com.example.labdata_main.model;
 
+import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -9,7 +10,7 @@ import java.util.regex.Pattern;
 /**
  * 已完成实验任务统一模型
  */
-public class CompletedExperimentTask {
+public class CompletedExperimentTask implements Serializable {
     // 任务基本信息
     private String taskId;
     private String taskName;
@@ -195,7 +196,13 @@ public class CompletedExperimentTask {
         }
         
         // 设置任务指派信息
-        result.setTaskAssignment("试件ID: " + (task.getSpecimenId() != null ? task.getSpecimenId() : "未知"));
+        if (task.getTaskAssignment() != null && !task.getTaskAssignment().isEmpty()) {
+            // 优先使用任务中提供的指派信息
+            result.setTaskAssignment(task.getTaskAssignment());
+        } else {
+            // 如果任务中没有指派信息，则使用试件ID作为默认指派信息
+            result.setTaskAssignment("试件ID: " + (task.getSpecimenId() != null ? task.getSpecimenId() : "未知"));
+        }
         
         return result;
     }
@@ -244,5 +251,26 @@ public class CompletedExperimentTask {
             // 解析失败，返回0
             return 0L;
         }
+    }
+
+/**
+ * 获取实验名称中的项目名部分
+ * 从格式"实验名称-配比名称（ID: XX,压实方法）"中提取"实验名称"部分
+ * @return 只包含项目名的字符串
+ */
+    public String getProjectName() {
+    if (experimentName == null || experimentName.isEmpty()) {
+        return "";
+    }
+    
+    // 检查字符串中是否包含连字符"-"
+    int dashIndex = experimentName.indexOf('-');
+    if (dashIndex > 0) {
+        // 提取连字符前的部分作为项目名
+        return experimentName.substring(0, dashIndex).trim();
+    }
+    
+    // 如果没有连字符，则返回整个实验名
+    return experimentName;
     }
 }

@@ -53,6 +53,8 @@ public class MixtureTask {
     @Column(name = "testing_equipment_manufacturer")
     private String testingEquipmentManufacturer;
 
+    @Column(name = "task_assignment")
+    private String taskAssignment;
     
     // Getter和Setter
 
@@ -190,6 +192,14 @@ public class MixtureTask {
     
     public void setTestingEquipmentManufacturer(String testingEquipmentManufacturer) {
         this.testingEquipmentManufacturer = testingEquipmentManufacturer;
+    }
+    
+    public String getTaskAssignment() {
+        return taskAssignment;
+    }
+    
+    public void setTaskAssignment(String taskAssignment) {
+        this.taskAssignment = taskAssignment;
     }
     
     public Project getProject() {

@@ -1,6 +1,7 @@
 package com.example.labdata_main;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -97,8 +98,23 @@ public class ExperimentFragment extends Fragment {
         
         // 设置点击监听器
         adapter.setOnItemClickListener((task, position) -> {
-            // 这里可以处理任务点击事件，例如显示详情对话框
-            Toast.makeText(getContext(), "查看任务ID: " + task.getTaskId(), Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "任务点击: ID=" + task.getTaskId() + ", 类型=" + (task.isMixtureTask() ? "混合料" : "沥青"));
+            
+            // 根据任务类型打开不同的结果界面
+            Intent intent;
+            if (task.isMixtureTask()) {
+                // 混合料任务，打开混合料结果界面
+                intent = new Intent(getContext(), MixtureTaskResultActivity.class);
+            } else {
+                // 沥青任务，打开沥青结果界面
+                intent = new Intent(getContext(), AsphaltTaskResultActivity.class);
+            }
+            
+            // 传递任务数据（确保CompletedExperimentTask已实现Serializable接口）
+            intent.putExtra(MixtureTaskResultActivity.EXTRA_TASK, task);
+            
+            // 启动对应的Activity
+            startActivity(intent);
         });
         
         // 设置下拉刷新监听器

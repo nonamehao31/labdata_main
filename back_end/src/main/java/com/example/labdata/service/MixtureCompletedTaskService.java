@@ -87,7 +87,7 @@ public class MixtureCompletedTaskService {
             "    mixture_task mt " +
             "WHERE " +
             "    mt.status = 'COMPLETE' " +
-            "    AND CAST(mt.task_company AS VARCHAR) = CAST(? AS VARCHAR) " + // 使用CAST函数显式转换
+            "    AND mt.task_company = ? " + 
             "ORDER BY " +
             "    mt.creation_time DESC";
         
@@ -124,7 +124,8 @@ public class MixtureCompletedTaskService {
             
             if (mixratioId != null) {
                 try {
-                    String mixQuerySql = "SELECT mix_name FROM mixratio WHERE id::text = ?";
+                    // PostgreSQL特定：使用::转换语法
+                    String mixQuerySql = "SELECT mix_name FROM mixratio WHERE id::text = ?::text";
                     List<Map<String, Object>> mixResults = jdbcTemplate.queryForList(mixQuerySql, String.valueOf(mixratioId));
                     if (!mixResults.isEmpty() && mixResults.get(0).containsKey("mix_name")) {
                         Object mixName = mixResults.get(0).get("mix_name");
@@ -135,6 +136,7 @@ public class MixtureCompletedTaskService {
                     }
                 } catch (Exception e) {
                     logger.warn("查询配比名称失败: {}", e.getMessage());
+                    logger.debug("任务ID: {}, mixratio_id: {}", task.get("task_id"), mixratioId);
                 }
             }
             
@@ -144,7 +146,8 @@ public class MixtureCompletedTaskService {
             
             if (specimenId != null) {
                 try {
-                    String specimenQuerySql = "SELECT compaction_method FROM specimens WHERE id::text = ?";
+                    // PostgreSQL特定：使用::转换语法
+                    String specimenQuerySql = "SELECT compaction_method FROM specimens WHERE id::text = ?::text";
                     List<Map<String, Object>> specimenResults = jdbcTemplate.queryForList(specimenQuerySql, String.valueOf(specimenId));
                     if (!specimenResults.isEmpty() && specimenResults.get(0).containsKey("compaction_method")) {
                         Object compactionMethod = specimenResults.get(0).get("compaction_method");
@@ -168,4 +171,5 @@ public class MixtureCompletedTaskService {
 
         return results;
     }
+
 }
