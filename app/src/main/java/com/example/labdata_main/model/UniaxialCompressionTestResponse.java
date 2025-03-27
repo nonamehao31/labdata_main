@@ -82,9 +82,132 @@ public class UniaxialCompressionTestResponse implements Parcelable {
         @SerializedName("strengthAverage")
         private double strengthAverage;
 
+        @SerializedName("specimenId")
+        private String specimenId; // 添加specimen_id字段用于与数据库关联
+
         public SpecimenData() {
             // 必须提供无参构造函数用于GSON反序列化
             utmDataList = new ArrayList<>();
+        }
+        
+        // 3. 修改处理P值的方法，确保能够正确处理null值和类型转换
+        public void processStrengthData(List<Map<String, Object>> pValues) {
+            if (strengthData == null) {
+                strengthData = new ArrayList<>();
+            }
+            
+            // 清除现有数据
+            strengthData.clear();
+            
+            // 添加调试日志，记录试件ID和可用的P值数据
+            android.util.Log.d("SpecimenData", "处理试件ID: " + this.specimenId + " 的P值数据");
+            android.util.Log.d("SpecimenData", "可用P值数据数量: " + (pValues != null ? pValues.size() : 0));
+            
+            if (pValues != null && !pValues.isEmpty()) {
+                // 记录所有可用的specimen_id供调试
+                StringBuilder availableIds = new StringBuilder("可用的specimen_id: ");
+                for (Map<String, Object> pValueMap : pValues) {
+                    if (pValueMap.containsKey("specimen_id")) {
+                        availableIds.append(pValueMap.get("specimen_id")).append(", ");
+                    }
+                }
+                android.util.Log.d("SpecimenData", availableIds.toString());
+                
+                for (Map<String, Object> pValueMap : pValues) {
+                    // 仅处理与当前试件相关的p值
+                    if (pValueMap.containsKey("specimen_id") && 
+                        pValueMap.get("specimen_id") != null &&
+                        pValueMap.get("specimen_id").toString().equals(this.specimenId)) {
+                        
+                        int pIndex = 0;
+                        if (pValueMap.containsKey("p_index") && pValueMap.get("p_index") != null) {
+                            try {
+                                pIndex = Integer.parseInt(pValueMap.get("p_index").toString());
+                            } catch (NumberFormatException e) {
+                                android.util.Log.e("SpecimenData", "无法解析p_index: " + e.getMessage());
+                                continue;
+                            }
+                        }
+                        
+                        double pValue = 0.0;
+                        if (pValueMap.containsKey("p_value") && pValueMap.get("p_value") != null) {
+                            try {
+                                pValue = Double.parseDouble(pValueMap.get("p_value").toString());
+                            } catch (NumberFormatException e) {
+                                android.util.Log.e("SpecimenData", "无法解析p_value: " + e.getMessage());
+                                continue;
+                            }
+                        }
+                        
+                        // 创建并添加StrengthData对象
+                        StrengthData strengthItem = new StrengthData();
+                        strengthItem.setLabel("P" + pIndex);
+                        strengthItem.setValueKn(pValue);
+                        strengthData.add(strengthItem);
+                        
+                        android.util.Log.d("SpecimenData", "添加强度数据: 试件ID=" + this.specimenId + ", P" + pIndex + "=" + pValue);
+                    }
+                }
+                
+                // 按p_index排序
+                java.util.Collections.sort(strengthData, new java.util.Comparator<StrengthData>() {
+                    @Override
+                    public int compare(StrengthData o1, StrengthData o2) {
+                        // 从标签中提取索引并比较
+                        int index1 = extractIndex(o1.getLabel());
+                        int index2 = extractIndex(o2.getLabel());
+                        return Integer.compare(index1, index2);
+                    }
+                    
+                    // 从"P1"、"P2"等标签中提取数字部分
+                    private int extractIndex(String label) {
+                        if (label == null || !label.startsWith("P")) {
+                            return 0;
+                        }
+                        try {
+                            return Integer.parseInt(label.substring(1));
+                        } catch (NumberFormatException e) {
+                            return 0;
+                        }
+                    }
+                });
+                
+                // 计算并更新平均值
+                updateStrengthAverage();
+                
+                android.util.Log.d("SpecimenData", "处理后的强度数据数量: " + strengthData.size());
+            } else {
+                android.util.Log.d("SpecimenData", "没有找到相关的P值数据");
+            }
+        }
+        
+        // 4. 添加计算平均值的辅助方法
+        private void updateStrengthAverage() {
+            if (strengthData == null || strengthData.isEmpty()) {
+                strengthAverage = 0;
+                return;
+            }
+            
+            double sum = 0;
+            int count = 0;
+            for (StrengthData data : strengthData) {
+                if (data != null && data.getValueKn() > 0) {
+                    sum += data.getValueKn();
+                    count++;
+                }
+            }
+            
+            strengthAverage = count > 0 ? sum / count : 0;
+            android.util.Log.d("SpecimenData", "更新平均强度值: " + strengthAverage);
+        }
+        
+        // 添加getter/setter方法
+        public String getSpecimenId() {
+            return specimenId;
+        }
+        
+        public void setSpecimenId(String specimenId) {
+            this.specimenId = specimenId;
         }
 
         protected SpecimenData(Parcel in) {
@@ -610,5 +733,69 @@ public class UniaxialCompressionTestResponse implements Parcelable {
         dest.writeString(operator);
         dest.writeDouble(testTemperature);
         dest.writeTypedList(specimens);
+    }
+
+    /**
+     * 强度数据(P值)
+     */
+    @Keep
+    public static class StrengthData implements Parcelable {
+        // 标签（如P1、P2等）
+        @SerializedName("label")
+        private String label;
+    
+        // 值 - 注意后端返回的是valueKn而不是value
+        @SerializedName("valueKn")
+        private double valueKn;
+        
+        // 添加默认构造函数
+        public StrengthData() {
+        }
+    
+        // 添加getter和setter方法
+        public String getLabel() {
+            return label;
+        }
+    
+        public void setLabel(String label) {
+            this.label = label;
+        }
+    
+        public double getValue() {
+            return valueKn;
+        }
+    
+        public void setValue(double value) {
+            this.valueKn = value;
+        }
+    
+        // Parcelable实现
+        protected StrengthData(Parcel in) {
+            label = in.readString();
+            valueKn = in.readDouble();
+        }
+    
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeString(label);
+            dest.writeDouble(valueKn);
+        }
+    
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+    
+        public static final Creator<StrengthData> CREATOR = new Creator<StrengthData>() {
+            @Override
+            public StrengthData createFromParcel(Parcel in) {
+                return new StrengthData(in);
+            }
+    
+            @Override
+            public StrengthData[] newArray(int size) {
+                return new StrengthData[size];
+            }
+        };
     }
 }

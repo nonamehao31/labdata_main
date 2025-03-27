@@ -1,5 +1,3 @@
-
-
 package com.example.labdata_main;
 
 import android.bluetooth.BluetoothAdapter;
@@ -43,6 +41,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.Serializable;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,8 +52,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.Set;
-import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import  java.util.UUID;
@@ -2157,36 +2154,36 @@ private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, Stri
 
         // 其他测试信息字段 - 尝试多种可能的键名格式
         // 尝试直接从实验名获取
-        String mixRatioName = experiments.get(experimentName + "_mix_ratio_name");
+        String mixRatioName = experiments.getOrDefault("沥青混合料单轴压缩试验_混凝土强度等级", "");
         // 如果为空，尝试从strength获取
-        if (mixRatioName == null) mixRatioName = experiments.get(experimentName + "_strength_1_mix_ratio_name");
+        if (mixRatioName == null) mixRatioName = experiments.getOrDefault("沥青混合料单轴压缩试验_混凝土强度等级_1", "");
         // 尝试不带实验名前缀
-        if (mixRatioName == null) mixRatioName = experiments.get("mix_ratio_name"); 
+        if (mixRatioName == null) mixRatioName = experiments.getOrDefault("混凝土强度等级", "");
         
         // 同样处理其他字段
-        String compactionMethod = experiments.get(experimentName + "_compaction_method");
-        if (compactionMethod == null) compactionMethod = experiments.get(experimentName + "_strength_1_compaction_method");
-        if (compactionMethod == null) compactionMethod = experiments.get("compaction_method");
+        String compactionMethod = experiments.getOrDefault("沥青混合料单轴压缩试验_压实方法", "");
+        if (compactionMethod == null) compactionMethod = experiments.getOrDefault("沥青混合料单轴压缩试验_压实方法_1", "");
+        if (compactionMethod == null) compactionMethod = experiments.getOrDefault("压实方法", "");
         
-        Float mixingTemperature = parseFloatSafely(experiments.get(experimentName + "_mixing_temperature"));
-        if (mixingTemperature == null) mixingTemperature = parseFloatSafely(experiments.get(experimentName + "_strength_1_mixing_temperature"));
-        if (mixingTemperature == null) mixingTemperature = parseFloatSafely(experiments.get("mixing_temperature"));
+        Float mixingTemperature = parseFloatSafely(experiments.get(experimentName + "_混凝土温度"));
+        if (mixingTemperature == null) mixingTemperature = parseFloatSafely(experiments.get(experimentName + "_混凝土温度_1"));
+        if (mixingTemperature == null) mixingTemperature = parseFloatSafely(experiments.get("混凝土温度"));
         
-        Float mixingSpeed = parseFloatSafely(experiments.get(experimentName + "_mixing_speed"));
-        if (mixingSpeed == null) mixingSpeed = parseFloatSafely(experiments.get(experimentName + "_strength_1_mixing_speed"));
-        if (mixingSpeed == null) mixingSpeed = parseFloatSafely(experiments.get("mixing_speed"));
+        Float mixingSpeed = parseFloatSafely(experiments.get(experimentName + "_搅拌速度"));
+        if (mixingSpeed == null) mixingSpeed = parseFloatSafely(experiments.get(experimentName + "_搅拌速度_1"));
+        if (mixingSpeed == null) mixingSpeed = parseFloatSafely(experiments.get("搅拌速度"));
         
-        Float mixingTime = parseFloatSafely(experiments.get(experimentName + "_mixing_time"));
-        if (mixingTime == null) mixingTime = parseFloatSafely(experiments.get(experimentName + "_strength_1_mixing_time"));
-        if (mixingTime == null) mixingTime = parseFloatSafely(experiments.get("mixing_time"));
+        Float mixingTime = parseFloatSafely(experiments.get(experimentName + "_搅拌时间"));
+        if (mixingTime == null) mixingTime = parseFloatSafely(experiments.get(experimentName + "_搅拌时间_1"));
+        if (mixingTime == null) mixingTime = parseFloatSafely(experiments.get("搅拌时间"));
         
-        String testDate = experiments.get(experimentName + "_test_date");
-        if (testDate == null) testDate = experiments.get(experimentName + "_strength_1_test_date");
-        if (testDate == null) testDate = experiments.get("test_date");
+        String testDate = experiments.get(experimentName + "_测试日期");
+        if (testDate == null) testDate = experiments.get(experimentName + "_测试日期_1");
+        if (testDate == null) testDate = experiments.get("测试日期");
         
         // 平均强度可能用average_force或strength_1_avg
-        Float averageForce = parseFloatSafely(experiments.get(experimentName + "_average_force"));
-        if (averageForce == null) averageForce = parseFloatSafely(experiments.get(experimentName + "_strength_1_avg"));
+        Float averageForce = parseFloatSafely(experiments.get(experimentName + "_平均抗压强度"));
+        if (averageForce == null) averageForce = parseFloatSafely(experiments.get(experimentName + "_平均抗压强度_1"));
         
         Log.d(TAG, "收集的额外数据: mixRatioName=" + mixRatioName + ", compactionMethod=" + compactionMethod + 
               ", mixingTemperature=" + mixingTemperature + ", mixingSpeed=" + mixingSpeed + 
@@ -2207,185 +2204,155 @@ private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, Stri
             specimen.put("height", height);       // 映射到 height
 
             // 获取P值列表
-            List<Float> pValues = new ArrayList<>();
+            List<Object> pValues = new ArrayList<>();
+            
+            // 记录原始数据键，用于调试
+            Map<String, Float> pValueKeysMap = new HashMap<>();
             
             // 更新P值键名格式和收集逻辑
             String[] possiblePrefixes = {
                 experimentName + "_p" + i + "_",            // 格式1
-                experimentName + "_strength_1_p" + i + "_", // 格式2
-                experimentName + "_strength_p" + i + "_"    // 格式3
+                experimentName + "_strength_" + i + "_p",   // 格式2: 动态添加时的主要格式
+                experimentName + "_strength_1_p" + i + "_", // 格式3
+                experimentName + "_strength_p" + i + "_"    // 格式4
             };
             
+            // 首先尝试从标准格式中收集P值
             for (String prefix : possiblePrefixes) {
                 for (String key : experiments.keySet()) {
                     if (key.startsWith(prefix)) {
-                        String pIdStr = key.substring(prefix.length());
                         try {
-                            int pId = Integer.parseInt(pIdStr);
+                            // 提取P值ID
+                            int pId;
+                            if (prefix.equals(experimentName + "_strength_" + i + "_p")) {
+                                // 动态添加的P值格式: "实验名_strength_试件ID_p数字"
+                                pId = Integer.parseInt(key.substring(prefix.length()));
+                            } else {
+                                // 其他格式
+                                String pIdStr = key.substring(prefix.length());
+                                if (pIdStr.contains("_")) {
+                                    pIdStr = pIdStr.substring(0, pIdStr.indexOf("_"));
+                                }
+                                pId = Integer.parseInt(pIdStr);
+                            }
+                            
+                            Float pValue = parseFloatSafely(experiments.get(key));
+                            if (pValue != null) {
+                                // 确保列表大小足够
+                                while (pValues.size() < pId) {
+                                    pValues.add(null);
+                                }
+                                pValues.set(pId - 1, pValue);
+                                pValueKeysMap.put(key, pValue);
+                                Log.d(TAG, "找到P值: 键=" + key + ", 值=" + pValue + ", pId=" + pId);
+                            }
+                        } catch (NumberFormatException e) {
+                            Log.w(TAG, "解析P值ID失败，键: " + key + ", 错误: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            
+            // 添加调试日志
+            Log.d(TAG, "标准格式收集后，试件 " + i + " 的P值数量: " + pValues.size());
+            
+            // 尝试找出所有可能的P值，即使格式不标准
+            String[] patterns = {
+                ".*_strength_" + i + "_p(\\d+).*",  // 最常见的动态添加格式
+                ".*_p" + i + "_(\\d+).*",           // 备用格式1
+                ".*" + experimentName + ".*_p(\\d+).*", // 备用格式2
+                ".*p_value_(\\d+).*"                // 备用格式3
+            };
+            
+            for (String key : experiments.keySet()) {
+                if (pValueKeysMap.containsKey(key)) continue; // 跳过已处理的键
+                
+                // 尝试所有可能的模式
+                for (String patternStr : patterns) {
+                    try {
+                        Pattern pattern = Pattern.compile(patternStr);
+                        Matcher matcher = pattern.matcher(key);
+                        if (matcher.find()) {
+                            int pId = Integer.parseInt(matcher.group(1));
                             Float pValue = parseFloatSafely(experiments.get(key));
                             if (pValue != null) {
                                 while (pValues.size() < pId) {
                                     pValues.add(null);
                                 }
                                 pValues.set(pId - 1, pValue);
+                                pValueKeysMap.put(key, pValue);
+                                Log.d(TAG, "通过正则表达式找到P值: 键=" + key + ", 值=" + pValue + ", pId=" + pId);
                             }
-                        } catch (NumberFormatException e) {
-                            Log.w(TAG, "跳过无效的P值ID: " + pIdStr);
+                            break; // 匹配成功后不再尝试其他模式
                         }
-                    }
-                }
-            }
-            
-            // 添加日志以便调试
-            Log.d(TAG, "试件 " + i + " 的P值数量: " + pValues.size());
-            if (pValues.isEmpty()) {
-                // 尝试使用备用格式收集P值
-                for (String key : experiments.keySet()) {
-                    if (key.matches(experimentName + ".*_p\\d+") || 
-                        key.matches(experimentName + ".*strength.*_p\\d+")) {
-                        Log.d(TAG, "发现可能的P值键: " + key);
-                        try {
-                            // 尝试提取P值ID
-                            String pattern = ".*_p(\\d+).*";
-                            Pattern p = Pattern.compile(pattern);
-                            Matcher m = p.matcher(key);
-                            if (m.find()) {
-                                int pId = Integer.parseInt(m.group(1));
-                                Float pValue = parseFloatSafely(experiments.get(key));
-                                if (pValue != null) {
-                                    while (pValues.size() < pId) {
-                                        pValues.add(null);
-                                    }
-                                    pValues.set(pId - 1, pValue);
-                                }
-                            }
-                        } catch (Exception e) {
-                            Log.w(TAG, "提取P值时出错: " + e.getMessage());
-                        }
-                    }
-                }
-                Log.d(TAG, "备用方法后的P值数量: " + pValues.size());
-            }
-            
-            // 添加UTM数据 - UTS028表格数据
-            List<Map<String, Object>> utmDataList = new ArrayList<>();
-            
-            // 压力级别列表
-            String[] pressureLevels = {"0.1P", "0.2P", "0.3P", "0.4P", "0.5P", "0.6P", "0.7P"};
-            
-            // 从哈希表中基于行列格式提取UTM数据
-            Map<Integer, Map<Integer, Float>> utmRowColData = new HashMap<>();
-            
-            // 收集所有行列UTM数据
-            for (String key : experiments.keySet()) {
-                if (key.startsWith(experimentName + "_utm_1_row") && key.contains("_col")) {
-                    try {
-                        // 解析行号和列号
-                        String rowPart = key.substring(key.indexOf("row") + 3, key.indexOf("_col"));
-                        String colPart = key.substring(key.indexOf("col") + 3);
-                        int rowIndex = Integer.parseInt(rowPart);
-                        int colIndex = Integer.parseInt(colPart);
-                        
-                        // 获取值
-                        Float value = parseFloatSafely(experiments.get(key));
-                        
-                        // 存储行列数据
-                        if (!utmRowColData.containsKey(rowIndex)) {
-                            utmRowColData.put(rowIndex, new HashMap<>());
-                        }
-                        utmRowColData.get(rowIndex).put(colIndex, value);
-                        
                     } catch (Exception e) {
-                        Log.w(TAG, "解析UTM数据键时出错: " + key + ", " + e.getMessage());
+                        Log.w(TAG, "正则表达式处理P值出错, 键: " + key + ", 错误: " + e.getMessage());
                     }
                 }
             }
             
-            // 处理每一个压力级别行
-            for (int rowIndex = 0; rowIndex < pressureLevels.length; rowIndex++) {
-                Map<String, Object> utmData = new HashMap<>();
-                String pressureLevel = pressureLevels[rowIndex];
-                utmData.put("pressureLevel", pressureLevel);
+            // 输出最终收集的P值结果
+            Log.d(TAG, "最终收集的P值: " + pValues + "，共 " + pValues.size() + " 个");
+            Log.d(TAG, "所有P值的原始键: " + pValueKeysMap.keySet());
+            
+            // 将原始P值列表添加到试件数据中，确保后端能正确处理
+            specimen.put("pValues", pValues);
+            
+            // 新增：收集UTS028表格数据 - 使用正确的字段命名格式
+            List<Map<String, Object>> utmDataList = new ArrayList<>();
+            String[] pressureLevels = {"0.1P", "0.2P", "0.3P", "0.4P", "0.5P", "0.6P", "0.7P"};
+
+            // 映射行索引到对应的字段名称
+            String[][] fieldMapping = {
+                    {"0", "maxForceKn"},       // row0 = 最大力
+                    {"1", "minForceN"},        // row1 = 最小力
+                    {"2", "stressDevKpa"},     // row2 = 应力水平
+                    {"3", "displResilMm"},     // row3 = 回弹变形
+                    {"4", "strainResil"},      // row4 = 回弹应变
+                    {"5", "resilientModulusMpa"}, // row5 = 抗压回弹模量
+                    {"6", "temperature"}       // row6 = 温度
+            };
+            
+            // 遍历7个压力级别 (0.1P-0.7P)，对应col1-col7
+            for (int colIndex = 1; colIndex <= 7; colIndex++) {
+                Map<String, Object> utmItem = new HashMap<>();
+                String pressureLevel = pressureLevels[colIndex-1];
+                utmItem.put("pressureLevel", pressureLevel);
                 
-                // 获取该行数据
-                Float maxForce = null, minForce = null, stressDevKpa = null;
-                Float displResilMm = null, strainResil = null, resilientModulusMpa = null, temperature = null;
+                boolean hasData = false;
                 
-                if (utmRowColData.containsKey(rowIndex)) {
-                    Map<Integer, Float> rowData = utmRowColData.get(rowIndex);
-                    maxForce = rowData.getOrDefault(1, null);          // 第1列: 最大力 (KN)
-                    minForce = rowData.getOrDefault(2, null);          // 第2列: 最小力 (N)
-                    stressDevKpa = rowData.getOrDefault(3, null);      // 第3列: 应力偏差 (KPa)
-                    displResilMm = rowData.getOrDefault(4, null);      // 第4列: 位移恢复 (mm)
-                    strainResil = rowData.getOrDefault(5, null);       // 第5列: 应变恢复
-                    resilientModulusMpa = rowData.getOrDefault(6, null); // 第6列: 回弹模量 (MPa)
-                    temperature = rowData.getOrDefault(7, null);       // 第7列: 温度 (°C)
-                }
-                
-                // 如果没有找到数据，尝试使用压力级别特定键名格式
-                if (maxForce == null) {
-                    // 移除P前面的0.，便于键名匹配
-                    String levelNum = pressureLevel.replace("0.", "");
+                // 遍历7个数据行 (最大力到温度)，对应row0-row6
+                for (String[] mapping : fieldMapping) {
+                    String rowIndex = mapping[0];
+                    String fieldName = mapping[1];
                     
-                    maxForce = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_maxForce"));
-                    minForce = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_minForce"));
-                    stressDevKpa = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_stressDevKpa"));
-                    displResilMm = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_displResilMm"));
-                    strainResil = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_strainResil"));
-                    resilientModulusMpa = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_resilientModulusMpa"));
-                    temperature = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_temperature"));
+                    // 构建实际的字段键名
+                    String key = experimentName + "_utm_" + i + "_row" + rowIndex + "_col" + colIndex;
+                    Float value = parseFloatSafely(experiments.get(key));
+                    
+                    if (value != null) {
+                        utmItem.put(fieldName, value);
+                        hasData = true;
+                        Log.d(TAG, "找到UTM数据: 压力级别=" + pressureLevel + 
+                              ", 字段=" + fieldName + ", 值=" + value + 
+                              ", 键=" + key);
+                    }
                 }
                 
-                // 设置UTS028数据
-                utmData.put("maxForceKn", maxForce);
-                utmData.put("minForceN", minForce);
-                utmData.put("stressDevKpa", stressDevKpa);
-                utmData.put("displResilMm", displResilMm);
-                utmData.put("strainResil", strainResil);
-                utmData.put("resilientModulusMpa", resilientModulusMpa);
-                utmData.put("temperature", temperature);
-                
-                // 只添加至少有一个非null数据的行
-                boolean hasData = maxForce != null || minForce != null || stressDevKpa != null || 
-                                  displResilMm != null || strainResil != null || resilientModulusMpa != null || 
-                                  temperature != null;
-                
+                // 只添加有数据的压力级别
                 if (hasData) {
+                    utmDataList.add(utmItem);
                     Log.d(TAG, "添加压力级别 " + pressureLevel + " 的UTM数据");
-                    utmDataList.add(utmData);
                 }
             }
             
-            // 如果没有找到任何UTM数据，添加一个默认的0.1P行
-            if (utmDataList.isEmpty()) {
-                Map<String, Object> defaultUtmData = new HashMap<>();
-                defaultUtmData.put("pressureLevel", "0.1P");
-                defaultUtmData.put("maxForceKn", 1.0f);
-                defaultUtmData.put("minForceN", 0.1f);
-                defaultUtmData.put("stressDevKpa", 100.0f);
-                defaultUtmData.put("displResilMm", 0.1f);
-                defaultUtmData.put("strainResil", 0.01f);
-                defaultUtmData.put("resilientModulusMpa", 1000.0f);
-                defaultUtmData.put("temperature", testTemperature);
-                
-                utmDataList.add(defaultUtmData);
-                Log.d(TAG, "未找到UTM数据，添加默认0.1P数据");
+            // 如果有UTM数据，将列表添加到试件
+            if (!utmDataList.isEmpty()) {
+                specimen.put("utmDataList", utmDataList);
+                Log.d(TAG, "试件 " + i + " 添加了 " + utmDataList.size() + " 条UTM数据");
+            } else {
+                Log.w(TAG, "试件 " + i + " 没有找到任何UTM数据");
             }
-            
-            // 添加到试件数据中
-            specimen.put("utmDataList", utmDataList);
-            
-            // 添加P值数据
-            List<Map<String, Object>> strengthDataList = new ArrayList<>();
-            for (int j = 0; j < pValues.size(); j++) {
-                if (pValues.get(j) != null) {
-                    Map<String, Object> strengthData = new HashMap<>();
-                    strengthData.put("label", "P" + (j + 1));
-                    strengthData.put("value", pValues.get(j));
-                    strengthDataList.add(strengthData);
-                }
-            }
-            specimen.put("strengthData", strengthDataList);
             
             specimens.add(specimen);
         }
@@ -2622,10 +2589,10 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
         try {
             // 恢复实验数据
             if (savedInstanceState.containsKey("experimentData") && adapter != null) {
-                Map<String, Map<String, String>> experimentData = (Map<String, Map<String, String>>) savedInstanceState.getSerializable("experimentData");
-                if (experimentData != null) {
+                Map<String, Map<String, String>> savedData = (Map<String, Map<String, String>>) savedInstanceState.getSerializable("experimentData");
+                if (savedData != null) {
                     // 遍历并逐个更新实验数据，而不是直接传递Map
-                    for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
+                    for (Map.Entry<String, Map<String, String>> entry : savedData.entrySet()) {
                         String mixRatioId = entry.getKey();
                         Map<String, String> experiments = entry.getValue();
                         
@@ -2635,7 +2602,7 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
                             adapter.updateExperimentValue(mixRatioId, key, value);
                         }
                     }
-                    Log.d(TAG, "已恢复实验数据: " + experimentData.size() + " 条记录");
+                    Log.d(TAG, "已恢复实验数据: " + savedData.size() + " 条记录");
                 }
                 
                 // 恢复特殊处理的马歇尔稳定度试验数据
