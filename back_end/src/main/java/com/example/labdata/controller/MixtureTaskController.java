@@ -655,4 +655,30 @@ public class MixtureTaskController {
                     .body(new ApiResponse<>(false, "获取沥青混合料单轴压缩试验（圆柱体法）数据失败: " + e.getMessage(), null));
         }
     }
+
+    /**
+     * 获取沥青混合料劈裂试验数据
+     *
+     * @param taskId 任务ID
+     * @return 沥青混合料劈裂试验数据列表
+     */
+    @GetMapping("/mixtureTask/getSplittingTest/{taskId}")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getSplittingTestByTaskId(@PathVariable String taskId) {
+        logger.info("接收到获取沥青混合料劈裂试验数据请求，任务ID: {}", taskId);
+        try {
+            List<Map<String, Object>> result = mixtureTaskService.getSplittingTestByTaskId(taskId);
+            
+            if (result.isEmpty()) {
+                logger.warn("未找到任务ID: {} 的沥青混合料劈裂试验数据", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(true, "未找到沥青混合料劈裂试验数据", new ArrayList<>()));
+            }
+            
+            logger.info("成功获取任务ID={}的沥青混合料劈裂试验数据，共{}条", taskId, result.size());
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取成功", result));
+        } catch (Exception e) {
+            logger.error("获取沥青混合料劈裂试验数据失败: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取沥青混合料劈裂试验数据失败: " + e.getMessage(), null));
+        }
+    }
 }

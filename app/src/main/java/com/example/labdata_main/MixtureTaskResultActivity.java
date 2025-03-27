@@ -16,6 +16,7 @@ import com.example.labdata_main.adapter.FourPointBendingFatigueAdapter;
 import com.example.labdata_main.adapter.HamburgRuttingAdapter;
 import com.example.labdata_main.adapter.MarshallAdapter;
 import com.example.labdata_main.adapter.MixtureBendingAdapter;
+import com.example.labdata_main.adapter.SplittingTestAdapter;
 import com.example.labdata_main.adapter.UniaxialCompressionAdapter;
 import com.example.labdata_main.model.DirectStretchingFatigueTestResponse;
 import com.example.labdata_main.api.ApiClient;
@@ -28,6 +29,7 @@ import com.example.labdata_main.model.HamburgRuttingTestResponse;
 import com.example.labdata_main.model.MarshallTestResponse;
 import com.example.labdata_main.model.MixtureBendingTestResponse;
 import com.example.labdata_main.model.MixratioAndCompactionResponse;
+import com.example.labdata_main.model.SplittingTestResponse;
 import com.example.labdata_main.model.TaskAssignmentResponse;
 import com.example.labdata_main.model.UniaxialCompressionTestResponse;
 
@@ -62,6 +64,7 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
     private DirectStretchingFatigueSpecimenAdapter directStretchingFatigueSpecimenAdapter;
     private FourPointBendingFatigueAdapter fourPointBendingFatigueAdapter;
     private UniaxialCompressionAdapter uniaxialCompressionAdapter;
+    private SplittingTestAdapter splittingTestAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -203,6 +206,8 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                 fetchFourPointBendingFatigueTestData();
             } else if (taskAssignment.contains("沥青混合料单轴压缩试验")) {
                 fetchUniaxialCompressionTestData();
+            } else if (taskAssignment.contains("劈裂") || taskAssignment.contains("沥青混合料劈裂试验")) {
+                fetchSplittingTestData();
             } else {
                 showNoResultsMessage("当前任务不包含支持的实验数据");
             }
@@ -226,6 +231,8 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     fetchFourPointBendingFatigueTestData();
                 } else if (taskName.contains("沥青混合料单轴压缩试验")) {
                     fetchUniaxialCompressionTestData();
+                } else if (taskName.contains("劈裂") || taskName.contains("沥青混合料劈裂试验")) {
+                    fetchSplittingTestData();
                 } else {
                     showNoResultsMessage("当前任务不包含支持的实验数据");
                 }
@@ -288,6 +295,8 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                             fetchFourPointBendingFatigueTestData();
                         } else if (taskAssignment.contains("沥青混合料单轴压缩试验")) {
                             fetchUniaxialCompressionTestData();
+                        } else if (taskAssignment.contains("劈裂") || taskAssignment.contains("沥青混合料劈裂试验")) {
+                            fetchSplittingTestData();
                         } else {
                             showNoResultsMessage("当前任务不包含支持的实验数据");
                         }
@@ -812,6 +821,60 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                 showNoResultsMessage("获取沥青混合料单轴压缩试验（圆柱体法）数据失败: 网络错误");
             }
         });
+    }
+    
+    /**
+     * 获取沥青混合料劈裂试验数据
+     */
+    private void fetchSplittingTestData() {
+        String taskId = task != null ? task.getTaskId() : getIntent().getStringExtra("task_id");
+        if (taskId == null || taskId.isEmpty()) {
+            showNoResultsMessage("无法获取任务ID");
+            return;
+        }
+
+        Log.d(TAG, "开始获取沥青混合料劈裂试验数据，任务ID: " + taskId);
+        mixtureTaskApi.getSplittingTestByTaskId(taskId).enqueue(new Callback<ApiResponse<List<SplittingTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<SplittingTestResponse>>> call, Response<ApiResponse<List<SplittingTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
+                    List<SplittingTestResponse> testResults = response.body().getData();
+                    if (!testResults.isEmpty()) {
+                        Log.d(TAG, "成功获取沥青混合料劈裂试验数据: " + testResults.size() + "条");
+                        displaySplittingTestResults(testResults);
+                    } else {
+                        showNoResultsMessage("未找到劈裂试验数据");
+                    }
+                } else {
+                    if (response.body() != null) {
+                        showNoResultsMessage("获取劈裂试验数据失败: " + response.body().getMessage());
+                    } else {
+                        showNoResultsMessage("获取劈裂试验数据失败，服务器返回为空");
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<List<SplittingTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取劈裂试验数据网络请求失败", t);
+                showNoResultsMessage("网络请求失败: " + t.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 显示沥青混合料劈裂试验结果数据
+     * 
+     * @param testResults 劈裂试验结果列表
+     */
+    private void displaySplittingTestResults(List<SplittingTestResponse> testResults) {
+        tvNoResults.setVisibility(View.GONE);
+        rvExperimentResults.setVisibility(View.VISIBLE);
+        
+        splittingTestAdapter = new SplittingTestAdapter(this, testResults);
+        rvExperimentResults.setAdapter(splittingTestAdapter);
+        
+        Log.d(TAG, "显示劈裂试验数据：" + testResults.size() + "条");
     }
     
     /**

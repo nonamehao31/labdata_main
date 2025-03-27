@@ -11,6 +11,7 @@ import com.example.labdata_main.model.DynamicModulusTestResponse;
 import com.example.labdata_main.model.DirectStretchingFatigueTestResponse;
 import com.example.labdata_main.model.FourPointBendingFatigueTestResponse;
 import com.example.labdata_main.model.UniaxialCompressionTestResponse;
+import com.example.labdata_main.model.SplittingTestResponse;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -106,4 +107,13 @@ public interface MixtureTaskApi {
      */
     @GET("api/mixtureTask/getUniaxialCompressionTest/{taskId}")
     Call<ApiResponse<UniaxialCompressionTestResponse>> getUniaxialCompressionTestByTaskId(@Path("taskId") String taskId);
+
+    /**
+     * 获取沥青混合料劈裂试验数据
+     * 
+     * @param taskId 任务ID
+     * @return 沥青混合料劈裂试验数据响应
+     */
+    @GET("api/mixtureTask/getSplittingTest/{taskId}")
+    Call<ApiResponse<List<SplittingTestResponse>>> getSplittingTestByTaskId(@Path("taskId") String taskId);
 }

@@ -1389,20 +1389,21 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                     for (int i = 0; i < layoutInputs.getChildCount(); i++) {
                         View child = layoutInputs.getChildAt(i);
                         if (child instanceof LinearLayout) {
-                            LinearLayout layout = (LinearLayout) child;
-                            for (int j = 0; j < layout.getChildCount(); j++) {
-                                View innerChild = layout.getChildAt(j);
-                                if (innerChild instanceof TextInputEditText) {
-                                    TextInputEditText editText = (TextInputEditText) innerChild;
-                                    if (editText.getHint() != null && editText.getHint().toString().equals("计算获得")) {
-                                        if (layout.getChildAt(0) instanceof TextView) {
-                                            TextView label = (TextView) layout.getChildAt(0);
+                            LinearLayout container = (LinearLayout) child;
+                            for (int j = 0; j < container.getChildCount(); j++) {
+                                View innerChild = container.getChildAt(j);
+                                if (innerChild instanceof LinearLayout) {
+                                    LinearLayout avgContainer = (LinearLayout) innerChild;
+                                    if (avgContainer.getChildCount() >= 2) {
+                                        View labelView = avgContainer.getChildAt(0);
+                                        View valueView = avgContainer.getChildAt(1);
+                                        if (labelView instanceof TextView && valueView instanceof TextView) {
+                                            TextView label = (TextView) labelView;
+                                            TextView value = (TextView) valueView;
                                             if (label.getText().toString().contains("P平均值")) {
-                                                editText.setText(String.format("%.2f", pAvg));
-                                                editText.setEnabled(false);
+                                                value.setText(String.format("%.2f", pAvg));
                                             } else if (label.getText().toString().contains("X平均值")) {
-                                                editText.setText(String.format("%.2f", xAvg));
-                                                editText.setEnabled(false);
+                                                value.setText(String.format("%.2f", xAvg));
                                             }
                                         }
                                     }

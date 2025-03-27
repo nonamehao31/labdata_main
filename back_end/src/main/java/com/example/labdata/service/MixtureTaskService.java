@@ -2304,10 +2304,6 @@ public String getTestingStatus(String taskId) {
                 // 3. 获取每个试件的动态模量和疲劳数据
                 for (Map<String, Object> specimen : specimens) {
                     Map<String, Object> specimenData = new HashMap<>();
-                    specimenData.put("specimen_id", specimen.get("specimen_id"));
-                    specimenData.put("height", specimen.get("height"));
-                    specimenData.put("diameter", specimen.get("diameter"));
-
                     Long specimenDbId = (Long) specimen.get("specimen_db_id");
 
                     // 4. 获取动态模量数据
@@ -2703,5 +2699,91 @@ public String getTestingStatus(String taskId) {
         }
         
         return result.toString();
+    }
+
+    /**
+     * 获取沥青混合料劈裂试验数据
+     *
+     * @param taskId 任务ID
+     * @return 劈裂试验数据列表
+     */
+    public List<Map<String, Object>> getSplittingTestByTaskId(String taskId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        try {
+            // 构建查询SQL，将主表与试件表关联
+            String sql = "SELECT st.*, ss.* " +
+                    "FROM mixture_splitting_test st " +
+                    "LEFT JOIN mixture_splitting_test_specimen ss ON st.test_id = ss.test_id " +
+                    "WHERE st.task_id = ? " +
+                    "ORDER BY st.test_id, ss.specimen_number";
+            
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, taskId);
+            if (rows.isEmpty()) {
+                logger.warn("未找到任务ID: {} 的沥青混合料劈裂试验数据", taskId);
+                return result;
+            }
+
+            Map<String, Map<String, Object>> testMap = new HashMap<>();
+            Map<String, List<Map<String, Object>>> specimenMap = new HashMap<>();
+
+            // 遍历结果，分离测试和试件数据
+            for (Map<String, Object> row : rows) {
+                String testId = (String) row.get("test_id");
+                
+                // 收集测试数据
+                if (!testMap.containsKey(testId)) {
+                    Map<String, Object> testData = new HashMap<>();
+                    testData.put("test_id", testId);
+                    testData.put("task_id", row.get("task_id"));
+                    testData.put("mix_ratio_id", row.get("mix_ratio_id"));
+                    testData.put("test_temperature", row.get("test_temperature"));
+                    testData.put("test_time", row.get("test_time"));
+                    testData.put("operator", row.get("operator"));
+                    testData.put("test_equipment", row.get("test_equipment"));
+                    testData.put("test_method", row.get("test_method"));
+                    testData.put("test_standard", row.get("test_standard"));
+                    testData.put("remarks", row.get("remarks"));
+                    
+                    testMap.put(testId, testData);
+                    specimenMap.put(testId, new ArrayList<>());
+                }
+                
+                // 收集试件数据
+                if (row.get("specimen_id") != null) {
+                    Map<String, Object> specimenData = new HashMap<>();
+                    specimenData.put("specimen_id", row.get("specimen_id"));
+                    specimenData.put("specimen_number", row.get("specimen_number"));
+                    specimenData.put("diameter", row.get("diameter"));
+                    specimenData.put("height", row.get("height"));
+                    specimenData.put("p1_value", row.get("p1_value"));
+                    specimenData.put("p2_value", row.get("p2_value"));
+                    specimenData.put("p3_value", row.get("p3_value"));
+                    specimenData.put("p_average", row.get("p_average"));
+                    specimenData.put("x1_value", row.get("x1_value"));
+                    specimenData.put("x2_value", row.get("x2_value"));
+                    specimenData.put("x3_value", row.get("x3_value"));
+                    specimenData.put("x_average", row.get("x_average"));
+                    specimenData.put("poisson_ratio", row.get("poisson_ratio"));
+                    specimenData.put("tensile_strength", row.get("tensile_strength"));
+                    specimenData.put("failure_strain", row.get("failure_strain"));
+                    specimenData.put("stiffness_modulus", row.get("stiffness_modulus"));
+                    
+                    specimenMap.get(testId).add(specimenData);
+                }
+            }
+            
+            // 组合测试和试件数据
+            for (String testId : testMap.keySet()) {
+                Map<String, Object> testData = testMap.get(testId);
+                testData.put("specimens", specimenMap.get(testId));
+                result.add(testData);
+            }
+            
+            logger.info("成功获取任务ID={}的沥青混合料劈裂试验数据，共{}条", taskId, result.size());
+            return result;
+        } catch (Exception e) {
+            logger.error("获取沥青混合料劈裂试验数据失败: {}", e.getMessage(), e);
+            return result;
+        }
     }
 }

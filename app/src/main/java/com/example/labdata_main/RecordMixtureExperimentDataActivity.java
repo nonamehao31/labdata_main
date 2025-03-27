@@ -2301,16 +2301,16 @@ private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, Stri
             // 新增：收集UTS028表格数据 - 使用正确的字段命名格式
             List<Map<String, Object>> utmDataList = new ArrayList<>();
             String[] pressureLevels = {"0.1P", "0.2P", "0.3P", "0.4P", "0.5P", "0.6P", "0.7P"};
-
+            
             // 映射行索引到对应的字段名称
             String[][] fieldMapping = {
-                    {"0", "maxForceKn"},       // row0 = 最大力
-                    {"1", "minForceN"},        // row1 = 最小力
-                    {"2", "stressDevKpa"},     // row2 = 应力水平
-                    {"3", "displResilMm"},     // row3 = 回弹变形
-                    {"4", "strainResil"},      // row4 = 回弹应变
-                    {"5", "resilientModulusMpa"}, // row5 = 抗压回弹模量
-                    {"6", "temperature"}       // row6 = 温度
+                    {"0", "max_force"},       // row0 = 最大力
+                    {"1", "min_force"},       // row1 = 最小力
+                    {"2", "work_ratio"},      // row2 = 应力水平 (在数据库中是work_ratio)
+                    {"3", "displacement"},    // row3 = 回弹变形
+                    {"4", "strain"},          // row4 = 回弹应变
+                    {"5", "rebound_modulus"}, // row5 = 抗压回弹模量
+                    {"6", "temperature"}      // row6 = 温度
             };
             
             // 遍历7个压力级别 (0.1P-0.7P)，对应col1-col7
