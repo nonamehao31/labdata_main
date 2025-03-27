@@ -1,5 +1,9 @@
 package com.example.labdata_main.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+import androidx.annotation.Keep;
+
 import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -10,7 +14,11 @@ import java.util.regex.Pattern;
 /**
  * 已完成实验任务统一模型
  */
-public class CompletedExperimentTask implements Serializable {
+@Keep
+public class CompletedExperimentTask implements Serializable, Parcelable {
+    // 添加序列化ID，确保序列化兼容性
+    private static final long serialVersionUID = 1L;
+    
     // 任务基本信息
     private String taskId;
     private String taskName;
@@ -33,6 +41,67 @@ public class CompletedExperimentTask implements Serializable {
     // 沥青任务特有信息
     private String asphaltExperimentId;
     private String asphaltExperimentType;
+    
+    // 无参构造函数
+    public CompletedExperimentTask() {
+    }
+    
+    // Parcelable 构造函数
+    protected CompletedExperimentTask(Parcel in) {
+        taskId = in.readString();
+        taskName = in.readString();
+        taskAssignment = in.readString();
+        experimenter = in.readString();
+        acceptTime = in.readLong();
+        completionTime = in.readLong();
+        isMixtureTask = in.readByte() != 0;
+        experimentType = in.readString();
+        experimentName = in.readString();
+        mixratioId = in.readString();
+        mixName = in.readString();
+        specimenId = in.readString();
+        compactionMethod = in.readString();
+        asphaltExperimentId = in.readString();
+        asphaltExperimentType = in.readString();
+    }
+    
+    // 实现 Parcelable.Creator
+    public static final Creator<CompletedExperimentTask> CREATOR = new Creator<CompletedExperimentTask>() {
+        @Override
+        public CompletedExperimentTask createFromParcel(Parcel in) {
+            return new CompletedExperimentTask(in);
+        }
+        
+        @Override
+        public CompletedExperimentTask[] newArray(int size) {
+            return new CompletedExperimentTask[size];
+        }
+    };
+    
+    // 实现 Parcelable 接口的方法
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+    
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(taskId);
+        dest.writeString(taskName);
+        dest.writeString(taskAssignment);
+        dest.writeString(experimenter);
+        dest.writeLong(acceptTime);
+        dest.writeLong(completionTime);
+        dest.writeByte((byte) (isMixtureTask ? 1 : 0));
+        dest.writeString(experimentType);
+        dest.writeString(experimentName);
+        dest.writeString(mixratioId);
+        dest.writeString(mixName);
+        dest.writeString(specimenId);
+        dest.writeString(compactionMethod);
+        dest.writeString(asphaltExperimentId);
+        dest.writeString(asphaltExperimentType);
+    }
     
     // 工具方法 - 格式化时间
     public static String formatTime(long timestamp) {
@@ -253,24 +322,24 @@ public class CompletedExperimentTask implements Serializable {
         }
     }
 
-/**
- * 获取实验名称中的项目名部分
- * 从格式"实验名称-配比名称（ID: XX,压实方法）"中提取"实验名称"部分
- * @return 只包含项目名的字符串
- */
+    /**
+     * 获取实验名称中的项目名部分
+     * 从格式"实验名称-配比名称（ID: XX,压实方法）"中提取"实验名称"部分
+     * @return 只包含项目名的字符串
+     */
     public String getProjectName() {
-    if (experimentName == null || experimentName.isEmpty()) {
-        return "";
-    }
-    
-    // 检查字符串中是否包含连字符"-"
-    int dashIndex = experimentName.indexOf('-');
-    if (dashIndex > 0) {
-        // 提取连字符前的部分作为项目名
-        return experimentName.substring(0, dashIndex).trim();
-    }
-    
-    // 如果没有连字符，则返回整个实验名
-    return experimentName;
+        if (experimentName == null || experimentName.isEmpty()) {
+            return "";
+        }
+        
+        // 检查字符串中是否包含连字符"-"
+        int dashIndex = experimentName.indexOf('-');
+        if (dashIndex > 0) {
+            // 提取连字符前的部分作为项目名
+            return experimentName.substring(0, dashIndex).trim();
+        }
+        
+        // 如果没有连字符，则返回整个实验名
+        return experimentName;
     }
 }

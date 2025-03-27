@@ -11,19 +11,26 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.adapter.BbrTestAdapter;
 import com.example.labdata_main.adapter.BrookfieldViscosityAdapter;
+import com.example.labdata_main.adapter.DirectStretchingFatigueAdapter;
 import com.example.labdata_main.adapter.DsrTestAdapter;
 import com.example.labdata_main.adapter.DuctilityAdapter;
+import com.example.labdata_main.adapter.DynamicModulusAdapter;
+import com.example.labdata_main.adapter.FourPointBendingFatigueAdapter;
 import com.example.labdata_main.adapter.PenetrationTestAdapter;
 import com.example.labdata_main.adapter.SofteningPointAdapter;
 import com.example.labdata_main.api.ApiClient;
 import com.example.labdata_main.api.AsphaltTaskApi;
+import com.example.labdata_main.api.MixtureTaskApi;
 import com.example.labdata_main.model.ApiResponse;
 import com.example.labdata_main.model.AsphaltDetailResponse;
 import com.example.labdata_main.model.BbrTestResponse;
 import com.example.labdata_main.model.BrookfieldViscosityResponse;
 import com.example.labdata_main.model.CompletedExperimentTask;
+import com.example.labdata_main.model.DirectStretchingFatigueTestResponse;
 import com.example.labdata_main.model.DsrTestResponse;
 import com.example.labdata_main.model.DuctilityTestResponse;
+import com.example.labdata_main.model.DynamicModulusTestResponse;
+import com.example.labdata_main.model.FourPointBendingFatigueTestResponse;
 import com.example.labdata_main.model.PenetrationTestResponse;
 import com.example.labdata_main.model.SofteningPointResponse;
 
@@ -54,9 +61,13 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
     private BrookfieldViscosityAdapter brookfieldViscosityAdapter;
     private BbrTestAdapter bbrTestAdapter;
     private DsrTestAdapter dsrTestAdapter;
+    private DynamicModulusAdapter dynamicModulusAdapter;
+    private DirectStretchingFatigueAdapter directStretchingFatigueAdapter;
+    private FourPointBendingFatigueAdapter fourPointBendingFatigueAdapter;
     
     private CompletedExperimentTask task;
     private AsphaltTaskApi asphaltTaskApi;
+    private MixtureTaskApi mixtureTaskApi;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +76,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
         
         // 初始化API客户端
         asphaltTaskApi = ApiClient.getClient().create(AsphaltTaskApi.class);
+        mixtureTaskApi = ApiClient.getClient().create(MixtureTaskApi.class);
         
         // 初始化视图
         tvTaskId = findViewById(R.id.tvTaskId);
@@ -106,6 +118,15 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                     } else if (taskAssignment.contains("动态剪切") || taskAssignment.contains("DSR")) {
                         // 获取动态剪切流变仪实验数据
                         fetchDsrTestResult();
+                    } else if (taskAssignment.contains("动态模量")) {
+                        // 获取动态模量实验数据
+                        fetchDynamicModulusResult();
+                    } else if (taskAssignment.contains("沥青混合料直接拉伸循环疲劳") || taskAssignment.contains("黏弹损伤")) {
+                        // 获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
+                        fetchDirectStretchingFatigueResult();
+                    } else if (taskAssignment.contains("沥青混合料四点弯曲疲劳寿命")) {
+                        // 获取沥青混合料四点弯曲疲劳寿命实验数据
+                        fetchFourPointBendingFatigueResult();
                     } else {
                         // 未知实验类型，显示无数据提示
                         Log.d(TAG, "未知实验类型，无法获取对应的实验数据");
@@ -149,6 +170,15 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
         
         // 动态剪切流变仪适配器
         dsrTestAdapter = new DsrTestAdapter(this);
+        
+        // 动态模量适配器
+        dynamicModulusAdapter = new DynamicModulusAdapter(this);
+        
+        // 沥青混合料直接拉伸循环疲劳测黏弹损伤实验适配器
+        directStretchingFatigueAdapter = new DirectStretchingFatigueAdapter(this);
+        
+        // 沥青混合料四点弯曲疲劳寿命实验适配器
+        fourPointBendingFatigueAdapter = new FourPointBendingFatigueAdapter(this);
     }
 
     /**
@@ -485,6 +515,139 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
     }
     
     /**
+     * 获取动态模量实验结果数据
+     */
+    private void fetchDynamicModulusResult() {
+        if (task == null || task.getTaskId() == null) {
+            Log.e(TAG, "任务对象或任务ID为空，无法获取动态模量实验数据");
+            return;
+        }
+        
+        String taskId = task.getTaskId();
+        Log.d(TAG, "正在获取动态模量实验数据: " + taskId);
+        
+        mixtureTaskApi.getDynamicModulusTestByTaskId(taskId).enqueue(new Callback<ApiResponse<List<DynamicModulusTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Response<ApiResponse<List<DynamicModulusTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    List<DynamicModulusTestResponse> testResults = response.body().getData();
+                    Log.d(TAG, "成功获取动态模量实验数据，共 " + testResults.size() + " 条记录");
+                    
+                    displayDynamicModulusResults(testResults);
+                } else {
+                    Log.e(TAG, "获取动态模量实验数据失败: " + (response.errorBody() != null ? response.errorBody().toString() : "未知错误"));
+                    // 任务指派明确是动态模量实验但数据获取失败时，显示无数据提示
+                    if (task.getTaskAssignment() != null && task.getTaskAssignment().contains("动态模量")) {
+                        showNoResultsMessage();
+                    }
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取动态模量实验数据网络请求失败", t);
+                // 任务指派明确是动态模量实验但数据获取失败时，显示无数据提示
+                if (task.getTaskAssignment() != null && task.getTaskAssignment().contains("动态模量")) {
+                    showNoResultsMessage();
+                }
+            }
+        });
+    }
+    
+    /**
+     * 获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
+     */
+    private void fetchDirectStretchingFatigueResult() {
+        if (task == null || task.getTaskId() == null) {
+            Log.e(TAG, "任务对象或任务ID为空，无法获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据");
+            return;
+        }
+        
+        String taskId = task.getTaskId();
+        Log.d(TAG, "正在获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据: " + taskId);
+        
+        mixtureTaskApi.getDirectStretchingFatigueTestByTaskId(taskId).enqueue(new Callback<ApiResponse<List<DirectStretchingFatigueTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<DirectStretchingFatigueTestResponse>>> call, Response<ApiResponse<List<DirectStretchingFatigueTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    List<DirectStretchingFatigueTestResponse> testResults = response.body().getData();
+                    Log.d(TAG, "成功获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据，共 " + testResults.size() + " 条记录");
+                    
+                    displayDirectStretchingFatigueResults(testResults);
+                } else {
+                    Log.e(TAG, "获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据失败: " + (response.errorBody() != null ? response.errorBody().toString() : "未知错误"));
+                    // 任务指派明确是沥青混合料直接拉伸循环疲劳实验但数据获取失败时，显示无数据提示
+                    if (task.getTaskAssignment() != null && 
+                        (task.getTaskAssignment().contains("沥青混合料直接拉伸循环疲劳") || task.getTaskAssignment().contains("黏弹损伤"))) {
+                        showNoResultsMessage();
+                    }
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<List<DirectStretchingFatigueTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据网络请求失败", t);
+                // 任务指派明确是沥青混合料直接拉伸循环疲劳实验但数据获取失败时，显示无数据提示
+                if (task.getTaskAssignment() != null && 
+                    (task.getTaskAssignment().contains("沥青混合料直接拉伸循环疲劳") || task.getTaskAssignment().contains("黏弹损伤"))) {
+                    showNoResultsMessage();
+                }
+            }
+        });
+    }
+    
+    /**
+     * 获取沥青混合料四点弯曲疲劳寿命实验结果数据
+     */
+    private void fetchFourPointBendingFatigueResult() {
+        if (task == null || task.getTaskId() == null) {
+            Log.e(TAG, "任务对象或任务ID为空，无法获取四点弯曲疲劳寿命实验数据");
+            return;
+        }
+        
+        String taskId = task.getTaskId();
+        Log.d(TAG, "正在获取四点弯曲疲劳寿命实验数据: " + taskId);
+        
+        asphaltTaskApi.getFourPointBendingTestByTaskId(taskId).enqueue(new Callback<ApiResponse<FourPointBendingFatigueTestResponse>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<FourPointBendingFatigueTestResponse>> call, 
+                               Response<ApiResponse<FourPointBendingFatigueTestResponse>> response) {
+                if (response.isSuccessful() && response.body() != null && 
+                    response.body().isSuccess() && response.body().getData() != null) {
+                    
+                    FourPointBendingFatigueTestResponse testResult = response.body().getData();
+                    Log.d(TAG, "成功获取四点弯曲疲劳寿命实验数据");
+                    
+                    // 创建一个包含单个结果的列表，传递给适配器
+                    List<FourPointBendingFatigueTestResponse> testResultList = new ArrayList<>();
+                    testResultList.add(testResult);
+                    displayFourPointBendingFatigueResults(testResultList);
+                } else {
+                    Log.e(TAG, "获取四点弯曲疲劳寿命实验数据失败: " + 
+                          (response.errorBody() != null ? response.errorBody().toString() : "未知错误"));
+                    
+                    // 任务指派明确是四点弯曲疲劳寿命实验但数据获取失败时，显示无数据提示
+                    if (task.getTaskAssignment() != null && 
+                        task.getTaskAssignment().contains("沥青混合料四点弯曲疲劳寿命")) {
+                        showNoResultsMessage();
+                    }
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<FourPointBendingFatigueTestResponse>> call, Throwable t) {
+                Log.e(TAG, "获取四点弯曲疲劳寿命实验数据网络请求失败", t);
+                
+                // 任务指派明确是四点弯曲疲劳寿命实验但数据获取失败时，显示无数据提示
+                if (task.getTaskAssignment() != null && 
+                    task.getTaskAssignment().contains("沥青混合料四点弯曲疲劳寿命")) {
+                    showNoResultsMessage();
+                }
+            }
+        });
+    }
+    
+    /**
      * 显示针入度实验结果数据
      * @param testResults 针入度实验结果列表
      */
@@ -630,6 +793,80 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
         tvNoResults.setVisibility(View.GONE);
         
         Log.d(TAG, "显示动态剪切流变仪实验数据");
+    }
+    
+    /**
+     * 显示动态模量实验结果数据
+     * @param testResults 动态模量实验结果列表
+     */
+    private void displayDynamicModulusResults(List<DynamicModulusTestResponse> testResults) {
+        if (testResults == null || testResults.isEmpty()) {
+            // 如果是动态模量指派的任务但数据为空，则显示无数据提示
+            if (task.getTaskAssignment() != null && task.getTaskAssignment().contains("动态模量")) {
+                showNoResultsMessage();
+            }
+            return;
+        }
+        
+        // 更新适配器数据
+        rvExperimentResults.setAdapter(dynamicModulusAdapter);
+        dynamicModulusAdapter.updateData(testResults);
+        
+        // 显示RecyclerView，隐藏无数据提示
+        rvExperimentResults.setVisibility(View.VISIBLE);
+        tvNoResults.setVisibility(View.GONE);
+        
+        Log.d(TAG, "显示动态模量实验数据");
+    }
+    
+    /**
+     * 显示沥青混合料直接拉伸循环疲劳测黏弹损伤实验结果数据
+     * @param testResults 沥青混合料直接拉伸循环疲劳测黏弹损伤实验结果列表
+     */
+    private void displayDirectStretchingFatigueResults(List<DirectStretchingFatigueTestResponse> testResults) {
+        if (testResults == null || testResults.isEmpty()) {
+            // 如果是沥青混合料直接拉伸循环疲劳实验指派的任务但数据为空，则显示无数据提示
+            if (task.getTaskAssignment() != null && 
+                (task.getTaskAssignment().contains("沥青混合料直接拉伸循环疲劳") || task.getTaskAssignment().contains("黏弹损伤"))) {
+                showNoResultsMessage();
+            }
+            return;
+        }
+        
+        // 更新适配器数据
+        rvExperimentResults.setAdapter(directStretchingFatigueAdapter);
+        directStretchingFatigueAdapter.updateData(testResults);
+        
+        // 显示RecyclerView，隐藏无数据提示
+        rvExperimentResults.setVisibility(View.VISIBLE);
+        tvNoResults.setVisibility(View.GONE);
+        
+        Log.d(TAG, "显示沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据");
+    }
+    
+    /**
+     * 显示沥青混合料四点弯曲疲劳寿命实验结果数据
+     * @param testResults 沥青混合料四点弯曲疲劳寿命实验结果列表
+     */
+    private void displayFourPointBendingFatigueResults(List<FourPointBendingFatigueTestResponse> testResults) {
+        if (testResults == null || testResults.isEmpty()) {
+            // 如果是沥青混合料四点弯曲疲劳寿命指派的任务但数据为空，则显示无数据提示
+            if (task.getTaskAssignment() != null && 
+                task.getTaskAssignment().contains("沥青混合料四点弯曲疲劳寿命")) {
+                showNoResultsMessage();
+            }
+            return;
+        }
+        
+        // 更新适配器数据
+        rvExperimentResults.setAdapter(fourPointBendingFatigueAdapter);
+        fourPointBendingFatigueAdapter.updateData(testResults);
+        
+        // 显示RecyclerView，隐藏无数据提示
+        rvExperimentResults.setVisibility(View.VISIBLE);
+        tvNoResults.setVisibility(View.GONE);
+        
+        Log.d(TAG, "显示沥青混合料四点弯曲疲劳寿命实验数据");
     }
     
     /**

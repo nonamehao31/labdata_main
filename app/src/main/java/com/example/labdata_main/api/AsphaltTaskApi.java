@@ -4,8 +4,11 @@ import com.example.labdata_main.model.ApiResponse;
 import com.example.labdata_main.model.AsphaltDetailResponse;
 import com.example.labdata_main.model.BbrTestResponse;
 import com.example.labdata_main.model.BrookfieldViscosityResponse;
+import com.example.labdata_main.model.DirectStretchingFatigueTestResponse;
 import com.example.labdata_main.model.DsrTestResponse;
 import com.example.labdata_main.model.DuctilityTestResponse;
+import com.example.labdata_main.model.DynamicModulusTestResponse;
+import com.example.labdata_main.model.FourPointBendingFatigueTestResponse;
 import com.example.labdata_main.model.PenetrationTestResponse;
 import com.example.labdata_main.model.SofteningPointResponse;
 
@@ -82,4 +85,31 @@ public interface AsphaltTaskApi {
      */
     @GET("api/dsr/task/{taskId}")
     Call<ApiResponse<List<DsrTestResponse>>> getDsrTestByTaskId(@Path("taskId") String taskId);
+    
+    /**
+     * 根据任务ID获取动态模量实验数据
+     *
+     * @param taskId 任务ID
+     * @return API响应，包含动态模量实验数据列表
+     */
+    @GET("api/dynamic-modulus/task/{taskId}")
+    Call<ApiResponse<List<DynamicModulusTestResponse>>> getDynamicModulusByTaskId(@Path("taskId") String taskId);
+    
+    /**
+     * 根据任务ID获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
+     *
+     * @param taskId 任务ID
+     * @return API响应，包含沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据列表
+     */
+    @GET("api/direct-stretching-fatigue/task/{taskId}")
+    Call<ApiResponse<List<DirectStretchingFatigueTestResponse>>> getDirectStretchingFatigueByTaskId(@Path("taskId") String taskId);
+    
+    /**
+     * 根据任务ID获取沥青混合料四点弯曲疲劳寿命实验数据
+     *
+     * @param taskId 任务ID
+     * @return API响应，包含沥青混合料四点弯曲疲劳寿命实验数据
+     */
+    @GET("api/mixtureTask/getFourPointBendingTest/{taskId}")
+    Call<ApiResponse<FourPointBendingFatigueTestResponse>> getFourPointBendingTestByTaskId(@Path("taskId") String taskId);
 }

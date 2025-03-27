@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@android:color/white">
+
+    <!-- 实验名称 -->
+    <TextView
+        android:id="@+id/tvExperimentName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="动态模量试验"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 配比名称 -->
+    <TextView
+        android:id="@+id/tvMixRatioName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="配比名称: -"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 试件信息卡片 -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="试件信息"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvSpecimenNumber"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="试件编号: -"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tvDiameter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="直径: - mm"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tvHeight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="高度: - mm"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tvBulkDensity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="表观密度: - g/cm³"
+                android:textSize="14sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tvAirVoidContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="空隙率: - %"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 数据表格容器 -->
+    <LinearLayout
+        android:id="@+id/dataTableContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+</LinearLayout>

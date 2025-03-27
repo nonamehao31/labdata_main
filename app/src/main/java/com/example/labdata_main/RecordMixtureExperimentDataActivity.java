@@ -1,3 +1,5 @@
+
+
 package com.example.labdata_main;
 
 import android.bluetooth.BluetoothAdapter;
@@ -2264,8 +2266,12 @@ private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, Stri
                 }
                 Log.d(TAG, "备用方法后的P值数量: " + pValues.size());
             }
-            // 添加UTM数据
-            Map<String, Object> utmData = new HashMap<>();
+            
+            // 添加UTM数据 - UTS028表格数据
+            List<Map<String, Object>> utmDataList = new ArrayList<>();
+            
+            // 压力级别列表
+            String[] pressureLevels = {"0.1P", "0.2P", "0.3P", "0.4P", "0.5P", "0.6P", "0.7P"};
             
             // 从哈希表中基于行列格式提取UTM数据
             Map<Integer, Map<Integer, Float>> utmRowColData = new HashMap<>();
@@ -2295,64 +2301,92 @@ private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, Stri
                 }
             }
             
-            // 尝试从行0获取数据（主要数据行）
-            Float maxForce = null, minForce = null, workRatio = null;
-            Float displacement = null, strain = null, reboundModulus = null, temperature = null;
-            
-            if (utmRowColData.containsKey(0)) {
-                Map<Integer, Float> rowData = utmRowColData.get(0);
-                maxForce = rowData.get(1);        // 第1列
-                minForce = rowData.get(2);        // 第2列
-                workRatio = rowData.get(3);       // 第3列
-                displacement = rowData.get(4);    // 第4列
-                strain = rowData.get(5);          // 第5列
-                reboundModulus = rowData.get(6);  // 第6列
-                temperature = rowData.get(7);     // 第7列
-            }
-            
-            // 如果行0没有完整数据，尝试其他行
-            if (maxForce == null) {
-                for (int row = 1; row <= 6; row++) {
-                    if (utmRowColData.containsKey(row)) {
-                        Map<Integer, Float> rowData = utmRowColData.get(row);
-                        if (rowData.containsKey(1)) { // 检查是否有第1列(maxForce)
-                            maxForce = rowData.get(1);
-                            minForce = rowData.getOrDefault(2, null);
-                            workRatio = rowData.getOrDefault(3, null);
-                            displacement = rowData.getOrDefault(4, null);
-                            strain = rowData.getOrDefault(5, null);
-                            reboundModulus = rowData.getOrDefault(6, null);
-                            temperature = rowData.getOrDefault(7, null);
-                            break;
-                        }
-                    }
+            // 处理每一个压力级别行
+            for (int rowIndex = 0; rowIndex < pressureLevels.length; rowIndex++) {
+                Map<String, Object> utmData = new HashMap<>();
+                String pressureLevel = pressureLevels[rowIndex];
+                utmData.put("pressureLevel", pressureLevel);
+                
+                // 获取该行数据
+                Float maxForce = null, minForce = null, stressDevKpa = null;
+                Float displResilMm = null, strainResil = null, resilientModulusMpa = null, temperature = null;
+                
+                if (utmRowColData.containsKey(rowIndex)) {
+                    Map<Integer, Float> rowData = utmRowColData.get(rowIndex);
+                    maxForce = rowData.getOrDefault(1, null);          // 第1列: 最大力 (KN)
+                    minForce = rowData.getOrDefault(2, null);          // 第2列: 最小力 (N)
+                    stressDevKpa = rowData.getOrDefault(3, null);      // 第3列: 应力偏差 (KPa)
+                    displResilMm = rowData.getOrDefault(4, null);      // 第4列: 位移恢复 (mm)
+                    strainResil = rowData.getOrDefault(5, null);       // 第5列: 应变恢复
+                    resilientModulusMpa = rowData.getOrDefault(6, null); // 第6列: 回弹模量 (MPa)
+                    temperature = rowData.getOrDefault(7, null);       // 第7列: 温度 (°C)
+                }
+                
+                // 如果没有找到数据，尝试使用压力级别特定键名格式
+                if (maxForce == null) {
+                    // 移除P前面的0.，便于键名匹配
+                    String levelNum = pressureLevel.replace("0.", "");
+                    
+                    maxForce = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_maxForce"));
+                    minForce = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_minForce"));
+                    stressDevKpa = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_stressDevKpa"));
+                    displResilMm = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_displResilMm"));
+                    strainResil = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_strainResil"));
+                    resilientModulusMpa = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_resilientModulusMpa"));
+                    temperature = parseFloatSafely(experiments.get(experimentName + "_utm_" + levelNum + "_temperature"));
+                }
+                
+                // 设置UTS028数据
+                utmData.put("maxForceKn", maxForce);
+                utmData.put("minForceN", minForce);
+                utmData.put("stressDevKpa", stressDevKpa);
+                utmData.put("displResilMm", displResilMm);
+                utmData.put("strainResil", strainResil);
+                utmData.put("resilientModulusMpa", resilientModulusMpa);
+                utmData.put("temperature", temperature);
+                
+                // 只添加至少有一个非null数据的行
+                boolean hasData = maxForce != null || minForce != null || stressDevKpa != null || 
+                                  displResilMm != null || strainResil != null || resilientModulusMpa != null || 
+                                  temperature != null;
+                
+                if (hasData) {
+                    Log.d(TAG, "添加压力级别 " + pressureLevel + " 的UTM数据");
+                    utmDataList.add(utmData);
                 }
             }
             
-            // 如果还是没有找到，尝试旧格式
-            if (maxForce == null) {
-                maxForce = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_maxForce"));
-                minForce = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_minForce"));
-                workRatio = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_workRatio"));
-                displacement = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_displacement"));
-                strain = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_strain"));
-                reboundModulus = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_reboundModulus"));
-                temperature = parseFloatSafely(experiments.get(experimentName + "_utm_1_" + i + "_temperature"));
+            // 如果没有找到任何UTM数据，添加一个默认的0.1P行
+            if (utmDataList.isEmpty()) {
+                Map<String, Object> defaultUtmData = new HashMap<>();
+                defaultUtmData.put("pressureLevel", "0.1P");
+                defaultUtmData.put("maxForceKn", 1.0f);
+                defaultUtmData.put("minForceN", 0.1f);
+                defaultUtmData.put("stressDevKpa", 100.0f);
+                defaultUtmData.put("displResilMm", 0.1f);
+                defaultUtmData.put("strainResil", 0.01f);
+                defaultUtmData.put("resilientModulusMpa", 1000.0f);
+                defaultUtmData.put("temperature", testTemperature);
+                
+                utmDataList.add(defaultUtmData);
+                Log.d(TAG, "未找到UTM数据，添加默认0.1P数据");
             }
             
-            // 记录找到的UTM数据
-            Log.d(TAG, "UTM数据: maxForce=" + maxForce + ", minForce=" + minForce + 
-                  ", workRatio=" + workRatio + ", displacement=" + displacement);
+            // 添加到试件数据中
+            specimen.put("utmDataList", utmDataList);
             
-            utmData.put("maxForce", maxForce);
-            utmData.put("minForce", minForce);
-            utmData.put("workRatio", workRatio);
-            utmData.put("displacement", displacement);
-            utmData.put("strain", strain);
-            utmData.put("reboundModulus", reboundModulus);
-            utmData.put("temperature", temperature);
+            // 添加P值数据
+            List<Map<String, Object>> strengthDataList = new ArrayList<>();
+            for (int j = 0; j < pValues.size(); j++) {
+                if (pValues.get(j) != null) {
+                    Map<String, Object> strengthData = new HashMap<>();
+                    strengthData.put("label", "P" + (j + 1));
+                    strengthData.put("value", pValues.get(j));
+                    strengthDataList.add(strengthData);
+                }
+            }
+            specimen.put("strengthData", strengthDataList);
             
-            specimen.put("utmData", utmData);
             specimens.add(specimen);
         }
         
@@ -2907,7 +2941,7 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
                 if (savedData != null && !savedData.isEmpty()) {
                     // 先延迟一点时间让RecyclerView完全初始化
                     new Handler().postDelayed(() -> {
-                        // 遍历并逐个更新实验数据
+                        // 遍历并逐个更新实验数据，而不是直接传递Map
                         for (Map.Entry<String, Map<String, String>> entry : savedData.entrySet()) {
                             String mixRatioId = entry.getKey();
                             Map<String, String> experiments = entry.getValue();

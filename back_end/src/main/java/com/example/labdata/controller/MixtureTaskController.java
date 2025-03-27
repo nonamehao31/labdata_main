@@ -2,6 +2,9 @@ package com.example.labdata.controller;
 
 import com.example.labdata.model.MixtureTask;
 import com.example.labdata.model.SupportMixtureTask;
+import com.example.labdata.model.MixtureBendingTest;
+import com.example.labdata.model.MarshallTest;
+import com.example.labdata.model.HamburgRuttingTest;
 import com.example.labdata.payload.response.ApiResponse;
 import com.example.labdata.payload.response.MixratioSpecimenPairResponse;
 import com.example.labdata.payload.response.MixRatioDetailResponse;
@@ -9,6 +12,12 @@ import com.example.labdata.payload.response.MixratioAndCompactionResponse;
 import com.example.labdata.payload.response.ProjectNameResponse;
 import com.example.labdata.payload.response.TaskAssignmentResponse;
 import com.example.labdata.service.MixtureTaskService;
+import com.example.labdata.service.MarshallTestService;
+import com.example.labdata.service.HamburgRuttingTestService;
+import com.example.labdata.service.MixtureBendingTestService;
+import com.example.labdata.payload.response.MarshallTestDTO;
+import com.example.labdata.payload.response.HamburgRuttingTestDTO;
+import com.example.labdata.payload.response.MixtureBendingTestDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +49,15 @@ public class MixtureTaskController {
 
     @Autowired
     private MixtureTaskService mixtureTaskService;
+
+    @Autowired
+    private MarshallTestService marshallTestService;
+
+    @Autowired
+    private HamburgRuttingTestService hamburgRuttingTestService;
+
+    @Autowired
+    private MixtureBendingTestService mixtureBendingTestService;
 
     /**
      * 获取混合料任务的测试状态
@@ -371,6 +389,21 @@ public class MixtureTaskController {
                 return ResponseEntity.badRequest().body(new ApiResponse<>(false, "缺少必要参数"));
             }
             
+            // 检查specimens字段是否存在
+            if (!requestData.containsKey("specimens") || requestData.get("specimens") == null) {
+                logger.error("请求中缺少specimens字段或其值为null");
+                return ResponseEntity.badRequest().body(new ApiResponse<>(false, "试件数据为空，请提供有效的试件信息"));
+            }
+            
+            // 检查testInfo字段是否存在
+            if (!requestData.containsKey("testInfo") || requestData.get("testInfo") == null) {
+                logger.error("请求中缺少testInfo字段或其值为null");
+                return ResponseEntity.badRequest().body(new ApiResponse<>(false, "测试信息为空，请提供有效的测试信息"));
+            }
+            
+            // 记录完整请求数据以便调试
+            logger.debug("完整请求数据: {}", requestData);
+            
             // 调用服务层方法保存数据
             Map<String, String> result = mixtureTaskService.saveDirectStretchingFatigueTestData(requestData);
             
@@ -454,6 +487,172 @@ public class MixtureTaskController {
             logger.error("获取任务指派信息失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new TaskAssignmentResponse(500, "获取任务指派信息失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取马歇尔稳定度试验数据
+     *
+     * @param taskId 任务ID
+     * @return 马歇尔稳定度试验数据列表
+     */
+    @GetMapping("/mixtureTask/getMarshallTest/{taskId}")
+    public ResponseEntity<List<MarshallTestDTO>> getMarshallTestByTaskId(@PathVariable String taskId) {
+        logger.info("接收到获取马歇尔试验数据请求，任务ID: {}", taskId);
+        try {
+            List<MarshallTest> tests = marshallTestService.getMarshallTestsByTaskId(taskId);
+            
+            // 将实体对象转换为DTO，确保字段名符合前端期望的格式
+            List<MarshallTestDTO> dtoList = tests.stream()
+                .map(MarshallTestDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+                
+            logger.info("成功获取任务ID={}的马歇尔试验数据，共{}条", taskId, dtoList.size());
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            logger.error("获取马歇尔试验数据失败: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    /**
+     * 获取汉堡车辙实验数据
+     *
+     * @param taskId 任务ID
+     * @return 汉堡车辙实验数据列表
+     */
+    @GetMapping("/mixtureTask/getHamburgRuttingTest/{taskId}")
+    public ResponseEntity<List<HamburgRuttingTestDTO>> getHamburgRuttingTestByTaskId(@PathVariable String taskId) {
+        logger.info("接收到获取汉堡车辙实验数据请求，任务ID: {}", taskId);
+        try {
+            List<HamburgRuttingTest> tests = hamburgRuttingTestService.getHamburgRuttingTestsByTaskId(taskId);
+            
+            // 将实体对象转换为DTO，确保字段名符合前端期望的格式
+            List<HamburgRuttingTestDTO> dtoList = tests.stream()
+                .map(HamburgRuttingTestDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+                
+            logger.info("成功获取任务ID={}的汉堡车辙实验数据，共{}条", taskId, dtoList.size());
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            logger.error("获取汉堡车辙实验数据失败: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    /**
+     * 获取沥青混合料弯曲试验数据
+     *
+     * @param taskId 任务ID
+     * @return 沥青混合料弯曲试验数据列表
+     */
+    @GetMapping("/mixtureTask/getMixtureBendingTest/{taskId}")
+    public ResponseEntity<List<MixtureBendingTestDTO>> getMixtureBendingTestByTaskId(@PathVariable String taskId) {
+        logger.info("接收到获取沥青混合料弯曲试验数据请求，任务ID: {}", taskId);
+        try {
+            List<MixtureBendingTest> tests = mixtureBendingTestService.getMixtureBendingTestsByTaskId(taskId);
+            
+            // 将实体对象转换为DTO，确保字段名符合前端期望的格式
+            List<MixtureBendingTestDTO> dtoList = tests.stream()
+                .map(MixtureBendingTestDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+                
+            logger.info("成功获取任务ID={}的沥青混合料弯曲试验数据，共{}条", taskId, dtoList.size());
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            logger.error("获取沥青混合料弯曲试验数据失败: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    /**
+     * 获取动态模量试验数据
+     *
+     * @param taskId 任务ID
+     * @return 动态模量试验数据
+     */
+    @GetMapping("/mixtureTask/getDynamicModulusTest/{taskId}")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDynamicModulusTest(@PathVariable String taskId) {
+        try {
+            logger.info("接收到获取动态模量试验数据请求: taskId={}", taskId);
+
+            List<Map<String, Object>> result = mixtureTaskService.getDynamicModulusTestByTaskId(taskId);
+
+            if (result.isEmpty()) {
+                logger.warn("未找到任务ID: {} 的动态模量试验数据", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(true, "未找到动态模量试验数据", new ArrayList<>()));
+            }
+
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取成功", result));
+        } catch (Exception e) {
+            logger.error("获取动态模量试验数据时出错: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取动态模量试验数据失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
+     * 
+     * @param taskId 任务ID
+     * @return 沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据列表
+     */
+    @GetMapping("/mixtureTask/getDirectStretchingFatigueTest/{taskId}")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getDirectStretchingFatigueTest(@PathVariable String taskId) {
+        logger.info("接收到获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据请求，任务ID: {}", taskId);
+        try {
+            List<Map<String, Object>> testResults = mixtureTaskService.getDirectStretchingFatigueTestByTaskId(taskId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据成功", testResults));
+        } catch (Exception e) {
+            logger.error("获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据失败: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 获取沥青混合料四点弯曲疲劳寿命实验数据
+     *
+     * @param taskId 任务ID
+     * @return 实验数据响应
+     */
+    @GetMapping("/mixtureTask/getFourPointBendingTest/{taskId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getFourPointBendingTestByTaskId(@PathVariable String taskId) {
+        try {
+            logger.info("接收到获取沥青混合料四点弯曲疲劳寿命实验数据请求，任务ID: {}", taskId);
+            Map<String, Object> testData = mixtureTaskService.getFourPointBendingTestData(taskId);
+            if (testData != null && !testData.isEmpty()) {
+                return ResponseEntity.ok(new ApiResponse<>(true, "获取沥青混合料四点弯曲疲劳寿命实验数据成功", testData));
+            } else {
+                return ResponseEntity.ok(new ApiResponse<>(false, "未找到沥青混合料四点弯曲疲劳寿命实验数据", null));
+            }
+        } catch (Exception e) {
+            logger.error("获取沥青混合料四点弯曲疲劳寿命实验数据时出错: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取沥青混合料四点弯曲疲劳寿命实验数据失败: " + e.getMessage(), null));
+        }
+    }
+    
+    /**
+     * 获取沥青混合料单轴压缩试验（圆柱体法）数据
+     *
+     * @param taskId 任务ID
+     * @return 实验数据响应
+     */
+    @GetMapping("/mixtureTask/getUniaxialCompressionTest/{taskId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUniaxialCompressionTestByTaskId(@PathVariable String taskId) {
+        try {
+            logger.info("接收到获取沥青混合料单轴压缩试验（圆柱体法）数据请求，任务ID: {}", taskId);
+            Map<String, Object> testData = mixtureTaskService.getUniaxialCompressionTestData(taskId);
+            if (testData != null && !testData.isEmpty()) {
+                return ResponseEntity.ok(new ApiResponse<>(true, "获取沥青混合料单轴压缩试验（圆柱体法）数据成功", testData));
+            } else {
+                return ResponseEntity.ok(new ApiResponse<>(false, "未找到沥青混合料单轴压缩试验（圆柱体法）数据", null));
+            }
+        } catch (Exception e) {
+            logger.error("获取沥青混合料单轴压缩试验（圆柱体法）数据时出错: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取沥青混合料单轴压缩试验（圆柱体法）数据失败: " + e.getMessage(), null));
         }
     }
 }

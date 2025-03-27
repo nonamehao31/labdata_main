@@ -3,6 +3,7 @@ package com.example.labdata_main;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -111,7 +112,7 @@ public class ExperimentFragment extends Fragment {
             }
             
             // 传递任务数据（确保CompletedExperimentTask已实现Serializable接口）
-            intent.putExtra(MixtureTaskResultActivity.EXTRA_TASK, task);
+            intent.putExtra(MixtureTaskResultActivity.EXTRA_TASK, (Parcelable) task);
             
             // 启动对应的Activity
             startActivity(intent);

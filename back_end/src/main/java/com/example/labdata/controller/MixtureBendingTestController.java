@@ -2,6 +2,7 @@ package com.example.labdata.controller;
 
 import com.example.labdata.model.MixtureBendingTest;
 import com.example.labdata.service.MixtureBendingTestService;
+import com.example.labdata.service.MixtureTaskStatusService;
 import com.example.labdata.payload.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -23,10 +24,14 @@ public class MixtureBendingTestController {
     private static final Logger logger = LoggerFactory.getLogger(MixtureBendingTestController.class);
     private final MixtureBendingTestService mixtureBendingTestService;
     private final ObjectMapper objectMapper;
+    private final MixtureTaskStatusService mixtureTaskStatusService;
     
-    public MixtureBendingTestController(MixtureBendingTestService mixtureBendingTestService, ObjectMapper objectMapper) {
+    public MixtureBendingTestController(MixtureBendingTestService mixtureBendingTestService, 
+                                     ObjectMapper objectMapper,
+                                     MixtureTaskStatusService mixtureTaskStatusService) {
         this.mixtureBendingTestService = mixtureBendingTestService;
         this.objectMapper = objectMapper;
+        this.mixtureTaskStatusService = mixtureTaskStatusService;
     }
     
     /**
@@ -88,6 +93,16 @@ public class MixtureBendingTestController {
             responseData.put("success", true);
             
             logger.info("沥青混合料弯曲试验数据保存成功, id={}", savedData.getId());
+            
+            // 更新任务状态为完成
+            try {
+                mixtureTaskStatusService.updateExperimentCompleteStatus(taskId, "沥青混合料弯曲试验");
+                logger.info("成功更新任务状态: taskId={}, type={}", taskId, "沥青混合料弯曲试验");
+            } catch (Exception e) {
+                logger.warn("更新任务状态失败，但数据已保存成功: {}", e.getMessage());
+                // 不影响主流程，仍返回成功响应
+            }
+            
             return ResponseEntity.ok(new ApiResponse<>(true, "数据保存成功", responseData));
             
         } catch (Exception e) {

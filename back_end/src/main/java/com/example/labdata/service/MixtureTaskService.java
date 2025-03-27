@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1121,28 +1122,6 @@ public class MixtureTaskService {
     }
 
     /**
-     * 将下划线分隔的字符串转换为驼峰命名
-     */
-    private String camelCase(String input) {
-        StringBuilder result = new StringBuilder();
-        boolean nextUpper = false;
-
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
-            if (c == '_') {
-                nextUpper = true;
-            } else if (nextUpper) {
-                result.append(Character.toUpperCase(c));
-                nextUpper = false;
-            } else {
-                result.append(c);
-            }
-        }
-
-        return result.toString();
-    }
-
-    /**
      * 获取支持的混合料任务类型列表
      * @param taskType 任务类型
      * @return 支持的任务类型列表
@@ -1513,7 +1492,6 @@ public Map<String, String> saveFourPointFatigueTestData(Map<String, Object> requ
                 taskId,
                 mixRatioId,
                 mixRatioName,
-                experimentName,
                 mixTemperature,
                 mixSpeed,
                 mixTime,
@@ -1614,33 +1592,7 @@ public Map<String, String> saveFourPointFatigueTestData(Map<String, Object> requ
     }
 }
 
-/**
- * 解析Double值，处理可能的格式问题
- */
-private Double parseDoubleValue(Object value) {
-    if (value == null) {
-        return null;
-    }
 
-    if (value instanceof Number) {
-        return ((Number) value).doubleValue();
-    }
-
-    if (value instanceof String) {
-        String strValue = (String) value;
-        if (strValue.isEmpty()) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(strValue);
-        } catch (NumberFormatException e) {
-            logger.warn("无法解析Double值: {}", strValue);
-            return null;
-        }
-    }
-
-    return null;
-}
 
     /**
      * 保存劈裂试验数据
@@ -1850,30 +1802,67 @@ String insertTestSql = "INSERT INTO mixture_uniaxial_compression_test " +
                 }
 
                 // 处理UTM数据
-                Map<String, Object> utmData = (Map<String, Object>) specimen.get("utmData");
-                if (utmData != null) {
-                    Float maxForce = utmData.get("maxForce") != null ?
-                        Float.parseFloat(utmData.get("maxForce").toString()) : null;
-                    Float minForce = utmData.get("minForce") != null ?
-                        Float.parseFloat(utmData.get("minForce").toString()) : null;
-                    Float workRatio = utmData.get("workRatio") != null ?
-                        Float.parseFloat(utmData.get("workRatio").toString()) : null;
-                    Float displacement = utmData.get("displacement") != null ?
-                        Float.parseFloat(utmData.get("displacement").toString()) : null;
-                    Float strain = utmData.get("strain") != null ?
-                        Float.parseFloat(utmData.get("strain").toString()) : null;
-                    Float reboundModulus = utmData.get("reboundModulus") != null ?
-                        Float.parseFloat(utmData.get("reboundModulus").toString()) : null;
-                    Float temperature = utmData.get("temperature") != null ?
-                        Float.parseFloat(utmData.get("temperature").toString()) : null;
-
-                    String insertUtmDataSql = "INSERT INTO mixture_uniaxial_compression_uts028_data " +
-                                             "(specimen_id, max_force, min_force, work_ratio, displacement, strain, " +
-                                             "rebound_modulus, temperature, created_at, updated_at) " +
-                                             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
-
-                    jdbcTemplate.update(insertUtmDataSql, specimenId, maxForce, minForce, workRatio,
-                                      displacement, strain, reboundModulus, temperature);
+                List<Map<String, Object>> utmDataList = (List<Map<String, Object>>) specimen.get("utmDataList");
+                if (utmDataList != null && !utmDataList.isEmpty()) {
+                    // 处理多个压力级别的UTM数据
+                    for (Map<String, Object> utmData : utmDataList) {
+                        // 获取压力级别
+                        String pressureLevel = (String) utmData.get("pressureLevel");
+                        
+                        // 获取UTM数据值
+                        Float maxForce = utmData.get("maxForceKn") != null ?
+                            Float.parseFloat(utmData.get("maxForceKn").toString()) : null;
+                        Float minForce = utmData.get("minForceN") != null ?
+                            Float.parseFloat(utmData.get("minForceN").toString()) : null;
+                        Float workRatio = utmData.get("stressDevKpa") != null ?
+                            Float.parseFloat(utmData.get("stressDevKpa").toString()) : null;
+                        Float displacement = utmData.get("displResilMm") != null ?
+                            Float.parseFloat(utmData.get("displResilMm").toString()) : null;
+                        Float strain = utmData.get("strainResil") != null ?
+                            Float.parseFloat(utmData.get("strainResil").toString()) : null;
+                        Float reboundModulus = utmData.get("resilientModulusMpa") != null ?
+                            Float.parseFloat(utmData.get("resilientModulusMpa").toString()) : null;
+                        Float temperature = utmData.get("temperature") != null ?
+                            Float.parseFloat(utmData.get("temperature").toString()) : null;
+                
+                        // 插入数据库 (使用压力级别)
+                        String insertUtmDataSql = "INSERT INTO mixture_uniaxial_compression_uts028_data " +
+                                           "(specimen_id, pressure_level, max_force, min_force, work_ratio, displacement, " +
+                                           "strain, rebound_modulus, temperature, created_at, updated_at) " +
+                                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                        
+                        jdbcTemplate.update(insertUtmDataSql, specimenId, pressureLevel, maxForce, minForce, workRatio,
+                                     displacement, strain, reboundModulus, temperature);
+                    }
+                } else {
+                    // 向下兼容处理单个UTM数据对象
+                    Map<String, Object> utmData = (Map<String, Object>) specimen.get("utmData");
+                    if (utmData != null) {
+                        // 提取旧格式数据
+                        Float maxForce = utmData.get("maxForce") != null ?
+                            Float.parseFloat(utmData.get("maxForce").toString()) : null;
+                        Float minForce = utmData.get("minForce") != null ?
+                            Float.parseFloat(utmData.get("minForce").toString()) : null;
+                        Float workRatio = utmData.get("workRatio") != null ?
+                            Float.parseFloat(utmData.get("workRatio").toString()) : null;
+                        Float displacement = utmData.get("displacement") != null ?
+                            Float.parseFloat(utmData.get("displacement").toString()) : null;
+                        Float strain = utmData.get("strain") != null ?
+                            Float.parseFloat(utmData.get("strain").toString()) : null;
+                        Float reboundModulus = utmData.get("reboundModulus") != null ?
+                            Float.parseFloat(utmData.get("reboundModulus").toString()) : null;
+                        Float temperature = utmData.get("temperature") != null ?
+                            Float.parseFloat(utmData.get("temperature").toString()) : null;
+                
+                        // 使用默认0.1P压力级别插入数据
+                        String insertUtmDataSql = "INSERT INTO mixture_uniaxial_compression_uts028_data " +
+                                           "(specimen_id, pressure_level, max_force, min_force, work_ratio, displacement, " +
+                                           "strain, rebound_modulus, temperature, created_at, updated_at) " +
+                                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                        
+                        jdbcTemplate.update(insertUtmDataSql, specimenId, "0.1P", maxForce, minForce, workRatio,
+                                     displacement, strain, reboundModulus, temperature);
+                    }
                 }
             }
         }
@@ -1940,19 +1929,19 @@ public String getTestingStatus(String taskId) {
 
 
 
-/**
- * 从Map中安全获取BigDecimal值
- */
-private BigDecimal getBigDecimalValue(Map<String, Object> data, String key) {
-    if (data.containsKey(key) && data.get(key) != null && !data.get(key).toString().isEmpty()) {
-        try {
-            return new BigDecimal(data.get(key).toString());
-        } catch (NumberFormatException e) {
-            log.warn("无法解析BigDecimal值: " + key + " = " + data.get(key), e);
+    /**
+     * 从Map中安全获取BigDecimal值
+     */
+    private BigDecimal getBigDecimalValue(Map<String, Object> data, String key) {
+        if (data.containsKey(key) && data.get(key) != null && !data.get(key).toString().isEmpty()) {
+            try {
+                return new BigDecimal(data.get(key).toString());
+            } catch (NumberFormatException e) {
+                log.warn("无法解析BigDecimal值: " + key + " = " + data.get(key), e);
+            }
         }
+        return null;
     }
-    return null;
-}
 
     /**
      * 计算平均值
@@ -2201,5 +2190,518 @@ private BigDecimal getBigDecimalValue(Map<String, Object> data, String key) {
         }
     }
 
-}
+    /**
+     * 根据任务ID获取动态模量试验数据
+     *
+     * @param taskId 任务ID
+     * @return 动态模量试验数据列表
+     */
+    public List<Map<String, Object>> getDynamicModulusTestByTaskId(String taskId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        try {
+            logger.info("获取任务ID: {} 的动态模量试验数据", taskId);
+            
+            // 首先获取试验ID
+            String testIdSql = "SELECT id FROM dynamic_modulus_test WHERE task_id = ?";
+            List<Long> testIds = jdbcTemplate.queryForList(testIdSql, Long.class, taskId);
+            
+            if (testIds.isEmpty()) {
+                logger.warn("未找到任务ID: {} 的动态模量试验数据", taskId);
+                return result;
+            }
+            
+            for (Long testId : testIds) {
+                Map<String, Object> testData = new HashMap<>();
+                
+                // 1. 获取试验基本信息
+                String testSql = "SELECT id as test_id, task_id, mix_ratio_id, mix_ratio_name, mix_ratio_display_name " +
+                               "FROM dynamic_modulus_test WHERE id = ?";
+                Map<String, Object> testInfo = jdbcTemplate.queryForMap(testSql, testId);
+                testData.putAll(testInfo);
+                
+                // 2. 获取试件信息
+                String specimenSql = "SELECT specimen_number, diameter, height, bulk_density, air_void_content " +
+                                   "FROM dynamic_modulus_specimen WHERE test_id = ? LIMIT 1";
+                List<Map<String, Object>> specimens = jdbcTemplate.queryForList(specimenSql, testId);
+                
+                if (!specimens.isEmpty()) {
+                    testData.put("specimen", specimens.get(0));
+                }
+                
+                // 3. 获取温度信息和测量数据，按温度分组
+                String tempSql = "SELECT id, temperature, temperature_order FROM dynamic_modulus_temperature " +
+                               "WHERE test_id = ? ORDER BY temperature_order";
+                List<Map<String, Object>> temperatures = jdbcTemplate.queryForList(tempSql, testId);
+                
+                List<Map<String, Object>> temperatureGroups = new ArrayList<>();
+                
+                for (Map<String, Object> temp : temperatures) {
+                    Long temperatureId = (Long) temp.get("id");
+                    Map<String, Object> tempGroup = new HashMap<>();
+                    tempGroup.put("temperature", temp.get("temperature"));
+                    
+                    // 4. 获取该温度下的所有测量数据
+                    String measurementSql = "SELECT frequency, cycle_count, dynamic_modulus, phase_angle " +
+                                          "FROM dynamic_modulus_measurement " +
+                                          "WHERE test_id = ? AND temperature_id = ? " +
+                                          "ORDER BY frequency DESC";
+                    List<Map<String, Object>> measurements = jdbcTemplate.queryForList(measurementSql, testId, temperatureId);
+                    
+                    tempGroup.put("measurements", measurements);
+                    temperatureGroups.add(tempGroup);
+                }
+                
+                testData.put("temperatureGroups", temperatureGroups);
+                result.add(testData);
+            }
+            
+            logger.info("成功获取任务ID: {} 的动态模量试验数据，共 {} 条记录", taskId, result.size());
+            return result;
+        } catch (Exception e) {
+            logger.error("获取动态模量试验数据时出错: {}", e.getMessage(), e);
+            return result;
+        }
+    }
 
+    /**
+     * 根据任务ID获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
+     *
+     * @param taskId 任务ID
+     * @return 沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据列表
+     */
+    public List<Map<String, Object>> getDirectStretchingFatigueTestByTaskId(String taskId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        try {
+            logger.info("获取任务ID: {} 的沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据", taskId);
+
+            // 首先获取试验ID
+            String testIdSql = "SELECT id FROM direct_stretching_fatigue_test WHERE task_id = ?";
+            List<Long> testIds = jdbcTemplate.queryForList(testIdSql, Long.class, taskId);
+
+            if (testIds.isEmpty()) {
+                logger.warn("未找到任务ID: {} 的沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据", taskId);
+                return result;
+            }
+
+            for (Long testId : testIds) {
+                Map<String, Object> testData = new HashMap<>();
+
+                // 1. 获取试验基本信息
+                String testSql = "SELECT t.id as test_id, t.task_id, t.mix_ratio_id " +
+                        "FROM direct_stretching_fatigue_test t " +
+                        "LEFT JOIN mixratio m ON t.mix_ratio_id = CAST(m.id AS VARCHAR) " +
+                        "WHERE t.id = ?";
+                Map<String, Object> testInfo = jdbcTemplate.queryForMap(testSql, testId);
+                testData.putAll(testInfo);
+
+                // 2. 获取试件信息
+                String specimenSql = "SELECT id as specimen_db_id, specimen_id, height, diameter " +
+                        "FROM direct_stretching_fatigue_specimens WHERE test_id = ? LIMIT 1";
+                List<Map<String, Object>> specimens = jdbcTemplate.queryForList(specimenSql, testId);
+
+                List<Map<String, Object>> specimenDataList = new ArrayList<>();
+
+                // 3. 获取每个试件的动态模量和疲劳数据
+                for (Map<String, Object> specimen : specimens) {
+                    Map<String, Object> specimenData = new HashMap<>();
+                    specimenData.put("specimen_id", specimen.get("specimen_id"));
+                    specimenData.put("height", specimen.get("height"));
+                    specimenData.put("diameter", specimen.get("diameter"));
+
+                    Long specimenDbId = (Long) specimen.get("specimen_db_id");
+
+                    // 4. 获取动态模量数据
+                    String modulusSql = "SELECT stage, dynamic_modulus, cycle_count, phase_angle, force_level, " +
+                                       "equilibrium_strain, temperature " +
+                                       "FROM direct_stretching_modulus_data " +
+                                       "WHERE specimen_id = ? " +
+                                       "ORDER BY stage";
+                    List<Map<String, Object>> modulusDataList = jdbcTemplate.queryForList(modulusSql, specimenDbId);
+                    
+                    specimenData.put("modulus_data", modulusDataList);
+
+                    // 5. 获取疲劳数据
+                    String fatigueSql = "SELECT stage, cycle_count, phase_angle, force_level, " +
+                                       "equilibrium_strain, temperature " +
+                                       "FROM direct_stretching_fatigue_data " +
+                                       "WHERE specimen_id = ? " +
+                                       "ORDER BY stage";
+                    List<Map<String, Object>> fatigueDataList = jdbcTemplate.queryForList(fatigueSql, specimenDbId);
+                    
+                    specimenData.put("fatigue_data", fatigueDataList);
+
+                    specimenDataList.add(specimenData);
+                }
+
+                testData.put("specimens", specimenDataList);
+                result.add(testData);
+            }
+
+            logger.info("成功获取任务ID: {} 的沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据，共 {} 条记录", taskId, result.size());
+            return result;
+        } catch (Exception e) {
+            logger.error("获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据时出错: {}", e.getMessage(), e);
+            throw new RuntimeException("获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 获取沥青混合料四点弯曲疲劳寿命试验数据
+     *
+     * @param taskId 任务ID
+     * @return 包含试验数据的Map
+     */
+    public Map<String, Object> getFourPointBendingTestData(String taskId) {
+    logger.info("获取沥青混合料四点弯曲疲劳寿命试验数据，任务ID: {}", taskId);
+    
+    try {
+        // 查询测试基本信息
+        String testSql = "SELECT * FROM mixture_four_point_bending_test WHERE task_id = ? ORDER BY created_at DESC LIMIT 1";
+        List<Map<String, Object>> testResults = jdbcTemplate.queryForList(testSql, taskId);
+        
+        if (testResults == null || testResults.isEmpty()) {
+            logger.warn("未找到沥青混合料四点弯曲疲劳寿命试验数据，任务ID: {}", taskId);
+            return Collections.emptyMap();
+        }
+        
+        Map<String, Object> testData = testResults.get(0);
+        Long testId = ((Number) testData.get("id")).longValue();
+        
+        // 构建返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("task_id", taskId);
+        result.put("test_date", testData.get("test_date"));
+        result.put("operator", testData.get("operator"));
+        
+        // 查询试件数据
+        String specimenSql = "SELECT * FROM mixture_four_point_bending_specimen WHERE test_id = ? ORDER BY specimen_number";
+        List<Map<String, Object>> specimenList = jdbcTemplate.queryForList(specimenSql, testId);
+        
+        // 转换为前端期望的格式
+        List<Map<String, Object>> specimens = new ArrayList<>();
+        for (Map<String, Object> specimen : specimenList) {
+            Map<String, Object> specimenData = new HashMap<>();
+            Long specimenId = ((Number) specimen.get("id")).longValue();
+            
+            // 基本字段
+            specimenData.put("specimen_number", specimen.get("specimen_number"));
+            specimenData.put("length_mm", specimen.get("length_mm"));
+            specimenData.put("width_mm", specimen.get("width_mm"));
+            specimenData.put("height_mm", specimen.get("height_mm"));
+            specimenData.put("span_mm", specimen.get("span_mm"));
+            specimenData.put("strain_range", specimen.get("strain_range"));
+            specimenData.put("frequency_hz", specimen.get("frequency_hz"));
+            specimenData.put("test_temperature", specimen.get("test_temperature"));
+            specimenData.put("fatigue_life", specimen.get("fatigue_life"));
+            
+            // 查询结果数据
+            String resultSql = "SELECT * FROM mixture_four_point_bending_result WHERE specimen_id = ? ORDER BY result_index";
+            List<Map<String, Object>> resultsList = jdbcTemplate.queryForList(resultSql, specimenId);
+            
+            if (!resultsList.isEmpty()) {
+                List<Map<String, Object>> results = new ArrayList<>();
+                for (Map<String, Object> resultItem : resultsList) {
+                    Map<String, Object> resultData = new HashMap<>();
+                    resultData.put("result_type", resultItem.get("result_type"));
+                    resultData.put("result_type_display_name", resultItem.get("result_type_display_name"));
+                    resultData.put("result_type_english_name", resultItem.get("result_type_english_name"));
+                    resultData.put("result_type_unit", resultItem.get("result_type_unit"));
+                    resultData.put("result_index", resultItem.get("result_index"));
+                    resultData.put("initial_value", resultItem.get("initial_value"));
+                    resultData.put("current_value", resultItem.get("current_value"));
+                    results.add(resultData);
+                }
+                specimenData.put("results", results);
+            }
+            
+            specimens.add(specimenData);
+        }
+        
+        result.put("specimens", specimens);
+        
+        logger.info("成功获取沥青混合料四点弯曲疲劳寿命试验数据，任务ID: {}, 试件数量: {}", taskId, specimens.size());
+        return result;
+    } catch (Exception e) {
+        logger.error("获取沥青混合料四点弯曲疲劳寿命试验数据时出错: {}", e.getMessage(), e);
+        throw new RuntimeException("获取沥青混合料四点弯曲疲劳寿命试验数据失败: " + e.getMessage(), e);
+    }
+    }
+
+    /**
+     * 获取沥青混合料单轴压缩试验（圆柱体法）数据
+     * 
+     * @param taskId 任务ID
+     * @return 包含试验数据的Map
+     */
+    public Map<String, Object> getUniaxialCompressionTestData(String taskId) {
+        logger.info("获取沥青混合料单轴压缩试验（圆柱体法）数据，任务ID: {}", taskId);
+        
+        try {
+            Map<String, Object> result = new HashMap<>();
+            
+            // 1. 查询测试基本信息
+            String testSql = "SELECT * FROM mixture_uniaxial_compression_test WHERE task_id = ? ORDER BY created_at DESC LIMIT 1";
+            List<Map<String, Object>> testResults = jdbcTemplate.queryForList(testSql, taskId);
+            
+            if (testResults == null || testResults.isEmpty()) {
+                logger.warn("未找到沥青混合料单轴压缩试验（圆柱体法）数据，任务ID: {}", taskId);
+                return Collections.emptyMap();
+            }
+            
+            Map<String, Object> testData = testResults.get(0);
+            String testId = (String) testData.get("test_id");
+            
+            // 设置基本信息
+            result.put("taskId", taskId);
+            
+            // 处理日期字段 - 转换为前端期望的格式
+            Object testDateObj = testData.get("test_date");
+            if (testDateObj != null) {
+                result.put("testDate", testDateObj);
+            }
+            
+            // 处理温度字段 - 确保前端拿到数值类型
+            Object tempObj = testData.get("test_temperature");
+            if (tempObj != null) {
+                Double testTemp = parseDoubleValue(tempObj);
+                result.put("testTemperature", testTemp);
+            }
+            
+            // 2. 查询试件数据
+            String specimenSql = "SELECT * FROM mixture_uniaxial_compression_specimen WHERE test_id = ? ORDER BY specimen_number";
+            List<Map<String, Object>> specimenList = jdbcTemplate.queryForList(specimenSql, testId);
+            
+            // 3. 处理试件数据
+            List<Map<String, Object>> specimens = new ArrayList<>();
+            for (Map<String, Object> specimen : specimenList) {
+                Map<String, Object> specimenData = new HashMap<>();
+                String specimenId = (String) specimen.get("specimen_id");
+                
+                // 设置试件基本数据 - 确保数值字段为数值类型
+                specimenData.put("specimenNumber", parseIntValue(specimen.get("specimen_number")));
+                specimenData.put("diameterMm", parseDoubleValue(specimen.get("diameter")));
+                specimenData.put("heightMm", parseDoubleValue(specimen.get("height")));
+                
+                // 4. 查询UTM数据 - 确保包含所有前端需要的字段
+                Map<String, Object> utmData = retrieveUtmData(specimenId);
+                if (!utmData.isEmpty()) {
+                    specimenData.put("utmData", utmData);
+                }
+                
+                // 5. 查询P值数据并计算平均值
+                List<Map<String, Object>> strengthData = retrieveStrengthData(specimenId);
+                if (!strengthData.isEmpty()) {
+                    specimenData.put("strengthData", strengthData);
+                    
+                    // 计算并添加强度平均值
+                    double strengthAvg = calculateStrengthAverage(strengthData);
+                    specimenData.put("strengthAverage", strengthAvg);
+                }
+                
+                specimens.add(specimenData);
+            }
+            
+            result.put("specimens", specimens);
+            return result;
+            
+        } catch (Exception e) {
+            logger.error("获取沥青混合料单轴压缩试验（圆柱体法）数据时出错: {}", e.getMessage(), e);
+            return Collections.emptyMap();
+        }
+    }
+    
+    /**
+     * 获取试件的UTM数据
+     */
+    private Map<String, Object> retrieveUtmData(String specimenId) {
+        Map<String, Object> utmMap = new HashMap<>();
+        
+        String utmSql = "SELECT * FROM mixture_uniaxial_compression_uts028_data WHERE specimen_id = ? ORDER BY pressure_level";
+        List<Map<String, Object>> utmResults = jdbcTemplate.queryForList(utmSql, specimenId);
+        
+        if (utmResults.isEmpty()) {
+            logger.warn("未找到试件ID: {} 的UTM数据", specimenId);
+            return utmMap;
+        }
+        
+        // 检查是否有多个压力级别
+        if (utmResults.size() > 1) {
+            logger.info("试件ID: {} 有多个压力级别的UTM数据，共 {} 个", specimenId, utmResults.size());
+            
+            // 如果有多个压力级别，创建UTM数据列表
+            List<Map<String, Object>> utmDataList = new ArrayList<>();
+            
+            for (Map<String, Object> utmData : utmResults) {
+                Map<String, Object> utmItem = new HashMap<>();
+                
+                // 确保包含压力级别
+                String pressureLevel = (String) utmData.get("pressure_level");
+                utmItem.put("pressureLevel", pressureLevel);
+                
+                // 转换所有数值字段确保类型正确
+                utmItem.put("maxForceKn", parseDoubleValue(utmData.get("max_force")));
+                utmItem.put("minForceN", parseDoubleValue(utmData.get("min_force")));
+                utmItem.put("stressDevKpa", parseDoubleValue(utmData.get("work_ratio")));
+                utmItem.put("displResilMm", parseDoubleValue(utmData.get("displacement")));
+                utmItem.put("strainResil", parseDoubleValue(utmData.get("strain")));
+                utmItem.put("resilientModulusMpa", parseDoubleValue(utmData.get("rebound_modulus")));
+                utmItem.put("temperature", parseDoubleValue(utmData.get("temperature")));
+                
+                utmDataList.add(utmItem);
+            }
+            
+            // 返回UTM数据列表
+            utmMap.put("utmDataList", utmDataList);
+            logger.info("已处理多个压力级别的UTM数据，返回utmDataList");
+        } else {
+            // 向下兼容 - 如果只有一个UTM数据记录，使用旧格式
+            Map<String, Object> utmData = utmResults.get(0);
+            logger.info("试件ID: {} 只有一个压力级别的UTM数据: {}", specimenId, utmData.get("pressure_level"));
+            
+            // 转换所有数值字段确保类型正确
+            utmMap.put("maxForceKn", parseDoubleValue(utmData.get("max_force")));
+            utmMap.put("minForceN", parseDoubleValue(utmData.get("min_force")));
+            utmMap.put("stressDevKpa", parseDoubleValue(utmData.get("work_ratio")));
+            utmMap.put("displResilMm", parseDoubleValue(utmData.get("displacement")));
+            utmMap.put("strainResil", parseDoubleValue(utmData.get("strain")));
+            utmMap.put("resilientModulusMpa", parseDoubleValue(utmData.get("rebound_modulus")));
+            utmMap.put("temperature", parseDoubleValue(utmData.get("temperature")));
+            
+            // 同时创建单个压力级别的UTM数据列表，以支持新的数据结构
+            List<Map<String, Object>> utmDataList = new ArrayList<>();
+            Map<String, Object> utmItem = new HashMap<>();
+            utmItem.put("pressureLevel", utmData.get("pressure_level"));
+            utmItem.put("maxForceKn", parseDoubleValue(utmData.get("max_force")));
+            utmItem.put("minForceN", parseDoubleValue(utmData.get("min_force")));
+            utmItem.put("stressDevKpa", parseDoubleValue(utmData.get("work_ratio")));
+            utmItem.put("displResilMm", parseDoubleValue(utmData.get("displacement")));
+            utmItem.put("strainResil", parseDoubleValue(utmData.get("strain")));
+            utmItem.put("resilientModulusMpa", parseDoubleValue(utmData.get("rebound_modulus")));
+            utmItem.put("temperature", parseDoubleValue(utmData.get("temperature")));
+            utmDataList.add(utmItem);
+            utmMap.put("utmDataList", utmDataList);
+        }
+        
+        return utmMap;
+    }
+    
+    /**
+     * 获取试件的强度数据(P值)
+     */
+    private List<Map<String, Object>> retrieveStrengthData(String specimenId) {
+        List<Map<String, Object>> strengthDataList = new ArrayList<>();
+        
+        String pValuesSql = "SELECT * FROM mixture_uniaxial_compression_p_values WHERE specimen_id = ? ORDER BY p_index";
+        List<Map<String, Object>> pValuesResults = jdbcTemplate.queryForList(pValuesSql, specimenId);
+        
+        for (Map<String, Object> pValue : pValuesResults) {
+            Map<String, Object> strengthData = new HashMap<>();
+            
+            // 确保索引是整数类型
+            int pIndex = parseIntValue(pValue.get("p_index"));
+            // 确保P值是数值类型
+            double pValueDouble = parseDoubleValue(pValue.get("p_value"));
+            
+            strengthData.put("label", "P" + pIndex);
+            strengthData.put("valueKn", pValueDouble);
+            
+            strengthDataList.add(strengthData);
+        }
+        
+        return strengthDataList;
+    }
+    
+    /**
+     * 计算强度数据平均值
+     */
+    private double calculateStrengthAverage(List<Map<String, Object>> strengthDataList) {
+        if (strengthDataList.isEmpty()) {
+            return 0.0;
+        }
+        
+        double sum = 0.0;
+        int count = 0;
+        
+        for (Map<String, Object> strengthData : strengthDataList) {
+            Double value = (Double) strengthData.get("valueKn");
+            if (value != null) {
+                sum += value;
+                count++;
+            }
+        }
+        
+        return count > 0 ? sum / count : 0.0;
+    }
+    
+    /**
+     * 将对象解析为Double值
+     */
+    private Double parseDoubleValue(Object obj) {
+        if (obj == null) {
+            return 0.0;
+        }
+        
+        if (obj instanceof Number) {
+            return ((Number) obj).doubleValue();
+        } else if (obj instanceof String) {
+            try {
+                return Double.parseDouble((String) obj);
+            } catch (NumberFormatException e) {
+                return 0.0;
+            }
+        }
+        
+        return 0.0;
+    }
+    
+    /**
+     * 将对象解析为Integer值
+     */
+    private Integer parseIntValue(Object obj) {
+        if (obj == null) {
+            return 0;
+        }
+        
+        if (obj instanceof Number) {
+            return ((Number) obj).intValue();
+        } else if (obj instanceof String) {
+            try {
+                return Integer.parseInt((String) obj);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+        
+        return 0;
+    }
+
+    /**
+     * 将下划线命名转换为驼峰命名
+     * 例如: "user_name" -> "userName"
+     */
+    private String camelCase(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        
+        StringBuilder result = new StringBuilder();
+        boolean underscoreFound = false;
+        
+        for (int i = 0; i < str.length(); i++) {
+            char currentChar = str.charAt(i);
+            
+            if (currentChar == '_') {
+                underscoreFound = true;
+            } else {
+                if (underscoreFound) {
+                    result.append(Character.toUpperCase(currentChar));
+                    underscoreFound = false;
+                } else {
+                    result.append(currentChar);
+                }
+            }
+        }
+        
+        return result.toString();
+    }
+}

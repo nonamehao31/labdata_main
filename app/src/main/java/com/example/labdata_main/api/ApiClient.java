@@ -71,6 +71,9 @@ public class ApiClient {
             // 配置Gson，使其能正确处理ISO 8601格式的日期字符串
             Gson gson = new GsonBuilder()
                     .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+                    .setLenient() // 添加宽松解析
+                    .serializeNulls() // 序列化null值
+                    .disableHtmlEscaping() // 禁用HTML转义
                     .create();
             
             // 创建Retrofit实例
@@ -133,7 +136,10 @@ public class ApiClient {
         // 配置Gson，使其能正确处理ISO 8601格式的日期字符串
         Gson gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-                .create();
+                .setLenient() // 添加宽松解析
+                    .serializeNulls() // 序列化null值
+                    .disableHtmlEscaping() // 禁用HTML转义
+                    .create();
         
         // 创建Retrofit实例
         Retrofit customRetrofit = new Retrofit.Builder()
