@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -142,12 +143,24 @@ public class AuthController {
     }
 
     /**
-     * 检查邮箱是否已注册
+     * 检查邮箱是否已注册（路径参数方式）
      * @param email 邮箱地址
      * @return 如果邮箱已经被占用则返回true，否则返回false
      */
     @GetMapping("/check-email/{email}")
     public ResponseEntity<?> checkEmailExists(@PathVariable String email) {
+        boolean exists = userRepository.existsByEmail(email);
+        ApiResponse<Boolean> response = new ApiResponse<>(true, null, exists);
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * 检查邮箱是否已注册（查询参数方式）
+     * @param email 邮箱地址
+     * @return 如果邮箱已经被占用则返回true，否则返回false
+     */
+    @GetMapping("/check-email")
+    public ResponseEntity<?> checkEmailExistsQuery(@RequestParam String email) {
         boolean exists = userRepository.existsByEmail(email);
         ApiResponse<Boolean> response = new ApiResponse<>(true, null, exists);
         return ResponseEntity.ok(response);
