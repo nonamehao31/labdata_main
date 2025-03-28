@@ -1588,8 +1588,9 @@ public class MixtureTaskService {
             Double frequency = 10.0;  // 默认值
             String loadingMode = "默认控制";  // 默认值
             String notes = experimentName != null ? experimentName : "沥青混合料四点弯曲疲劳寿命试验";
+            Double testTemperature = (Double) requestData.get("testTemperature");
 
-            // 保存测试基本信息
+            // 插入测试记录
             String testSql = "INSERT INTO mixture_four_point_bending_test" +
                     "(task_id, mix_ratio_id, mix_ratio_name, experiment_name, mix_temperature, mix_speed, mix_time, " +
                     "compaction_method, test_date, operator, created_at) " +
@@ -1607,7 +1608,6 @@ public class MixtureTaskService {
                     taskId,
                     mixRatioId,
                     mixRatioName,
-                    experimentName,  // 修复：添加缺失的experimentName参数
                     mixTemperature,
                     mixSpeed,
                     mixTime,
@@ -1627,7 +1627,7 @@ public class MixtureTaskService {
                 Double spanMm = parseDoubleValue(specimen.get("spanMm")); // 可以从specimen中获取或设置默认值
                 Double strainRange = parseDoubleValue(specimen.get("strainRange")); // 可以从specimen中获取或设置默认值
                 Double frequencyHz = parseDoubleValue(specimen.get("frequencyHz")); // 可以从specimen中获取或设置默认值
-                Double testTemperature = parseDoubleValue(specimen.get("testTemperature")); // 可以从specimen中获取或设置默认值
+                Double specimenTemperature = parseDoubleValue(specimen.get("testTemperature")); // 可以从specimen中获取或设置默认值
                 Double fatigueLife = parseDoubleValue(specimen.get("fatigueLife")); // 可以从specimen中获取或设置默认值
 
                 // 保存试件基本信息和测试结果
@@ -1646,7 +1646,7 @@ public class MixtureTaskService {
                         spanMm,
                         strainRange,
                         frequencyHz,
-                        testTemperature,
+                        specimenTemperature,
                         fatigueLife,
                         new Timestamp(System.currentTimeMillis()));
 
@@ -1904,45 +1904,130 @@ public class MixtureTaskService {
                                         "(specimen_id, p_index, p_value, created_at, updated_at) " +
                                         "VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
 
-                                jdbcTemplate.update(insertPValueSql, specimenId, i + 1, pValue);
+                                jdbcTemplate.update(insertPValueSql,
+                                        specimenId,
+                                        i + 1,
+                                        pValue);
                             }
                         }
                     }
 
                     // 处理UTM数据
                     List<Map<String, Object>> utmDataList = (List<Map<String, Object>>) specimen.get("utmDataList");
+
+                    // 如果直接列表为空，尝试从嵌套结构中获取
                     if (utmDataList != null && !utmDataList.isEmpty()) {
                         // 处理多个压力级别的UTM数据
+                        logger.info("开始处理UTM数据，共 {} 项", utmDataList.size());
+                        int dataCount = 0;
                         for (Map<String, Object> utmData : utmDataList) {
+                            // 记录原始数据
+                            logger.info("UTM数据项 #{}: {}", dataCount++, utmData);
+                            
                             // 获取压力级别
                             String pressureLevel = (String) utmData.get("pressureLevel");
-
-                            // 获取UTM数据值
-                            Float maxForce = utmData.get("maxForceKn") != null ?
-                                    Float.parseFloat(utmData.get("maxForceKn").toString()) : null;
-                            Float minForce = utmData.get("minForceN") != null ?
-                                    Float.parseFloat(utmData.get("minForceN").toString()) : null;
-                            Float workRatio = utmData.get("stressDevKpa") != null ?
-                                    Float.parseFloat(utmData.get("stressDevKpa").toString()) : null;
-                            Float displacement = utmData.get("displResilMm") != null ?
-                                    Float.parseFloat(utmData.get("displResilMm").toString()) : null;
-                            Float strain = utmData.get("strainResil") != null ?
-                                    Float.parseFloat(utmData.get("strainResil").toString()) : null;
-                            Float reboundModulus = utmData.get("resilientModulusMpa") != null ?
-                                    Float.parseFloat(utmData.get("resilientModulusMpa").toString()) : null;
-                            Float temperature = utmData.get("temperature") != null ?
-                                    Float.parseFloat(utmData.get("temperature").toString()) : null;
-
+                            logger.info("压力级别: {}", pressureLevel);
+                    
+                            // 获取UTM数据值，添加数据验证日志
+                            Object maxForceObj = utmData.get("max_force");  // 使用前端传递的字段名称
+                            Float maxForce = null;
+                            if (maxForceObj != null) {
+                                try {
+                                    maxForce = Float.parseFloat(maxForceObj.toString());
+                                    logger.info("max_force: {} -> {}", maxForceObj, maxForce);
+                                } catch (Exception e) {
+                                    logger.error("解析max_force失败: {} - {}", maxForceObj, e.getMessage());
+                                }
+                            } else {
+                                logger.warn("maxForceKn为null");
+                            }
+                            
+                            Object minForceObj = utmData.get("min_force");  // 使用前端传递的字段名称
+                            Float minForce = null;
+                            if (minForceObj != null) {
+                                try {
+                                    minForce = Float.parseFloat(minForceObj.toString());
+                                    logger.info("min_force: {} -> {}", minForceObj, minForce);
+                                } catch (Exception e) {
+                                    logger.error("解析min_force失败: {} - {}", minForceObj, e.getMessage());
+                                }
+                            } else {
+                                logger.warn("minForceN为null");
+                            }
+                            
+                            Object workRatioObj = utmData.get("work_ratio");  // 使用前端传递的字段名称
+                            Float workRatio = null;
+                            if (workRatioObj != null) {
+                                try {
+                                    workRatio = Float.parseFloat(workRatioObj.toString());
+                                    logger.info("work_ratio: {} -> {}", workRatioObj, workRatio);
+                                } catch (Exception e) {
+                                    logger.error("解析work_ratio失败: {} - {}", workRatioObj, e.getMessage());
+                                }
+                            } else {
+                                logger.warn("stressDevKpa为null");
+                            }
+                            
+                            Object displacementObj = utmData.get("displacement");
+                            Float displacement = null;
+                            if (displacementObj != null) {
+                                try {
+                                    displacement = Float.parseFloat(displacementObj.toString());
+                                    logger.info("displacement: {} -> {}", displacementObj, displacement);
+                                } catch (Exception e) {
+                                    logger.error("解析displacement失败: {} - {}", displacementObj, e.getMessage());
+                                }
+                            }
+                            
+                            Object strainObj = utmData.get("strain");
+                            Float strain = null;
+                            if (strainObj != null) {
+                                try {
+                                    strain = Float.parseFloat(strainObj.toString());
+                                    logger.info("strain: {} -> {}", strainObj, strain);
+                                } catch (Exception e) {
+                                    logger.error("解析strain失败: {} - {}", strainObj, e.getMessage());
+                                }
+                            }
+                            
+                            Object reboundModulusObj = utmData.get("rebound_modulus");
+                            Float reboundModulus = null;
+                            if (reboundModulusObj != null) {
+                                try {
+                                    reboundModulus = Float.parseFloat(reboundModulusObj.toString());
+                                    logger.info("rebound_modulus: {} -> {}", reboundModulusObj, reboundModulus);
+                                } catch (Exception e) {
+                                    logger.error("解析rebound_modulus失败: {} - {}", reboundModulusObj, e.getMessage());
+                                }
+                            }
+                            
+                            Object temperatureObj = utmData.get("temperature");
+                            Float temperature = null;
+                            if (temperatureObj != null) {
+                                try {
+                                    temperature = Float.parseFloat(temperatureObj.toString());
+                                    logger.info("temperature: {} -> {}", temperatureObj, temperature);
+                                } catch (Exception e) {
+                                    logger.error("解析temperature失败: {} - {}", temperatureObj, e.getMessage());
+                                }
+                            }
+                    
+                            // 汇总日志
+                            logger.info("UTM数据解析结果: pressureLevel={}, maxForce={}, minForce={}, workRatio={}, displacement={}, strain={}, reboundModulus={}, temperature={}",
+                                    pressureLevel, maxForce, minForce, workRatio, displacement, strain, reboundModulus, temperature);
+                    
                             // 插入数据库 (使用压力级别)
                             String insertUtmDataSql = "INSERT INTO mixture_uniaxial_compression_uts028_data " +
                                     "(specimen_id, pressure_level, max_force, min_force, work_ratio, displacement, " +
                                     "strain, rebound_modulus, temperature, created_at, updated_at) " +
                                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
-
+                    
                             jdbcTemplate.update(insertUtmDataSql, specimenId, pressureLevel, maxForce, minForce, workRatio,
                                     displacement, strain, reboundModulus, temperature);
                         }
-                    } else {
+                    } 
+                    
+                    else {
                         // 向下兼容处理单个UTM数据对象
                         Map<String, Object> utmData = (Map<String, Object>) specimen.get("utmData");
                         if (utmData != null) {
@@ -2677,14 +2762,22 @@ public class MixtureTaskService {
                 String pressureLevel = (String) utmData.get("pressure_level");
                 utmItem.put("pressureLevel", pressureLevel);
 
-                // 转换所有数值字段确保类型正确
+                // 使用与前端一致的字段名称格式，保持snake_case
+                utmItem.put("max_force", parseDoubleValue(utmData.get("max_force")));
+                utmItem.put("min_force", parseDoubleValue(utmData.get("min_force")));
+                utmItem.put("work_ratio", parseDoubleValue(utmData.get("work_ratio")));
+                utmItem.put("displacement", parseDoubleValue(utmData.get("displacement")));
+                utmItem.put("strain", parseDoubleValue(utmData.get("strain")));
+                utmItem.put("rebound_modulus", parseDoubleValue(utmData.get("rebound_modulus")));
+                utmItem.put("temperature", parseDoubleValue(utmData.get("temperature")));
+
+                // 同时保留驼峰命名的字段，以保持向后兼容性
                 utmItem.put("maxForceKn", parseDoubleValue(utmData.get("max_force")));
                 utmItem.put("minForceN", parseDoubleValue(utmData.get("min_force")));
                 utmItem.put("stressDevKpa", parseDoubleValue(utmData.get("work_ratio")));
                 utmItem.put("displResilMm", parseDoubleValue(utmData.get("displacement")));
                 utmItem.put("strainResil", parseDoubleValue(utmData.get("strain")));
                 utmItem.put("resilientModulusMpa", parseDoubleValue(utmData.get("rebound_modulus")));
-                utmItem.put("temperature", parseDoubleValue(utmData.get("temperature")));
 
                 utmDataList.add(utmItem);
             }
@@ -2695,13 +2788,23 @@ public class MixtureTaskService {
 
             Map<String, Object> utmItem = new HashMap<>();
             utmItem.put("pressureLevel", utmData.get("pressure_level"));
+            
+            // 使用与前端一致的字段名称格式，保持snake_case
+            utmItem.put("max_force", parseDoubleValue(utmData.get("max_force")));
+            utmItem.put("min_force", parseDoubleValue(utmData.get("min_force")));
+            utmItem.put("work_ratio", parseDoubleValue(utmData.get("work_ratio")));
+            utmItem.put("displacement", parseDoubleValue(utmData.get("displacement")));
+            utmItem.put("strain", parseDoubleValue(utmData.get("strain")));
+            utmItem.put("rebound_modulus", parseDoubleValue(utmData.get("rebound_modulus")));
+            utmItem.put("temperature", parseDoubleValue(utmData.get("temperature")));
+
+            // 同时保留驼峰命名的字段，以保持向后兼容性
             utmItem.put("maxForceKn", parseDoubleValue(utmData.get("max_force")));
             utmItem.put("minForceN", parseDoubleValue(utmData.get("min_force")));
             utmItem.put("stressDevKpa", parseDoubleValue(utmData.get("work_ratio")));
             utmItem.put("displResilMm", parseDoubleValue(utmData.get("displacement")));
             utmItem.put("strainResil", parseDoubleValue(utmData.get("strain")));
             utmItem.put("resilientModulusMpa", parseDoubleValue(utmData.get("rebound_modulus")));
-            utmItem.put("temperature", parseDoubleValue(utmData.get("temperature")));
 
             utmDataList.add(utmItem);
         }
