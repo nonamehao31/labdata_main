@@ -86,6 +86,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private static final String TAG = "OverviewFragment";
     
     private TextView welcomeText;
+    private TextView greetingText;
+    private TextView mixtureTaskText;
+    private TextView asphaltTaskText;
     private Spinner spinner;
     private RecyclerView taskRecyclerView;
     private RecyclerView myTasksRecyclerView;
@@ -160,6 +163,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void initializeViews(View view) {
         // 初始化所有视图引用
         welcomeText = view.findViewById(R.id.welcomeText);
+        greetingText = view.findViewById(R.id.greetingText);
+        mixtureTaskText = view.findViewById(R.id.mixtureTaskText);
+        asphaltTaskText = view.findViewById(R.id.asphaltTaskText);
         spinner = view.findViewById(R.id.spinner);
         taskRecyclerView = view.findViewById(R.id.task_recycler_view);
         myTasksRecyclerView = view.findViewById(R.id.rvTasks);
@@ -251,6 +257,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
         // 加载实验任务
         loadExperimentTasks();
+        
+        // 更新欢迎区域
+        updateWelcomeSection();
     }
 
     private void setupSpinner() {
@@ -990,6 +999,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         requireActivity().runOnUiThread(() -> {
             try {
+                // 更新欢迎区域信息
+                updateWelcomeSection();
+                
                 // 更新未接受任务列表
                 if (unacceptedTasks.isEmpty()) {
                     emptyTaskText.setVisibility(View.VISIBLE);
@@ -1701,5 +1713,26 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 更新UI
         updateTaskUI(unacceptedTasks, acceptedTasks, "ASPHALT");
+    }
+
+    private void updateWelcomeSection() {
+        // 获取用户名
+        String username = sharedPrefsManager.getUserName();
+        if (username == null || username.isEmpty()) {
+            username = "用户";
+        }
+        
+        // 获取可接受任务数量
+        int mixtureTaskCount = apiMixtureUnacceptedTasks.size();
+        int asphaltTaskCount = apiAsphaltUnacceptedTasks.size();
+        
+        // 设置欢迎语和任务数量信息
+        greetingText.setText("你好，");
+        welcomeText.setText(username);
+        mixtureTaskText.setText("可接受混合料任务: " + mixtureTaskCount + " 个");
+        asphaltTaskText.setText("可接受沥青任务: " + asphaltTaskCount + " 个");
+        
+        // 记录日志
+        Log.d(TAG, "更新欢迎信息: 未接受混合料任务: " + mixtureTaskCount + ", 未接受沥青任务: " + asphaltTaskCount);
     }
 }

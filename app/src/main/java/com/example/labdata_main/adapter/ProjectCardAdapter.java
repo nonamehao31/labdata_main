@@ -20,6 +20,8 @@ import com.example.labdata_main.fragment.BottomSheetMixRatioDetailFragment;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.ProjectStep;
+import com.example.labdata_main.model.CompletedExperimentTask;
+import com.example.labdata_main.ExperimentAssignmentSelectionActivity;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +31,7 @@ import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import java.io.Serializable;
 
 public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.ProjectCardViewHolder> {
     private List<ExperimentTask> tasks = new ArrayList<>();
@@ -388,8 +391,20 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
             });
             
             btnStep3Action.setOnClickListener(v -> {
-                Intent intent = new Intent(itemView.getContext(), RecordMixtureExperimentDataActivity.class);
-                intent.putExtra("taskId", task.getTaskId());
+                // 启动实验指派选择界面，而不是直接进入实验数据记录界面
+                Intent intent = new Intent(itemView.getContext(), ExperimentAssignmentSelectionActivity.class);
+                
+                // 把所有需要的数据单独传递，避免序列化整个任务对象可能导致的问题
+                CompletedExperimentTask experimentTask = new CompletedExperimentTask();
+                experimentTask.setTaskId(task.getTaskId());
+                experimentTask.setTaskName(task.getTaskName());
+                // 不调用不存在的getTaskAssignment方法，而是用taskName代替
+                experimentTask.setTaskAssignment(task.getTaskName());
+                // 混合料任务类型
+                experimentTask.setMixtureTask(true);
+                
+                // 明确指定使用Serializable接口，避免方法引用歧义
+                intent.putExtra("task", (Serializable) experimentTask);
                 ((FragmentActivity)itemView.getContext()).startActivityForResult(intent, RECORD_EXPERIMENT_DATA_REQUEST);
             });
         }

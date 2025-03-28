@@ -233,6 +233,29 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
         this.asphaltExperimentType = asphaltExperimentType;
     }
     
+    /**
+     * 获取任务ID
+     * @return 任务ID
+     */
+    public Long getId() {
+        if (taskId == null || taskId.isEmpty()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(taskId);
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
+    }
+    
+    /**
+     * 获取任务类型
+     * @return 任务类型，MIXTURE表示混合料任务，ASPHALT表示沥青任务
+     */
+    public String getType() {
+        return isMixtureTask ? "MIXTURE" : "ASPHALT";
+    }
+    
     // 工厂方法 - 从混合料任务创建
     public static CompletedExperimentTask fromMixtureTask(com.example.labdata_main.api.response.CompletedMixtureTaskResponse task) {
         CompletedExperimentTask result = new CompletedExperimentTask();

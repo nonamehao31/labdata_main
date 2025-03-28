@@ -34,6 +34,20 @@ public interface MixtureTaskRepository extends JpaRepository<MixtureTask, String
            nativeQuery = true)
     List<Map<String, Object>> findAllByTaskIdPrefixNative(@Param("taskIdPrefix") String taskIdPrefix);
 
+    // 使用原生SQL查询通过任务ID前缀查找任务信息
+    @Query(value = 
+           "SELECT task_id, task_name, task_type, prepare_status, making_status, testing_status, " +
+           "assigned_mixing_equipment, assigned_forming_equipment, assigned_testing_equipment, " +
+           "mixing_equipment_manufacturer, forming_equipment_manufacturer, testing_equipment_manufacturer " +
+           "FROM mixture_task WHERE task_id LIKE CONCAT(:taskIdPrefix, '%')", 
+           nativeQuery = true)
+    List<Map<String, Object>> findTaskInfoByTaskIdPrefix(@Param("taskIdPrefix") String taskIdPrefix);
+    
+    // 通过任务ID前缀查找所有任务指派信息
+    @Query("SELECT mt.taskId as taskId, mt.taskName as taskName, mt.taskAssignment as taskAssignment " +
+           "FROM MixtureTask mt WHERE mt.taskId LIKE CONCAT(:taskIdPrefix, '%')")
+    List<Map<String, Object>> findTaskAssignmentsByTaskIdPrefix(@Param("taskIdPrefix") String taskIdPrefix);
+    
     //查询任务指派名称
     @Query(value = "SELECT task_assignment FROM mixture_task WHERE task_id = :taskId", 
            nativeQuery = true)

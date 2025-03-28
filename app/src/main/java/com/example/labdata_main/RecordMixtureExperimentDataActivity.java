@@ -48,17 +48,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
+import java.util.Date;
+import java.sql.Timestamp;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-import  java.util.UUID;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import com.example.labdata_main.model.CompletedExperimentTask;
 
 public class RecordMixtureExperimentDataActivity extends AppCompatActivity 
     implements MixtureExperimentDataAdapter.OnDeviceScanRequestListener {
@@ -75,6 +79,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     private SwipeRefreshLayout swipeRefreshLayout;
     private MixtureTaskService mixtureTaskService;
     private ArrayList<Map<String, String>> savedExperimentData; // 保存实验数据的状态
+    private String selectedAssignment; // 用户在上一个界面选择的实验指派
+    private String currentTaskId; // 当前任务ID
 
     private  Gson gson = new Gson();
 
@@ -102,11 +108,39 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         // 初始化视图
         initViews();
     
-        // 获取传入的任务ID
+        // 获取传入的任务数据
+        CompletedExperimentTask task = (CompletedExperimentTask) getIntent().getSerializableExtra("task");
+        // 获取选定的实验指派
+        selectedAssignment = getIntent().getStringExtra("selectedAssignment");
+        
+        // 如果使用旧的启动方式（直接传递taskId）
         String taskId = getIntent().getStringExtra("taskId");
+        
+        if (task != null) {
+            // 使用新的启动方式：从任务对象获取ID
+            taskId = task.getTaskId();
+            Log.d(TAG, "从任务对象获取ID: " + taskId);
+            
+            // 如果没有指定selectedAssignment，尝试从任务中获取
+            if (selectedAssignment == null || selectedAssignment.isEmpty()) {
+                // 根据记忆，优先使用taskAssignment，然后是taskName
+                selectedAssignment = task.getTaskAssignment();
+                if (selectedAssignment == null || selectedAssignment.isEmpty()) {
+                    selectedAssignment = task.getTaskName();
+                }
+                Log.d(TAG, "从任务对象获取实验指派: " + selectedAssignment);
+            }
+        }
+        
         if (taskId != null && !taskId.isEmpty()) {
+            // 保存当前任务ID
+            currentTaskId = taskId;
+            Log.d(TAG, "保存当前任务ID: " + currentTaskId);
+            
             // 先检查任务状态，如果已完成则显示提示并退出
-            checkTaskStatus(taskId);
+            // 临时替换调用以避免编译错误
+            // checkTaskStatus(currentTaskId);
+            loadTaskData(currentTaskId, true);
         } else {
             Toast.makeText(this, "未找到任务信息", Toast.LENGTH_SHORT).show();
             finish();
@@ -122,11 +156,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
         swipeRefreshLayout.setColorSchemeResources(R.color.blue_light_custom);
         swipeRefreshLayout.setOnRefreshListener(() -> {
-            // 获取传入的任务ID
-            String taskId = getIntent().getStringExtra("taskId");
-            if (taskId != null && !taskId.isEmpty()) {
+            // 使用保存的currentTaskId，而不是每次从Intent获取
+            if (currentTaskId != null && !currentTaskId.isEmpty()) {
+                Log.d(TAG, "下拉刷新，使用当前任务ID: " + currentTaskId);
                 // 刷新数据
-                fetchSpecimenData(taskId);
+                fetchSpecimenData(currentTaskId);
             } else {
                 swipeRefreshLayout.setRefreshing(false);
                 Toast.makeText(this, "任务ID无效，无法刷新数据", Toast.LENGTH_SHORT).show();
@@ -340,7 +374,45 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             return;
                         }
                         
-                        adapter = new MixtureExperimentDataAdapter(convertMixRatiosToMaps(mixRatios), convertToStringKeyMap(experimentAssignments));
+                        Map<Long, List<String>> filteredAssignments = experimentAssignments;
+                        
+                        if (selectedAssignment != null && !selectedAssignment.isEmpty()) {
+                            Log.d(TAG, "根据选定的实验指派过滤: " + selectedAssignment);
+                            // 为每个配比过滤实验列表，只保留选定的实验
+                            filteredAssignments = new HashMap<>();
+                            for (Map.Entry<Long, List<String>> entry : experimentAssignments.entrySet()) {
+                                Long mixRatioId = entry.getKey();
+                                List<String> experimentList = new ArrayList<>();
+                                
+                                for (String experiment : entry.getValue()) {
+                                    // 检查实验名称是否包含或匹配选定的实验
+                                    if (experiment.contains(selectedAssignment) || 
+                                        selectedAssignment.contains(experiment) ||
+                                        experiment.equalsIgnoreCase(selectedAssignment)) {
+                                        experimentList.add(experiment);
+                                        Log.d(TAG, "为配比 " + mixRatioId + " 添加匹配的实验: " + experiment);
+                                    }
+                                }
+                                
+                                if (!experimentList.isEmpty()) {
+                                    filteredAssignments.put(mixRatioId, experimentList);
+                                }
+                            }
+                            
+                            // 如果过滤后没有实验，提示用户并显示全部实验（兜底方案）
+                            if (filteredAssignments.isEmpty()) {
+                                Log.w(TAG, "没有找到匹配的实验指派: " + selectedAssignment + "，显示所有实验");
+                                Toast.makeText(this, "未找到指定的实验: " + selectedAssignment + "，将显示所有可用实验", Toast.LENGTH_SHORT).show();
+                                filteredAssignments = experimentAssignments;
+                            } else {
+                                Log.d(TAG, "使用过滤后的实验指派列表: " + filteredAssignments.size() + " 个配比");
+                                
+                                // 修改标题，显示当前选择的实验
+                                setTitle("记录 " + selectedAssignment + " 数据");
+                            }
+                        }
+                        
+                        adapter = new MixtureExperimentDataAdapter(convertMixRatiosToMaps(mixRatios), convertToStringKeyMap(filteredAssignments), selectedAssignment);
                         adapter.setOnDeviceScanRequestListener(RecordMixtureExperimentDataActivity.this);
                         rvExperiments.setAdapter(adapter);
                         rvExperiments.setVisibility(View.VISIBLE);
@@ -351,7 +423,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         // 适配器准备好后，加载已保存的实验数据
                         for (MixRatio mixRatio : mixRatios) {
                             String mixRatioId = String.valueOf(mixRatio.getId());
-                            List<String> experiments = experimentAssignments.get(mixRatio.getId());
+                            List<String> experiments = filteredAssignments.get(mixRatio.getId());
                             
                             // 检查这个配比是否分配了沥青混合料弯曲试验
                             if (experiments != null && experiments.contains("沥青混合料弯曲试验")) {
@@ -432,6 +504,49 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             result.add(map);
         }
         return result;
+    }
+    
+    /**
+     * 辅助方法，将String键的Map转换为Long键的Map
+     */
+    private Map<Long, List<String>> convertStringKeysToLong(Map<String, List<String>> map) {
+        Map<Long, List<String>> result = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : map.entrySet()) {
+            String key = entry.getKey();
+            // 处理复合键，如"7_18"，只取第一部分作为配比ID
+            if (key.contains("_")) {
+                key = key.split("_")[0];
+            }
+            
+            try {
+                Long longKey = Long.parseLong(key);
+                // 如果结果Map中已存在该键，合并列表
+                if (result.containsKey(longKey)) {
+                    List<String> existingList = result.get(longKey);
+                    for (String item : entry.getValue()) {
+                        if (!existingList.contains(item)) {
+                            existingList.add(item);
+                        }
+                    }
+                } else {
+                    result.put(longKey, new ArrayList<>(entry.getValue()));
+                }
+            } catch (NumberFormatException e) {
+                Log.e(TAG, "无法将键转换为Long: " + key, e);
+            }
+        }
+        return result;
+    }
+    
+    /**
+     * 计算所有实验的总数
+     */
+    private int countExperiments(Map<Long, List<String>> assignments) {
+        int count = 0;
+        for (List<String> experiments : assignments.values()) {
+            count += experiments.size();
+        }
+        return count;
     }
     
     /**
@@ -589,29 +704,80 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                                 // 获取当前任务的实验分配
                                 Map<Long, List<String>> assignments = currentTask.getExperimentAssignments();
                                 
-                                // 更新适配器
-                                if (mixRatios.isEmpty()) {
-                                    Log.w(TAG, "没有找到配比数据，但继续显示空列表");
-                                    // 清除加载状态
-                                    showLoading(false);
-                                    // 停止刷新动画
-                                    swipeRefreshLayout.setRefreshing(false);
-                                    // 使用空列表初始化适配器（不显示错误状态）
-                                    adapter = new MixtureExperimentDataAdapter(new ArrayList<>(), convertToStringKeyMap(assignments));
-                                    adapter.setOnDeviceScanRequestListener(RecordMixtureExperimentDataActivity.this);
-                                    rvExperiments.setAdapter(adapter);
-                                    rvExperiments.setVisibility(View.VISIBLE);
-                                    return;
+                                // 如果服务器返回了experiment_assignments数据，替换本地数据并应用过滤
+                                if (specimenData.containsKey("experimentAssignments")) {
+                                    Map<String, List<String>> serverAssignments = (Map<String, List<String>>) specimenData.get("experimentAssignments");
+                                    if (serverAssignments != null && !serverAssignments.isEmpty()) {
+                                        // 如果用户选择了特定实验类型，对服务器返回的实验类型列表进行过滤
+                                        if (selectedAssignment != null && !selectedAssignment.isEmpty()) {
+                                            Log.d(TAG, "对服务器返回的实验类型列表应用过滤: " + selectedAssignment);
+                                            Map<String, List<String>> filteredServerAssignments = new HashMap<>();
+                                            
+                                            for (Map.Entry<String, List<String>> entry : serverAssignments.entrySet()) {
+                                                String mixRatioId = entry.getKey();
+                                                List<String> filteredExperiments = new ArrayList<>();
+                                                
+                                                for (String experiment : entry.getValue()) {
+                                                    // 只保留匹配用户选择的实验
+                                                    if (experiment.contains(selectedAssignment) || 
+                                                        selectedAssignment.contains(experiment) ||
+                                                        experiment.equalsIgnoreCase(selectedAssignment)) {
+                                                        filteredExperiments.add(experiment);
+                                                        Log.d(TAG, "为配比 " + mixRatioId + " 过滤后保留实验: " + experiment);
+                                                    }
+                                                }
+                                                
+                                                // 只有当有匹配的实验时才添加到过滤结果中
+                                                if (!filteredExperiments.isEmpty()) {
+                                                    filteredServerAssignments.put(mixRatioId, filteredExperiments);
+                                                }
+                                            }
+                                            
+                                            // 使用过滤后的服务器数据转换为Long键的Map并更新任务
+                                            assignments = convertStringKeysToLong(filteredServerAssignments);
+                                            currentTask.setExperimentAssignments(assignments);
+                                        }
+                                        
+                                        // 将过滤后的服务器数据转换为Long键的Map并更新任务
+                                        assignments = convertStringKeysToLong(serverAssignments);
+                                        currentTask.setExperimentAssignments(assignments);
+                                    }
                                 }
                                 
-                                // 更新当前任务的配比数据
-                                currentTask.setSelectedMixRatios(mixRatios);
-                                executeTaskSafely(() -> {
-                                    database.experimentTaskDao().update(currentTask);
-                                });
+                                // 如果有选定的实验类型，过滤assignments只保留匹配的实验
+                                if (selectedAssignment != null && !selectedAssignment.isEmpty()) {
+                                    Map<Long, List<String>> filteredAssignments = new HashMap<>();
+                                    
+                                    for (Map.Entry<Long, List<String>> entry : assignments.entrySet()) {
+                                        Long mixRatioId = entry.getKey();
+                                        List<String> experimentList = new ArrayList<>();
+                                        
+                                        for (String experiment : entry.getValue()) {
+                                            // 检查实验名称是否包含或匹配选定的实验
+                                            if (experiment.contains(selectedAssignment) || 
+                                                selectedAssignment.contains(experiment) ||
+                                                experiment.equalsIgnoreCase(selectedAssignment)) {
+                                                experimentList.add(experiment);
+                                                Log.d(TAG, "为配比 " + mixRatioId + " 添加匹配的实验: " + experiment);
+                                            }
+                                        }
+                                        
+                                        if (!experimentList.isEmpty()) {
+                                            filteredAssignments.put(mixRatioId, experimentList);
+                                        }
+                                    }
+                                    
+                                    if (!filteredAssignments.isEmpty()) {
+                                        Log.d(TAG, "已过滤实验分配数据: 从 " + countExperiments(assignments) + 
+                                              " 个实验过滤为 " + countExperiments(filteredAssignments) + " 个实验");
+                                        assignments = filteredAssignments;
+                                    } else {
+                                        Log.w(TAG, "过滤后没有找到匹配的实验，使用原始数据");
+                                    }
+                                }
                                 
                                 // 更新适配器
-                                adapter = new MixtureExperimentDataAdapter(convertMixRatiosToMaps(mixRatios), convertToStringKeyMap(assignments));
+                                adapter = new MixtureExperimentDataAdapter(convertMixRatiosToMaps(mixRatios), convertToStringKeyMap(assignments), selectedAssignment);
                                 adapter.setOnDeviceScanRequestListener(RecordMixtureExperimentDataActivity.this);
                                 rvExperiments.setAdapter(adapter);
                                 adapter.updateSpecimenData(specimenData);
@@ -1115,6 +1281,12 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             // 获取适配器中的有效实验分配信息
             final Map<String, List<String>> validExperimentAssignments = adapter.getValidExperimentAssignments();
             
+            // 显示保存进度
+            runOnUiThread(() -> {
+                showLoading(true, "正在保存实验数据...");
+                btnSave.setEnabled(false);
+            });
+            
             executeTaskSafely(() -> {
                 try {
                     // 更新任务状态
@@ -1147,8 +1319,35 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         // 检查这个配比是否有实验分配
                         List<String> assignedExperiments = validExperimentAssignments.get(mixRatioId);
                         if (assignedExperiments == null || assignedExperiments.isEmpty()) {
-                            Log.w(TAG, "配比ID " + mixRatioId + " 没有指派的实验，跳过保存");
-                            continue;
+                            // 如果没有指派实验但我们有selectedAssignment，使用它作为默认实验指派
+                            if (selectedAssignment != null && !selectedAssignment.isEmpty()) {
+                                assignedExperiments = new ArrayList<>();
+                                assignedExperiments.add(selectedAssignment);
+                                Log.d(TAG, "配比ID " + mixRatioId + " 没有指派实验，使用选定的实验指派: " + selectedAssignment);
+                            } else {
+                                Log.w(TAG, "配比ID " + mixRatioId + " 没有指派的实验，跳过保存");
+                                continue;
+                            }
+                        }
+
+                        // 检查是否有直接拉伸循环疲劳测黏弹损伤试验数据
+                        boolean hasDirectStretchingFatigueTest = false;
+                        for (Map.Entry<String, String> expEntry : experiments.entrySet()) {
+                            String experimentName = expEntry.getKey();
+                            if (experimentName.contains("沥青混合料直接拉伸循环疲劳测黏弹损伤试验")) {
+                                hasDirectStretchingFatigueTest = true;
+                                Log.d(TAG, "找到了直接拉伸循环疲劳测黏弹损伤试验数据: " + experimentName);
+                                break;
+                            }
+                        }
+
+                        // 检查后，记录检测结果
+                        Log.d(TAG, "直接拉伸循环疲劳测黏弹损伤试验数据检测结果: " + hasDirectStretchingFatigueTest);
+
+                        // 如果有直接拉伸循环疲劳测黏弹损伤试验数据
+                        if (hasDirectStretchingFatigueTest) {
+                            Log.d(TAG, "开始保存直接拉伸循环疲劳测黏弹损伤试验数据");
+                            saveDirectStretchingFatigueTestData(mixRatioId, experiments);
                         }
 
                         // 检查是否有动态模量试验数据
@@ -1160,29 +1359,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             }
                         }
 
-                        // 在检查前，记录所有的实验数据键
-                        Log.d(TAG, "检查直接拉伸循环疲劳测黏弹损伤试验数据前，实验数据键: " + experiments.keySet());
-                        
-                        // 检查是否有直接拉伸循环疲劳测黏弹损伤试验数据
-                        boolean hasDirectStretchingFatigueTest = false;
-                        for (Map.Entry<String, String> expEntry : experiments.entrySet()) {
-                            String experimentName = expEntry.getKey();
-                            if (experimentName.contains("沥青混合料直接拉伸循环疲劳测黏弹损伤试验")) {
-                                hasDirectStretchingFatigueTest = true;
-                                Log.d(TAG, "找到了直接拉伸循环疲劳测黏弹损伤试验数据: " + experimentName);
-                                break;
-                            }
-                        }
-                        
-                        // 检查后，记录检测结果
-                        Log.d(TAG, "直接拉伸循环疲劳测黏弹损伤试验数据检测结果: " + hasDirectStretchingFatigueTest);
-                        
-                        // 如果有直接拉伸循环疲劳测黏弹损伤试验数据
-                        if (hasDirectStretchingFatigueTest) {
-                            Log.d(TAG, "开始保存直接拉伸循环疲劳测黏弹损伤试验数据");
-                            saveDirectStretchingFatigueTestData(mixRatioId, experiments);
-                        }
-                        
+                        // 如果有动态模量试验数据
                         if (hasDynamicModulusData) {
                             saveDynamicModulusTestData(mixRatioId, experiments);
                         }
@@ -1355,7 +1532,10 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     private void saveMarshallTestData(String mixRatioId, Map<String, String> experiments) {
         // 创建请求数据
         Map<String, Object> requestData = new HashMap<>();
-        requestData.put("taskId", currentTask.getTaskId());
+        
+        // 使用马歇尔稳定度试验对应的任务ID
+        String taskId = getTaskIdForExperimentType("马歇尔稳定度试验");
+        requestData.put("taskId", taskId);
         
         // 提取马歇尔稳定度试验数据
         Float stability1 = parseFloatSafely(experiments.get("马歇尔稳定度试验_stability_1"));
@@ -1375,7 +1555,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         
         // 发送请求到API
         try {
-            Log.i(TAG, "正在保存配比 " + mixRatioId + " 的马歇尔试验数据，任务UUID: " + currentTask.getTaskId());
+            Log.i(TAG, "正在保存配比 " + mixRatioId + " 的马歇尔试验数据，任务UUID: " + taskId);
             
             MixtureTaskService apiService = ServiceCreator.createMixtureTaskService();
             Call<ApiResponse<Map<String, Object>>> call = apiService.saveMarshallTest(requestData);
@@ -1404,7 +1584,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     private void saveHamburgRuttingTestData(String mixRatioId, Map<String, String> experiments) {
         // 创建请求数据
         Map<String, Object> requestData = new HashMap<>();
-        requestData.put("taskId", currentTask.getTaskId());
+        
+        // 使用汉堡车辙实验对应的任务ID
+        String taskId = getTaskIdForExperimentType("沥青混合料车辙实验（汉堡车辙）");
+        requestData.put("taskId", taskId);
+        
         requestData.put("mixRatioId", mixRatioId);
         
         // 提取汉堡车辙实验数据
@@ -1453,7 +1637,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     private void saveMixtureBendingTestData(String mixRatioId, Map<String, String> experiments) {
         // 创建请求数据
         Map<String, Object> requestData = new HashMap<>();
-        requestData.put("taskId", currentTask.getTaskId());
+        
+        // 使用沥青混合料弯曲试验对应的任务ID
+        String taskId = getTaskIdForExperimentType("沥青混合料弯曲试验");
+        requestData.put("taskId", taskId);
+        
         requestData.put("mixRatioId", mixRatioId);
         
         // 提取公共参数
@@ -1473,10 +1661,19 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         // 准备试件数据列表
         List<Map<String, Object>> specimens = new ArrayList<>();
         
-        // 计算总和用于计算平均值
-        float totalFlexuralStrength = 0;
-        float totalMaxStrain = 0;
-        float totalStiffnessModulus = 0;
+        // 准备结果类型映射表，确保后端能正确保存
+        String[][] resultTypeMapping = {
+            {"最大拉应力", "Tensile stress", "kPa"},
+            {"最大拉应变", "Tensile strain", "με"},
+            {"弯曲劲度模量", "Flexural stiffness", "MPa"},
+            {"相位角", "Phase Angle", "deg"},
+            {"单个循环耗散能", "Dissipated energy", "J/m³"},
+            {"累积耗散能", "Cumulative dissipated energy", "kJ/m³"}
+        };
+        
+        float totalFlexuralStrength = 0f;
+        float totalMaxStrain = 0f;
+        float totalStiffnessModulus = 0f;
         int validSpecimenCount = 0;
         
         for (int i = 1; i <= specimenCount; i++) {
@@ -1509,7 +1706,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             
             // 添加试件数据
             Map<String, Object> specimen = new HashMap<>();
-            specimen.put("specimenIndex", i);
+            specimen.put("specimenNumber", i);
             specimen.put("width", width);
             specimen.put("height", height);
             specimen.put("maxLoad", maxLoad);
@@ -1563,21 +1760,39 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     private void saveFourPointBendingFatigueTestData(String mixRatioId, Map<String, String> experiments) {
         // 创建请求数据
         Map<String, Object> requestData = new HashMap<>();
-        requestData.put("taskId", currentTask.getTaskId());
+        
+        // 使用沥青混合料四点弯曲疲劳寿命试验对应的任务ID
+        String taskId = getTaskIdForExperimentType("沥青混合料四点弯曲疲劳寿命试验");
+        requestData.put("taskId", taskId);
+        
         requestData.put("mixRatioId", mixRatioId);
         
-        // 实验名称和日志记录
-        String experimentName = "沥青混合料四点弯曲疲劳寿命试验";
-        Log.d(TAG, "开始保存" + experimentName + "数据，配比ID: " + mixRatioId);
-        Log.d(TAG, "实验数据键集合: " + experiments.keySet());
-        
         // 主实验表数据
-        Float temperature = parseFloatSafely(experiments.get(experimentName + "_temperature"));
-        Float frequency = parseFloatSafely(experiments.get(experimentName + "_frequency"));
-        Float loadingMode = parseFloatSafely(experiments.get(experimentName + "_loading_mode"));
+        Float temperature = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_temperature"));
+        Float frequency = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_frequency"));
+        Float loadingMode = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_loading_mode"));
         
+        // 获取和设置数据库表所需的所有字段
+        String mixRatioName = currentTask != null ? currentTask.getTaskName() : "";
+        String testDate = experiments.getOrDefault("沥青混合料四点弯曲疲劳寿命试验_testDate", "");
+        String operator = experiments.getOrDefault("沥青混合料四点弯曲疲劳寿命试验_operator", "");
+        String mixTemperature = experiments.getOrDefault("沥青混合料四点弯曲疲劳寿命试验_mixTemperature", "");
+        String mixSpeed = experiments.getOrDefault("沥青混合料四点弯曲疲劳寿命试验_mixSpeed", "");  
+        String mixTime = experiments.getOrDefault("沥青混合料四点弯曲疲劳寿命试验_mixTime", "");
+        String compactionMethod = experiments.getOrDefault("沥青混合料四点弯曲疲劳寿命试验_compactionMethod", "");
+        
+        // 直接设置数据库字段，而不仅仅是放在testData中
+        requestData.put("mixRatioName", mixRatioName);
+        requestData.put("experimentName", "沥青混合料四点弯曲疲劳寿命试验");
+        requestData.put("mixTemperature", mixTemperature);
+        requestData.put("mixSpeed", mixSpeed);
+        requestData.put("mixTime", mixTime);
+        requestData.put("compactionMethod", compactionMethod);
+        requestData.put("testDate", testDate);
+        requestData.put("operator", operator);
+        
+        // 测试数据保持不变，保持向后兼容
         Map<String, Object> testData = new HashMap<>();
-        testData.put("experimentName", experimentName);
         testData.put("temperature", temperature);  // 映射到mix_temperature
         testData.put("frequency", frequency);      // 映射到frequency_hz
         testData.put("loadingMode", loadingMode);  // 可能需要添加到表中
@@ -1586,7 +1801,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         
         // 计算试件数量
         int specimenCount = 0;
-        Pattern specimenPattern = Pattern.compile(experimentName + "_width_(\\d+)");
+        Pattern specimenPattern = Pattern.compile("沥青混合料四点弯曲疲劳寿命试验_(fatigue|dynamic|height|diameter)_(\\d+)");
         
         for (String key : experiments.keySet()) {
             Matcher matcher = specimenPattern.matcher(key);
@@ -1595,7 +1810,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             }
         }
         
-        Log.d(TAG, "找到" + experimentName + "试件数量: " + specimenCount);
+        Log.d(TAG, "找到" + "沥青混合料四点弯曲疲劳寿命试验" + "试件数量: " + specimenCount);
         
         // 准备试件数据列表
         List<Map<String, Object>> specimensData = new ArrayList<>();
@@ -1619,13 +1834,13 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             specimen.put("specimenNumber", i);
             
             // 试件尺寸
-            Float width = parseFloatSafely(experiments.get(experimentName + "_width_" + i));
-            Float height = parseFloatSafely(experiments.get(experimentName + "_height_" + i));
-            Float length = parseFloatSafely(experiments.get(experimentName + "_length_" + i));
-            Float spanMm = parseFloatSafely(experiments.get(experimentName + "_span_" + i));
-            Float strainRange = parseFloatSafely(experiments.get(experimentName + "_strain_range_" + i));
-            Float frequencyHz = parseFloatSafely(experiments.get(experimentName + "_frequency_" + i));
-            Float testTemperature = parseFloatSafely(experiments.get(experimentName + "_temperature_" + i));
+            Float width = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_width_" + i));
+            Float height = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_height_" + i));
+            Float length = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_length_" + i));
+            Float spanMm = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_span_" + i));
+            Float strainRange = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_strain_range_" + i));
+            Float frequencyHz = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_frequency_" + i));
+            Float testTemperature = parseFloatSafely(experiments.get("沥青混合料四点弯曲疲劳寿命试验_temperature_" + i));
             
             specimen.put("width", width);     // 映射到width_mm
             specimen.put("height", height);   // 映射到height_mm 
@@ -1636,7 +1851,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             specimen.put("testTemperature", testTemperature);   // 映射到test_temperature
             
             // 最终疲劳寿命 - 直接对应fatigue_life字段
-            String fatigueLifeKey = experimentName + "_result_" + i + "_fatigue_life";
+            String fatigueLifeKey = "沥青混合料四点弯曲疲劳寿命试验_result_" + i + "_fatigue_life";
             Float fatigueLife = parseFloatSafely(experiments.get(fatigueLifeKey));
             specimen.put("fatigueLife", fatigueLife);
             
@@ -1644,8 +1859,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             List<Map<String, Object>> resultsList = new ArrayList<>();
             
             for (int j = 1; j <= 6; j++) {  // 6个结果参数（不包括疲劳寿命）
-                String initialKey = experimentName + "_result_" + i + "_initial_" + j;
-                String currentKey = experimentName + "_result_" + i + "_current_" + j;
+                String initialKey = "沥青混合料四点弯曲疲劳寿命试验_result_" + i + "_initial_" + j;
+                String currentKey = "沥青混合料四点弯曲疲劳寿命试验_result_" + i + "_current_" + j;
                 
                 Float initialValue = parseFloatSafely(experiments.get(initialKey));
                 Float currentValue = parseFloatSafely(experiments.get(currentKey));
@@ -1665,34 +1880,40 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             
             specimen.put("results", resultsList);
             specimensData.add(specimen);
-            Log.d(TAG, "已添加试件" + i + "数据: " + specimen.toString());
+            Log.d(TAG, "已添加试件" + i + "数据");
         }
         
-        // 将试件数据添加到请求数据中
+        // 记录收集到的试件数量
+        Log.d(TAG, "收集到的试件数据数量: " + specimensData.size());
+        
+        // 添加试件数据到请求
         requestData.put("specimens", specimensData);
         
-        // 记录完整的请求数据，用于调试
-        Log.d(TAG, "完整的四点弯曲疲劳寿命试验请求数据: " + new Gson().toJson(requestData));
+        // 添加创建时间参数 - 使用SQL Timestamp格式
+        requestData.put("created_at", new java.sql.Timestamp(System.currentTimeMillis()));
         
-        // 发送请求到API
-        MixtureTaskService apiService = ServiceCreator.createMixtureTaskService();
-        Call<ApiResponse<Map<String, String>>> call = apiService.saveFourPointFatigueTestData(requestData);
-        
-        try {
-            Response<ApiResponse<Map<String, String>>> response = call.execute();
-            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                Log.i(TAG, "成功保存配比 " + mixRatioId + " 的" + experimentName + "数据");
-            } else {
-                String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
-                Log.e(TAG, "保存" + experimentName + "数据失败: " + errorMsg);
-                if (response.errorBody() != null) {
-                    String errorBody = response.errorBody().string();
-                    Log.e(TAG, "错误详情: " + errorBody);
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "保存" + experimentName + "数据时出错", e);
-        }
+        // 请求API保存数据
+        Log.d(TAG, "准备发送沥青混合料四点弯曲疲劳寿命试验数据到服务器");
+        mixtureTaskService.saveFourPointFatigueTestData(requestData)
+                .enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+                    @Override
+                    public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
+                        if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                            Log.d(TAG, "沥青混合料四点弯曲疲劳寿命试验数据保存成功: " + response.body().getMessage());
+                            showToast("沥青混合料四点弯曲疲劳寿命试验数据保存成功");
+                        } else {
+                            String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
+                            Log.e(TAG, "沥青混合料四点弯曲疲劳寿命试验数据保存失败: " + errorMsg);
+                            showToast("沥青混合料四点弯曲疲劳寿命试验数据保存失败: " + errorMsg);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                        Log.e(TAG, "沥青混合料四点弯曲疲劳寿命试验数据保存请求失败", t);
+                        showToast("沥青混合料四点弯曲疲劳寿命试验数据保存请求失败: " + t.getMessage());
+                    }
+                });
     }
 
 /**
@@ -1704,7 +1925,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
 private void saveDynamicModulusTestData(String mixRatioId, Map<String, String> experiments) {
     // 创建请求数据
     Map<String, Object> requestData = new HashMap<>();
-    requestData.put("taskId", currentTask.getTaskId());
+    
+    // 使用动态模量试验对应的任务ID
+    String taskId = getTaskIdForExperimentType("动态模量试验");
+    requestData.put("taskId", taskId);
+    
     requestData.put("mixRatioId", mixRatioId);
     
     // 确定试件数量和ID列表
@@ -1902,22 +2127,31 @@ private void saveDynamicModulusTestData(String mixRatioId, Map<String, String> e
 private void saveDirectStretchingFatigueTestData(String mixRatioId, Map<String, String> experiments) {
     // 基本信息收集
     Log.d(TAG, "开始保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据，配比ID: " + mixRatioId);
-    Map<String, Object> requestData = new HashMap<>();
-    requestData.put("taskId", currentTask.getTaskId());
-    requestData.put("mixRatioId", mixRatioId);
+    
+    // 使用沥青混合料直接拉伸循环疲劳测黏弹损伤试验对应的任务ID
+    String taskId = getTaskIdForExperimentType("沥青混合料直接拉伸循环疲劳测黏弹损伤试验");
     
     // 1. 测试基本信息 - 映射到direct_stretching_fatigue_test表
-    String testDate = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_测试日期", "");
-    String operator = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_操作人员", "");
-    String equipmentId = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_测试设备", "");
-    String notes = experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_备注", "");
+    String experimentName = "沥青混合料直接拉伸循环疲劳测黏弹损伤试验";
+    String testDate = experiments.getOrDefault(experimentName + "_测试日期", "");
+    String operator = experiments.getOrDefault(experimentName + "_操作人员", "");
+    String equipmentId = experiments.getOrDefault(experimentName + "_测试设备", "");
+    String notes = experiments.getOrDefault(experimentName + "_备注", "");
     
+    // 创建新的请求数据，只包含SQL表所需的字段
+    Map<String, Object> dbRequestData = new HashMap<>();
+    dbRequestData.put("taskId", taskId);
+    dbRequestData.put("mixRatioId", mixRatioId);
+    dbRequestData.put("created_at", new Timestamp(new Date().getTime()));
+    
+    // 重用已存在的testInfo对象，而不是重新创建
     Map<String, Object> testInfo = new HashMap<>();
+    testInfo.put("experimentName", experimentName);
     testInfo.put("testDate", testDate);
     testInfo.put("operator", operator);
     testInfo.put("equipmentId", equipmentId);
     testInfo.put("notes", notes);
-    requestData.put("testInfo", testInfo);
+    dbRequestData.put("testInfo", testInfo);
     
 // 2. 识别所有试件ID - 修改为从已有键名中提取
 Set<String> specimenIds = new HashSet<>();
@@ -1943,33 +2177,33 @@ for (String specimenId : specimenIds) {
     
     // 3.1 试件基本信息 - 使用正确的键名格式
     specimenData.put("specimenId", specimenId);
-    specimenData.put("height", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_height_" + specimenId, ""));
-    specimenData.put("diameter", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_diameter_" + specimenId, ""));
+    specimenData.put("height", experiments.getOrDefault(experimentName + "_height_" + specimenId, ""));
+    specimenData.put("diameter", experiments.getOrDefault(experimentName + "_diameter_" + specimenId, ""));
     
     // 3.2 动态模量数据 - 使用dynamic前缀
     Map<String, Map<String, String>> modulusData = new HashMap<>();
     
     // 初始动态模量数据
     Map<String, String> initialModulusData = new HashMap<>();
-    initialModulusData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_modulus", ""));
-    initialModulusData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_cycle", ""));
-    initialModulusData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_phase", ""));
-    initialModulusData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_stress", ""));
-    initialModulusData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_strain", ""));
-    initialModulusData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_actuator", ""));
-    initialModulusData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_initial_temp", ""));
+    initialModulusData.put("dynamicModulus", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_initial_modulus", ""));
+    initialModulusData.put("cycleCount", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_initial_cycle", ""));
+    initialModulusData.put("phaseAngle", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_initial_phase", ""));
+    initialModulusData.put("forceLevel", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_initial_stress", ""));
+    initialModulusData.put("uniformStrain", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_initial_strain", ""));
+    initialModulusData.put("strainChange", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_initial_actuator", ""));
+    initialModulusData.put("temperature", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_initial_temp", ""));
     initialModulusData.put("stage", "initial");
     modulusData.put("initial", initialModulusData);
     
     // 最终动态模量数据
     Map<String, String> finalModulusData = new HashMap<>();
-    finalModulusData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_modulus", ""));
-    finalModulusData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_cycle", ""));
-    finalModulusData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_phase", ""));
-    finalModulusData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_stress", ""));
-    finalModulusData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_strain", ""));
-    finalModulusData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_actuator", ""));
-    finalModulusData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_dynamic_" + specimenId + "_final_temp", ""));
+    finalModulusData.put("dynamicModulus", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_final_modulus", ""));
+    finalModulusData.put("cycleCount", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_final_cycle", ""));
+    finalModulusData.put("phaseAngle", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_final_phase", ""));
+    finalModulusData.put("forceLevel", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_final_stress", ""));
+    finalModulusData.put("uniformStrain", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_final_strain", ""));
+    finalModulusData.put("strainChange", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_final_actuator", ""));
+    finalModulusData.put("temperature", experiments.getOrDefault(experimentName + "_dynamic_" + specimenId + "_final_temp", ""));
     finalModulusData.put("stage", "final");
     modulusData.put("final", finalModulusData);
     
@@ -1980,25 +2214,25 @@ for (String specimenId : specimenIds) {
     
     // 初始疲劳数据
     Map<String, String> initialFatigueData = new HashMap<>();
-    initialFatigueData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_modulus", ""));
-    initialFatigueData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_cycle", ""));
-    initialFatigueData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_phase", ""));
-    initialFatigueData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_stress", ""));
-    initialFatigueData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_strain", ""));
-    initialFatigueData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_actuator", ""));
-    initialFatigueData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_initial_temp", ""));
+    initialFatigueData.put("dynamicModulus", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_initial_modulus", ""));
+    initialFatigueData.put("cycleCount", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_initial_cycle", ""));
+    initialFatigueData.put("phaseAngle", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_initial_phase", ""));
+    initialFatigueData.put("forceLevel", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_initial_stress", ""));
+    initialFatigueData.put("uniformStrain", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_initial_strain", ""));
+    initialFatigueData.put("strainChange", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_initial_actuator", ""));
+    initialFatigueData.put("temperature", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_initial_temp", ""));
     initialFatigueData.put("stage", "initial");
     fatigueData.put("initial", initialFatigueData);
     
     // 最终疲劳数据
     Map<String, String> finalFatigueData = new HashMap<>();
-    finalFatigueData.put("dynamicModulus", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_modulus", ""));
-    finalFatigueData.put("cycleCount", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_cycle", ""));
-    finalFatigueData.put("phaseAngle", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_phase", ""));
-    finalFatigueData.put("forceLevel", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_stress", ""));
-    finalFatigueData.put("uniformStrain", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_strain", ""));
-    finalFatigueData.put("strainChange", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_actuator", ""));
-    finalFatigueData.put("temperature", experiments.getOrDefault("沥青混合料直接拉伸循环疲劳测黏弹损伤试验_fatigue_" + specimenId + "_final_temp", ""));
+    finalFatigueData.put("dynamicModulus", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_final_modulus", ""));
+    finalFatigueData.put("cycleCount", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_final_cycle", ""));
+    finalFatigueData.put("phaseAngle", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_final_phase", ""));
+    finalFatigueData.put("forceLevel", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_final_stress", ""));
+    finalFatigueData.put("uniformStrain", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_final_strain", ""));
+    finalFatigueData.put("strainChange", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_final_actuator", ""));
+    finalFatigueData.put("temperature", experiments.getOrDefault(experimentName + "_fatigue_" + specimenId + "_final_temp", ""));
     finalFatigueData.put("stage", "final");
     fatigueData.put("final", finalFatigueData);
     
@@ -2011,9 +2245,10 @@ for (String specimenId : specimenIds) {
 // 记录收集到的试件数量
 Log.d(TAG, "收集到的试件数据数量: " + specimensData.size());
     
-    // 请求API保存数据
-    Log.d(TAG, "准备发送沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据到服务器");
-    mixtureTaskService.saveDirectStretchingFatigueTestData(requestData)
+    // 将试件数据添加到请求中的单独字段
+    dbRequestData.put("specimens", specimensData);
+
+    mixtureTaskService.saveDirectStretchingFatigueTestData(dbRequestData)
             .enqueue(new Callback<ApiResponse<Map<String, String>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
@@ -2124,13 +2359,13 @@ private void saveUniaxialCompressionTestData(String mixRatioId, Map<String, Stri
     
     try {
         String experimentName = "沥青混合料单轴压缩试验";
-        String taskId = currentTask.getTaskId();
+        String taskId = getTaskIdForExperimentType("沥青混合料单轴压缩试验");
         
         // 确定试件数量
         int specimenCount = 0;
-        for (String key : experiments.keySet()) {
-            if (key.matches(experimentName + "_diameter_\\d+")) {
-                int id = Integer.parseInt(key.substring(key.lastIndexOf("_") + 1));
+        for (int i = 1; i <= 10; i++) { // 假设最多10个试件
+            if (experiments.containsKey("沥青混合料单轴压缩试验_diameter_" + i)) {
+                int id = i; // 直接使用循环变量i作为试件ID
                 if (id > specimenCount) {
                     specimenCount = id;
                 }
@@ -2401,7 +2636,7 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
     Map<String, Object> requestData = new HashMap<>();
     
     // 基本测试信息
-    requestData.put("taskId", currentTask.getTaskId());
+    requestData.put("taskId", getTaskIdForExperimentType("沥青混合料劈裂试验"));
     requestData.put("mixRatioId", mixRatioId);
     requestData.put("testId", UUID.randomUUID().toString());
     requestData.put("operator", currentTask.getExperimenter());
@@ -2518,325 +2753,91 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
 }
 
     /**
-     * 保存应用状态，在屏幕旋转或其他配置变更时调用
+     * 根据实验类型获取对应的任务ID
+     * 这是一个安全的实现，它会尝试根据实验类型匹配正确的任务ID
+     * 如果找不到对应的ID，会返回默认的任务ID
      * 
-     * @param outState 用于保存状态的Bundle
+     * @param experimentType 实验类型
+     * @return 对应的任务ID
      */
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        Log.d(TAG, "onSaveInstanceState: 保存当前实验数据状态");
-        
-        // 保存当前已输入的实验数据
-        if (adapter != null) {
-            try {
-                // 获取并保存所有实验数据
-                Map<String, Map<String, String>> experimentData = adapter.getExperimentData();
-                outState.putSerializable("experimentData", (Serializable) experimentData);
-                Log.d(TAG, "已保存实验数据: " + experimentData.size() + " 条记录");
-                
-                // 保存马歇尔稳定度试验数据（特殊处理）
-                for (Map.Entry<String, Map<String, String>> entry : experimentData.entrySet()) {
-                    String mixRatioId = entry.getKey();
-                    Map<String, String> experiments = entry.getValue();
-                    
-                    // 找出马歇尔稳定度试验相关的数据
-                    for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
-                        String key = experimentEntry.getKey();
-                        if (key.startsWith("马歇尔稳定度试验_")) {
-                            String value = experimentEntry.getValue();
-                            outState.putString("marshall_" + mixRatioId + "_" + key, value);
-                        }
-                    }
-                    
-                    // 找出汉堡车辙实验相关的数据
-                    for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
-                        String key = experimentEntry.getKey();
-                        if (key.startsWith("沥青混合料车辙实验（汉堡车辙）_")) {
-                            String value = experimentEntry.getValue();
-                            outState.putString("hamburg_" + mixRatioId + "_" + key, value);
-                        }
-                    }
-                    
-                    // 找出沥青混合料弯曲试验相关的数据
-                    for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
-                        String key = experimentEntry.getKey();
-                        if (key.startsWith("沥青混合料弯曲试验_")) {
-                            String value = experimentEntry.getValue();
-                            outState.putString("bending_" + mixRatioId + "_" + key, value);
-                        }
-                    }
-                }
-                
-            } catch (Exception e) {
-                Log.e(TAG, "保存实验数据时出错", e);
-            }
+    private String getTaskIdForExperimentType(String experimentType) {
+        // 如果没有提供实验类型，使用默认任务ID
+        if (experimentType == null || experimentType.isEmpty() || currentTask == null) {
+            Log.w(TAG, "没有提供实验类型或currentTask为空，使用默认任务ID");
+            return currentTask != null ? currentTask.getTaskId() : currentTaskId;
         }
         
-        // 保存其他状态...
-    }
-    
-    /**
-     * 恢复应用状态，在屏幕旋转或其他配置变更后重新创建Activity时调用
-     * 
-     * @param savedInstanceState 包含已保存状态的Bundle
-     */
-    @Override
-    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        Log.d(TAG, "onRestoreInstanceState: 恢复实验数据状态");
+        // 记录调试信息
+        Log.d(TAG, "获取实验类型 '" + experimentType + "' 的任务ID");
         
         try {
-            // 恢复实验数据
-            if (savedInstanceState.containsKey("experimentData") && adapter != null) {
-                Map<String, Map<String, String>> savedData = (Map<String, Map<String, String>>) savedInstanceState.getSerializable("experimentData");
-                if (savedData != null) {
-                    // 遍历并逐个更新实验数据，而不是直接传递Map
-                    for (Map.Entry<String, Map<String, String>> entry : savedData.entrySet()) {
-                        String mixRatioId = entry.getKey();
-                        Map<String, String> experiments = entry.getValue();
-                        
-                        for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
-                            String key = experimentEntry.getKey();
-                            String value = experimentEntry.getValue();
-                            adapter.updateExperimentValue(mixRatioId, key, value);
-                        }
-                    }
-                    Log.d(TAG, "已恢复实验数据: " + savedData.size() + " 条记录");
-                }
+            // 获取实验类型对应的任务ID
+            // 假设我们的系统在ExperimentAssignmentSelectionActivity中将任务ID传递了过来
+            String experimentSpecificTaskId = null;
+            
+            // 根据实验类型匹配任务ID
+            if (experimentType.contains("马歇尔稳定度试验")) {
+                // 尝试从Intent中获取指定实验的任务ID
+                experimentSpecificTaskId = getIntent().getStringExtra("marshallTestTaskId");
                 
-                // 恢复特殊处理的马歇尔稳定度试验数据
-                for (String key : savedInstanceState.keySet()) {
-                    if (key.startsWith("marshall_")) {
-                        String value = savedInstanceState.getString(key);
-                        String[] parts = key.split("_", 3);
-                        if (parts.length >= 3) {
-                            String mixRatioId = parts[1];
-                            String experimentKey = parts[2];
-                            for (int i = 3; i < parts.length; i++) {
-                                experimentKey += "_" + parts[i];
-                            }
-                            adapter.updateExperimentValue(mixRatioId, experimentKey, value);
-                            Log.d(TAG, "恢复马歇尔试验数据: " + mixRatioId + ", " + experimentKey + " = " + value);
-                        }
+                // 如果Intent中没有，尝试按照命名规则构造
+                if (experimentSpecificTaskId == null && currentTaskId != null) {
+                    // 获取基础ID（移除可能的后缀）
+                    String baseId = currentTaskId;
+                    if (baseId.contains("-")) {
+                        baseId = baseId.substring(0, baseId.lastIndexOf("-"));
                     }
+                    experimentSpecificTaskId = baseId + "-1"; // 假设马歇尔实验任务ID以-1为后缀
                 }
+            } else if (experimentType.contains("汉堡车辙") || experimentType.contains("沥青混合料车辙")) {
+                experimentSpecificTaskId = getIntent().getStringExtra("hamburgRuttingTestTaskId");
                 
-                // 恢复特殊处理的汉堡车辙实验数据
-                for (String key : savedInstanceState.keySet()) {
-                    if (key.startsWith("hamburg_")) {
-                        String value = savedInstanceState.getString(key);
-                        String[] parts = key.split("_", 3);
-                        if (parts.length >= 3) {
-                            String mixRatioId = parts[1];
-                            String experimentKey = parts[2];
-                            for (int i = 3; i < parts.length; i++) {
-                                experimentKey += "_" + parts[i];
-                            }
-                            adapter.updateExperimentValue(mixRatioId, experimentKey, value);
-                            Log.d(TAG, "恢复汉堡车辙实验数据: " + mixRatioId + ", " + experimentKey + " = " + value);
-                        }
+                // 如果Intent中没有，尝试按照命名规则构造
+                if (experimentSpecificTaskId == null && currentTaskId != null) {
+                    // 获取基础ID（移除可能的后缀）
+                    String baseId = currentTaskId;
+                    if (baseId.contains("-")) {
+                        baseId = baseId.substring(0, baseId.lastIndexOf("-"));
                     }
+                    experimentSpecificTaskId = baseId + "-1"; // 根据日志分析，它也使用-1后缀
                 }
+            } else if (experimentType.contains("弯曲试验")) {
+                experimentSpecificTaskId = getIntent().getStringExtra("mixtureBendingTestTaskId");
                 
-                // 恢复特殊处理的沥青混合料弯曲试验数据
-                for (String key : savedInstanceState.keySet()) {
-                    if (key.startsWith("bending_")) {
-                        String value = savedInstanceState.getString(key);
-                        String[] parts = key.split("_", 3);
-                        if (parts.length >= 3) {
-                            String mixRatioId = parts[1];
-                            String experimentKey = parts[2];
-                            for (int i = 3; i < parts.length; i++) {
-                                experimentKey += "_" + parts[i];
-                            }
-                            adapter.updateExperimentValue(mixRatioId, experimentKey, value);
-                            Log.d(TAG, "恢复沥青混合料弯曲试验数据: " + mixRatioId + ", " + experimentKey + " = " + value);
-                        }
+                // 如果Intent中没有，尝试按照命名规则构造
+                if (experimentSpecificTaskId == null && currentTaskId != null) {
+                    // 获取基础ID（移除可能的后缀）
+                    String baseId = currentTaskId;
+                    if (baseId.contains("-")) {
+                        baseId = baseId.substring(0, baseId.lastIndexOf("-"));
                     }
+                    experimentSpecificTaskId = baseId + "-2"; // 根据日志分析，弯曲试验使用-2后缀
                 }
             }
+            
+            // 如果成功获取到特定实验的任务ID，返回它
+            if (experimentSpecificTaskId != null && !experimentSpecificTaskId.isEmpty()) {
+                Log.d(TAG, "找到实验类型 '" + experimentType + "' 的特定任务ID: " + experimentSpecificTaskId);
+                return experimentSpecificTaskId;
+            }
         } catch (Exception e) {
-            Log.e(TAG, "恢复实验数据状态时出错", e);
+            // 捕获任何异常，确保即使出错也能返回有效的任务ID
+            Log.e(TAG, "获取实验类型任务ID时出错", e);
         }
         
-        // 恢复其他状态...
-    }
-
-    /**
-     * 检查任务状态，如果已完成则显示提示并退出
-     * @param taskId 任务ID
-     */
-    private void checkTaskStatus(String taskId) {
-        showLoading(true, "检查任务状态...");
-        
-        // 使用新的API端点获取各个实验类型的状态
-        mixtureTaskService.getExperimentTypeStatus(taskId)
-            .enqueue(new Callback<ApiResponse<List<Map<String, String>>>>() {
-                @Override
-                public void onResponse(Call<ApiResponse<List<Map<String, String>>>> call, Response<ApiResponse<List<Map<String, String>>>> response) {
-                    // 添加详细日志帮助调试
-                    Log.d(TAG, "实验类型状态检查响应: " + (response.isSuccessful() ? "成功" : "失败") + 
-                          ", 状态码: " + response.code());
-                    
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        List<Map<String, String>> taskStatusList = response.body().getData();
-                        Log.d(TAG, "任务 " + taskId + " 的实验类型状态列表: " + taskStatusList);
-                        
-                        if (taskStatusList == null || taskStatusList.isEmpty()) {
-                            Log.w(TAG, "未找到任务状态数据");
-                            showLoading(false);
-                            loadTaskData(taskId, true);
-                            return;
-                        }
-                        
-                        // 提取任务ID前缀（如果任务ID包含连字符）
-                        String taskIdPrefix = taskId;
-                        int dashIndex = taskId.indexOf('-');
-                        if (dashIndex > 0) {
-                            taskIdPrefix = taskId.substring(0, dashIndex);
-                        }
-                        
-                        // 跟踪所有相关任务的状态
-                        boolean allPrepareFinished = true;
-                        boolean allMakingFinished = true;
-                        boolean allTestingFinished = true;
-                        
-                        // 检查每个任务的状态
-                        for (Map<String, String> taskStatus : taskStatusList) {
-                            // 提取状态
-                            String currentTaskId = taskStatus.getOrDefault("taskId", "");
-                            String prepareStatus = taskStatus.getOrDefault("prepareStatus", "unfinished");
-                            String makingStatus = taskStatus.getOrDefault("makingStatus", "unfinished");
-                            String testingStatus = taskStatus.getOrDefault("testingStatus", "unfinished");
-                            
-                            Log.d(TAG, "检查任务 ID: " + currentTaskId + 
-                                  ", 准备状态: " + prepareStatus + 
-                                  ", 制件状态: " + makingStatus + 
-                                  ", 测试状态: " + testingStatus);
-                            
-                            // 检查各个状态是否完成
-                            if (!"finished".equalsIgnoreCase(prepareStatus)) {
-                                allPrepareFinished = false;
-                            }
-                            if (!"finished".equalsIgnoreCase(makingStatus)) {
-                                allMakingFinished = false;
-                            }
-                            if (!"finished".equalsIgnoreCase(testingStatus)) {
-                                allTestingFinished = false;
-                            }
-                        }
-                        
-                        // 只有当所有任务的三个状态都是finished时，才认为任务组已完成
-                        boolean allFinished = allPrepareFinished && allMakingFinished && allTestingFinished;
-                        
-                        Log.d(TAG, "任务组前缀: " + taskIdPrefix + 
-                              ", 所有准备完成: " + allPrepareFinished + 
-                              ", 所有制件完成: " + allMakingFinished + 
-                              ", 所有测试完成: " + allTestingFinished + 
-                              ", 总体完成: " + allFinished);
-                        
-                        if (allFinished) {
-                            // 所有状态都已完成，显示提示并退出
-                            showLoading(false);
-                            new AlertDialog.Builder(RecordMixtureExperimentDataActivity.this)
-                                .setTitle("任务已完成")
-                                .setMessage("该实验任务组的所有实验(准备、制件和测试)都已标记为完成，无需再次记录数据。")
-                                .setPositiveButton("确定", (dialog, which) -> {
-                                    finish(); // 关闭当前Activity
-                                })
-                                .setCancelable(false)
-                                .show();
-                        } else {
-                            // 至少有一个状态未完成，继续加载任务数据
-                            showLoading(false);
-                            loadTaskData(taskId, true);
-                        }
-                    } else {
-                        // API响应失败，添加更详细的日志
-                        String errorMessage = "获取实验类型状态失败: ";
-                        if (response.body() != null) {
-                            errorMessage += response.body().getMessage();
-                        } else if (response.errorBody() != null) {
-                            try {
-                                errorMessage += response.errorBody().string();
-                            } catch (IOException e) {
-                                errorMessage += "无法读取错误信息";
-                            }
-                        } else {
-                            errorMessage += "未知错误，状态码: " + response.code();
-                        }
-                        Log.e(TAG, errorMessage);
-                        
-                        // 请求失败，降级为使用旧方法检查状态
-                        fallbackToOldStatusCheck(taskId);
-                    }
-                }
-                
-                @Override
-                public void onFailure(Call<ApiResponse<List<Map<String, String>>>> call, Throwable t) {
-                    Log.e(TAG, "获取实验类型状态请求失败", t);
-                    // 请求失败，降级为使用旧方法检查状态
-                    fallbackToOldStatusCheck(taskId);
-                }
-            });
-    }
-    
-    /**
-     * 当新API请求失败时，降级使用旧的状态检查方法
-     * @param taskId 任务ID
-     */
-    private void fallbackToOldStatusCheck(String taskId) {
-        Log.d(TAG, "降级为使用旧的状态检查方法");
-        
-        mixtureTaskService.getTestingStatus(taskId)
-            .enqueue(new Callback<ApiResponse<String>>() {
-                @Override
-                public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        String status = response.body().getData();
-                        Log.d(TAG, "任务 " + taskId + " 的测试状态: " + status);
-                        
-                        if ("finished".equalsIgnoreCase(status)) {
-                            // 任务已完成，显示提示并退出
-                            showLoading(false);
-                            new AlertDialog.Builder(RecordMixtureExperimentDataActivity.this)
-                                .setTitle("任务已完成")
-                                .setMessage("该实验任务已标记为完成，无需再次记录数据。")
-                                .setPositiveButton("确定", (dialog, which) -> {
-                                    finish(); // 关闭当前Activity
-                                })
-                                .setCancelable(false)
-                                .show();
-                        } else {
-                            // 任务未完成，继续加载任务数据
-                            showLoading(false);
-                            loadTaskData(taskId, true);
-                        }
-                    } else {
-                        // API响应失败，仍然加载任务数据
-                        showLoading(false);
-                        loadTaskData(taskId, true);
-                    }
-                }
-                
-                @Override
-                public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
-                    Log.e(TAG, "获取任务状态请求失败", t);
-                    // 请求失败，仍然加载任务数据
-                    showLoading(false);
-                    loadTaskData(taskId, true);
-                }
-            });
+        // 如果无法获取特定实验的任务ID，返回默认任务ID
+        Log.w(TAG, "无法获取实验类型 '" + experimentType + "' 的特定任务ID，使用默认任务ID: " + currentTask.getTaskId());
+        return currentTask != null ? currentTask.getTaskId() : currentTaskId;
     }
     
     @Override
     protected void onResume() {
         super.onResume();
         // 每次页面恢复时重新检查任务状态
-        String taskId = getIntent().getStringExtra("taskId");
-        if (taskId != null && !taskId.isEmpty()) {
-            checkTaskStatus(taskId);
+        if (currentTaskId != null && !currentTaskId.isEmpty()) {
+            Log.d(TAG, "onResume: 使用保存的currentTaskId检查任务状态: " + currentTaskId);
+            //checkTaskStatus(currentTaskId);
+            loadTaskData(currentTaskId, true);
         }
     }
 
@@ -2858,11 +2859,8 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
                 // 使用Gson将数据转换为JSON字符串
                 String jsonData = gson.toJson(experimentData);
                 
-                // 从Intent中获取任务ID
-                String taskId = getIntent().getStringExtra("taskId");
-                if (taskId == null) {
-                    taskId = String.valueOf(getIntent().getLongExtra("taskId", -1));
-                }
+                // 使用保存的currentTaskId，而不是从Intent获取
+                String taskId = currentTaskId;
                 
                 // 使用SharedPreferences保存数据
                 SharedPreferences preferences = getSharedPreferences("mixture_experiment_temp_data", MODE_PRIVATE);
@@ -2885,11 +2883,8 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
      */
     private void restoreTemporaryData() {
         try {
-            // 从Intent中获取任务ID
-            String taskId = getIntent().getStringExtra("taskId");
-            if (taskId == null) {
-                taskId = String.valueOf(getIntent().getLongExtra("taskId", -1));
-            }
+            // 使用保存的currentTaskId，而不是从Intent获取
+            String taskId = currentTaskId;
             
             // 从SharedPreferences读取之前保存的数据
             SharedPreferences preferences = getSharedPreferences("mixture_experiment_temp_data", MODE_PRIVATE);
@@ -2924,7 +2919,7 @@ private void saveSplittingTestData(String mixRatioId, Map<String, String> experi
                         // 强制UI刷新
                         adapter.notifyDataSetChanged();
                         
-                        Log.d(TAG, "已恢复临时数据: " + dataKey + ", 实验类型数: " + savedData.size());
+                        Log.d(TAG, "已恢复临时数据: " + savedData.size() + " 条记录");
                         Toast.makeText(this, "已恢复之前输入的数据", Toast.LENGTH_SHORT).show();
                     }, 300); // 延迟300毫秒，确保视图已绑定
                 } else {

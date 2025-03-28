@@ -8,34 +8,29 @@
     android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@android:color/white"
-        android:elevation="0dp"
-        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayout"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="@color/white"
-            app:tabGravity="fill"
-            app:tabMode="fixed"
-            app:tabTextColor="@color/gray_text"
-            app:tabSelectedTextColor="@color/blue_theme"
-            app:tabIndicatorColor="@color/blue_theme"
-            app:tabIndicatorHeight="2dp"
-            app:tabTextAppearance="@style/CustomTabTextAppearance"
-            app:layout_scrollFlags="scroll|enterAlways"/>
-
-    </com.google.android.material.appbar.AppBarLayout>
-
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
+        android:layout_marginBottom="56dp"/>
+    
+    <!-- 底部标签栏，类似bilibili风格 -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom"
+        android:background="@color/white"
+        app:tabGravity="fill"
+        app:tabMode="fixed"
+        app:tabTextColor="@color/gray_text"
+        app:tabSelectedTextColor="@color/blue_theme"
+        app:tabIndicatorColor="@color/blue_theme"
+        app:tabIndicatorHeight="0dp"
+        app:tabTextAppearance="@style/CustomTabTextAppearance"
+        app:tabPaddingTop="4dp"
+        app:tabPaddingBottom="4dp"
+        app:elevation="8dp"/>
     
     <!-- 内联加载指示器和状态消息 -->
     <RelativeLayout

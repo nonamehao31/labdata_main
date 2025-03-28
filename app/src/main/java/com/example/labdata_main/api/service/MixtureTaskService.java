@@ -317,4 +317,12 @@ public interface MixtureTaskService {
      */
     @GET("api/mixture-tasks/{taskId}/experiment-type-status")
     Call<ApiResponse<List<Map<String, String>>>> getExperimentTypeStatus(@Path("taskId") String taskId);
+
+    /**
+     * 根据任务ID前缀获取任务指派信息列表
+     * @param taskIdPrefix 任务ID前缀
+     * @return 任务指派信息列表
+     */
+    @GET("api/mixture-task/assignments/{taskIdPrefix}")
+    Call<ApiResponse<List<Map<String, Object>>>> getTaskAssignmentsByTaskIdPrefix(@Path("taskIdPrefix") String taskIdPrefix);
 }

@@ -57,11 +57,8 @@ public class ExperimentTaskAdapter extends RecyclerView.Adapter<ExperimentTaskAd
             holder.taskDeadline.setText("无截止日期");
         }
 
-        // 设置按钮为空文本，只显示图标
-        holder.taskButton.setText("");
-        
-        // 设置按钮点击事件
-        holder.taskButton.setOnClickListener(v -> {
+        // 设置整体卡片点击事件，替代原来的按钮点击事件
+        holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onTaskClick(task);
             }

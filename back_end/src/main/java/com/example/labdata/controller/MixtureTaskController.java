@@ -576,14 +576,55 @@ public class MixtureTaskController {
         try {
             logger.info("接收到获取动态模量试验数据请求: taskId={}", taskId);
 
-            List<Map<String, Object>> result = mixtureTaskService.getDynamicModulusTestByTaskId(taskId);
+            List<Map<String, Object>> rawData = mixtureTaskService.getDynamicModulusTestByTaskId(taskId);
 
-            if (result.isEmpty()) {
+            if (rawData.isEmpty()) {
                 logger.warn("未找到任务ID: {} 的动态模量试验数据", taskId);
                 return ResponseEntity.ok(new ApiResponse<>(true, "未找到动态模量试验数据", new ArrayList<>()));
             }
-
-            return ResponseEntity.ok(new ApiResponse<>(true, "获取成功", result));
+            
+            // 转换为前端预期的数据格式
+            logger.info("开始转换动态模量试验数据格式...");
+            List<Map<String, Object>> formattedData = new ArrayList<>();
+            
+            for (Map<String, Object> test : rawData) {
+                Map<String, Object> formattedTest = new HashMap<>();
+                formattedTest.put("test_id", test.get("test_id"));
+                formattedTest.put("task_id", test.get("task_id"));
+                formattedTest.put("mix_ratio_name", test.get("mix_ratio_name"));
+                
+                // 转换试件信息
+                Map<String, Object> specimen = (Map<String, Object>) test.get("specimen");
+                if (specimen != null) {
+                    formattedTest.put("specimen", specimen);
+                }
+                
+                // 转换温度组
+                List<Map<String, Object>> tempGroups = (List<Map<String, Object>>) test.get("temperatureGroups");
+                if (tempGroups != null && !tempGroups.isEmpty()) {
+                    formattedTest.put("temperatureGroups", tempGroups);
+                    logger.info("转换了 {} 个温度组数据", tempGroups.size());
+                    
+                    // 日志输出第一个温度组的测量数据，确认结构
+                    if (!tempGroups.isEmpty() && tempGroups.get(0) != null) {
+                        List<Map<String, Object>> measurements = (List<Map<String, Object>>) tempGroups.get(0).get("measurements");
+                        if (measurements != null && !measurements.isEmpty()) {
+                            logger.info("温度组 {} 包含 {} 条测量数据", tempGroups.get(0).get("temperature"), measurements.size());
+                            logger.info("第一条测量数据: {}", measurements.get(0));
+                        } else {
+                            logger.warn("温度组 {} 没有测量数据", tempGroups.get(0).get("temperature"));
+                        }
+                    }
+                } else {
+                    logger.warn("试验 ID={} 没有温度组数据", test.get("test_id"));
+                    formattedTest.put("temperatureGroups", new ArrayList<>());
+                }
+                
+                formattedData.add(formattedTest);
+            }
+            
+            logger.info("成功转换 {} 条动态模量试验数据", formattedData.size());
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取成功", formattedData));
         } catch (Exception e) {
             logger.error("获取动态模量试验数据时出错: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -679,6 +720,34 @@ public class MixtureTaskController {
             logger.error("获取沥青混合料劈裂试验数据失败: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "获取沥青混合料劈裂试验数据失败: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * 获取任务指派列表
+     * 根据任务ID前缀获取所有相关任务的指派信息
+     * @param taskIdPrefix 任务ID前缀
+     * @return 任务指派信息列表
+     */
+    @GetMapping("/mixture-task/assignments/{taskIdPrefix}")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTaskAssignments(
+            @PathVariable("taskIdPrefix") String taskIdPrefix) {
+        
+        logger.info("接收到获取任务指派信息请求，任务ID前缀: {}", taskIdPrefix);
+        
+        if (taskIdPrefix == null || taskIdPrefix.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "任务ID前缀不能为空", null));
+        }
+        
+        ApiResponse<List<Map<String, Object>>> response = mixtureTaskService.getTaskAssignmentsByTaskIdPrefix(taskIdPrefix);
+        
+        if (response.isSuccess()) {
+            logger.info("成功获取任务指派信息，条数: {}", response.getData().size());
+            return ResponseEntity.ok(response);
+        } else {
+            logger.error("获取任务指派信息失败: {}", response.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 }

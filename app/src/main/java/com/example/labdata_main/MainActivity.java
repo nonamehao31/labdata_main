@@ -232,22 +232,31 @@ public class MainActivity extends AppCompatActivity {
         // 创建适配器并设置给 ViewPager
         ViewPagerAdapter adapter = new ViewPagerAdapter(this);
         viewPager.setAdapter(adapter);
+        
+        // 设置TabLayout图标的颜色选择器
+        tabLayout.setTabIconTint(getResources().getColorStateList(R.color.tab_icon_color));
 
         // 使用 TabLayoutMediator 来连接 TabLayout 和 ViewPager
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            // 为每个 Tab 设置名称
+            // 为每个 Tab 设置图标和名称
             switch (position) {
                 case 0:
-                    tab.setText("概览");
+                    tab.setText("首页");
+                    tab.setIcon(R.drawable.ic_tab_home);
                     break;
                 case 1:
                     tab.setText("实验");
+                    tab.setIcon(R.drawable.ic_tab_experiment);
                     break;
                 case 2:
                     tab.setText("我的");
+                    tab.setIcon(R.drawable.ic_tab_profile);
                     break;
             }
         }).attach();
+
+        // 禁用ViewPager2的滑动功能以避免与其他手势冲突
+        viewPager.setUserInputEnabled(true);
 
         // 制件按钮点击事件
         Button btnStep2Action = findViewById(R.id.btnStep2Action);

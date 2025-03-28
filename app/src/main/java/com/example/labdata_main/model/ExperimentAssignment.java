@@ -15,10 +15,14 @@ public class ExperimentAssignment {
     private int curingAge;
     private Map<Long, List<String>> mixRatioExperiments;
     private String notes;
+    private String assignmentName;  // 实验指派名称
+    private String assignmentDetails;  // 实验指派详情
+    private boolean finished;  // 任务是否已完成
 
     public ExperimentAssignment() {
         experimentTypes = new ArrayList<>();
         mixRatioExperiments = new HashMap<>();
+        finished = false;
     }
 
     public List<String> getExperimentTypes() {
@@ -65,6 +69,30 @@ public class ExperimentAssignment {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getAssignmentName() {
+        return assignmentName;
+    }
+
+    public void setAssignmentName(String assignmentName) {
+        this.assignmentName = assignmentName;
+    }
+
+    public String getAssignmentDetails() {
+        return assignmentDetails;
+    }
+
+    public void setAssignmentDetails(String assignmentDetails) {
+        this.assignmentDetails = assignmentDetails;
+    }
+
+    public boolean isFinished() {
+        return finished;
+    }
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
     }
 
     @Override
@@ -122,6 +150,17 @@ public class ExperimentAssignment {
         if (notes != null && !notes.isEmpty()) {
             sb.append("\n备注: ").append(notes);
         }
+        
+        // 添加实验指派名称和详情
+        if (assignmentName != null && !assignmentName.isEmpty()) {
+            sb.append("\n实验指派名称: ").append(assignmentName);
+        }
+        if (assignmentDetails != null && !assignmentDetails.isEmpty()) {
+            sb.append("\n实验指派详情: ").append(assignmentDetails);
+        }
+        
+        // 添加任务完成状态
+        sb.append("\n任务完成状态: ").append(finished ? "已完成" : "未完成");
         
         return sb.toString();
     }
