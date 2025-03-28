@@ -29,6 +29,6 @@ public interface MarshallTestRepository extends JpaRepository<MarshallTest, Long
      * @param taskId 任务ID
      * @return 马歇尔试验数据列表
      */
-    @Query(value = "SELECT * FROM marshall_test WHERE task_id = :taskId", nativeQuery = true)
+    @Query(value = "SELECT * FROM marshall_test WHERE task_id LIKE :taskId%", nativeQuery = true)
     List<MarshallTest> findAllByTaskIdNative(@Param("taskId") String taskId);
 }

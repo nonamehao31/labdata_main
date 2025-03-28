@@ -48,6 +48,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     private List<Map<String, Object>> mixingEquipment;
     private List<Map<String, Object>> formingEquipment;
     private List<Map<String, Object>> mixRatioExperimentPairs = new ArrayList<>();
+    private String selectedExperimentType; // 存储用户在上一个界面选择的实验类型
 
     public interface OnDeviceScanRequestListener {
         void onDeviceScanRequested(int position, String experimentName);
@@ -58,15 +59,31 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     }
 
     public MixtureExperimentDataAdapter(List<Map<String, Object>> mixRatios, Map<String, List<String>> experimentAssignments) {
-        this.mixRatios = mixRatios;
+        this(mixRatios, experimentAssignments, null);
+    }
+    
+    /**
+     * 创建适配器，支持指定实验类型过滤
+     * @param mixRatios 配比数据列表
+     * @param experimentAssignments 实验分配数据
+     * @param selectedExperimentType 用户选择的实验类型（可为null表示不过滤）
+     */
+    public MixtureExperimentDataAdapter(List<Map<String, Object>> mixRatios, Map<String, List<String>> experimentAssignments, String selectedExperimentType) {
+        this.mixRatios = mixRatios != null ? mixRatios : new ArrayList<>();
         this.experimentAssignments = experimentAssignments != null ? experimentAssignments : new HashMap<>();
+        this.selectedExperimentType = selectedExperimentType;
         this.methodsAndRatios = new ArrayList<>();
         this.mixingEquipment = new ArrayList<>();
         this.formingEquipment = new ArrayList<>();
-    this.taskAssignments = new ArrayList<>();
-    this.mixRatioTaskAssignments = new HashMap<>();
-    initMixRatioExperimentPairs(); // 调用初始化方法
-}
+        this.taskAssignments = new ArrayList<>();
+        this.mixRatioTaskAssignments = new HashMap<>();
+        
+        if (selectedExperimentType != null && !selectedExperimentType.isEmpty()) {
+            Log.d("MixtureAdapter", "创建适配器时设置实验类型过滤条件: " + selectedExperimentType);
+        }
+        
+        initMixRatioExperimentPairs(); // 调用初始化方法，根据选定的实验类型进行过滤
+    }
 
     @NonNull
     @Override
@@ -207,47 +224,301 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     private void initMixRatioExperimentPairs() {
         mixRatioExperimentPairs.clear();
         
+        Log.d("MixtureAdapter", "开始初始化配比-实验类型组合，mixRatios大小: " + mixRatios.size());
+        Log.d("MixtureAdapter", "当前选定的实验类型: " + (selectedExperimentType != null ? selectedExperimentType : "无"));
+        
+        // 使用Set跟踪已添加的配比-实验组合，防止重复
+        Set<String> addedCombinations = new HashSet<>();
+        
+        // 调试信息：当前实验分配
+        for (String key : experimentAssignments.keySet()) {
+            Log.d("MixtureAdapter", "实验分配: 键=" + key + ", 值=" + experimentAssignments.get(key));
+        }
+        
+        // 如果mixRatios为空，尝试从任务分配中创建
+        if (mixRatios.isEmpty() && !mixRatioTaskAssignments.isEmpty()) {
+            Log.d("MixtureAdapter", "mixRatios为空，尝试从任务分配创建");
+            
+            Set<String> processedMixRatioIds = new HashSet<>();
+            
+            for (String groupKey : mixRatioTaskAssignments.keySet()) {
+                // 尝试提取配比ID（可能是单独的ID或复合ID的一部分）
+                String mixRatioId = groupKey;
+                if (groupKey.contains("_")) {
+                    mixRatioId = groupKey.split("_")[0];
+                }
+                
+                if (!processedMixRatioIds.contains(mixRatioId)) {
+                    processedMixRatioIds.add(mixRatioId);
+                    
+                    // 创建新的配比记录
+                    Map<String, Object> newRatio = new HashMap<>();
+                    newRatio.put("id", mixRatioId);
+                    mixRatios.add(newRatio);
+                    Log.d("MixtureAdapter", "从任务分配创建新配比: ID=" + mixRatioId);
+                }
+            }
+        }
+        
         // 遍历所有配比
         for (Map<String, Object> mixRatio : mixRatios) {
             Object idObj = mixRatio.get("id");
-            Long mixRatioId = parseLongSafely(idObj);
-            if (mixRatioId == null) continue;
+            if (idObj == null) {
+                Log.w("MixtureAdapter", "配比缺少ID，跳过");
+                continue;
+            }
+            
+            String mixRatioId = String.valueOf(idObj);
+            Log.d("MixtureAdapter", "处理配比ID: " + mixRatioId);
             
             // 获取当前配比分配的实验类型
-            String mixRatioIdStr = String.valueOf(mixRatioId);
             Set<String> experimentTypes = new HashSet<>();
             
-            // 从mixRatioTaskAssignments中提取实验类型
-            List<Map<String, Object>> assignments = mixRatioTaskAssignments.get(mixRatioIdStr);
-            if (assignments != null) {
-                for (Map<String, Object> assignment : assignments) {
-                    if (assignment.containsKey("experiment_type")) {
-                        String type = (String) assignment.get("experiment_type");
-                        if (type != null && !type.isEmpty()) {
-                            experimentTypes.add(type);
+            // 尝试使用配比ID直接匹配
+            if (experimentAssignments.containsKey(mixRatioId)) {
+                List<String> types = experimentAssignments.get(mixRatioId);
+                if (types != null && !types.isEmpty()) {
+                    experimentTypes.addAll(types);
+                    Log.d("MixtureAdapter", "为配比 " + mixRatioId + " 找到实验: " + types);
+                }
+            }
+            
+            // 如果experimentTypes仍然为空，尝试使用复合ID匹配
+            if (experimentTypes.isEmpty()) {
+                // 尝试所有以这个配比ID开头的键
+                for (String key : experimentAssignments.keySet()) {
+                    if (key.startsWith(mixRatioId + "_") || key.contains("_" + mixRatioId)) {
+                        List<String> types = experimentAssignments.get(key);
+                        if (types != null && !types.isEmpty()) {
+                            experimentTypes.addAll(types);
+                            Log.d("MixtureAdapter", "通过匹配键 " + key + " 找到实验: " + types);
+                        }
+                    }
+                }
+                
+                // 获取试件ID
+                String specimenId = null;
+                if (mixRatio.containsKey("specimenId")) {
+                    specimenId = String.valueOf(mixRatio.get("specimenId"));
+                }
+                
+                if (specimenId != null) {
+                    // 构造复合ID: 配比ID_试件ID
+                    String combinedKey = mixRatioId + "_" + specimenId;
+                    
+                    // 尝试使用复合ID查找实验类型
+                    if (experimentAssignments.containsKey(combinedKey)) {
+                        List<String> types = experimentAssignments.get(combinedKey);
+                        if (types != null && !types.isEmpty()) {
+                            experimentTypes.addAll(types);
+                            Log.d("MixtureAdapter", "通过复合键 " + combinedKey + " 找到实验: " + types);
                         }
                     }
                 }
             }
             
-            // 如果没有找到实验类型，尝试从experimentAssignments获取
-            if (experimentTypes.isEmpty() && experimentAssignments.containsKey(mixRatioIdStr)) {
-                List<String> types = experimentAssignments.get(mixRatioIdStr);
-                if (types != null) {
-                    experimentTypes.addAll(types);
+            // 如果仍然没有找到实验类型，尝试从任务分配中获取
+            if (experimentTypes.isEmpty() && mixRatioTaskAssignments != null) {
+                // 首先尝试使用配比ID
+                if (mixRatioTaskAssignments.containsKey(mixRatioId)) {
+                    List<Map<String, Object>> assignments = mixRatioTaskAssignments.get(mixRatioId);
+                    extractExperimentTypesFromAssignments(assignments, experimentTypes, mixRatioId);
+                } else {
+                    // 尝试所有可能的组合键
+                    for (String key : mixRatioTaskAssignments.keySet()) {
+                        if (key.startsWith(mixRatioId + "_") || key.equals(mixRatioId)) {
+                            List<Map<String, Object>> assignments = mixRatioTaskAssignments.get(key);
+                            extractExperimentTypesFromAssignments(assignments, experimentTypes, key);
+                        }
+                    }
                 }
             }
             
-            // 为每个实验类型创建一个项目
+            // 如果没有找到任何实验类型，但存在任务分配，从任务分配中提取所有实验
+            if (experimentTypes.isEmpty() && !mixRatioTaskAssignments.isEmpty()) {
+                Log.d("MixtureAdapter", "没有找到实验类型，尝试从所有任务分配中提取");
+                
+                for (String key : mixRatioTaskAssignments.keySet()) {
+                    List<Map<String, Object>> assignments = mixRatioTaskAssignments.get(key);
+                    extractExperimentTypesFromAssignments(assignments, experimentTypes, key);
+                }
+            }
+            
+            // 筛选实验类型，如果有过滤条件
+            if (selectedExperimentType != null && !selectedExperimentType.isEmpty() && !experimentTypes.isEmpty()) {
+                Set<String> filteredTypes = new HashSet<>();
+                
+                // 调试信息
+                Log.d("MixtureAdapter", "开始过滤实验类型，过滤条件: " + selectedExperimentType);
+                
+                // 更宽松的匹配规则
+                for (String type : experimentTypes) {
+                    // 将两个字符串都转成小写进行比较，忽略大小写差异
+                    String lowerType = type.toLowerCase();
+                    String lowerSelected = selectedExperimentType.toLowerCase();
+                    
+                    // 1. 完全匹配
+                    if (lowerType.equals(lowerSelected)) {
+                        filteredTypes.add(type);
+                        Log.d("MixtureAdapter", "完全匹配: " + type);
+                    } 
+                    // 2. 一个包含另一个
+                    else if (lowerType.contains(lowerSelected) || lowerSelected.contains(lowerType)) {
+                        filteredTypes.add(type);
+                        Log.d("MixtureAdapter", "部分匹配: " + type);
+                    }
+                    // 3. 关键词匹配（例如"弯曲试验"匹配"沥青混合料弯曲试验"）
+                    else {
+                        String[] keywords = lowerSelected.split("\\s+");
+                        boolean allKeywordsMatch = true;
+                        
+                        for (String keyword : keywords) {
+                            if (!lowerType.contains(keyword)) {
+                                allKeywordsMatch = false;
+                                break;
+                            }
+                        }
+                        
+                        if (allKeywordsMatch) {
+                            filteredTypes.add(type);
+                            Log.d("MixtureAdapter", "关键词匹配: " + type + ", 关键词: " + String.join(", ", keywords));
+                        }
+                    }
+                }
+                
+                if (!filteredTypes.isEmpty()) {
+                    experimentTypes = filteredTypes;
+                    Log.d("MixtureAdapter", "过滤后保留: " + filteredTypes);
+                } else {
+                    // 如果过滤后为空，降低匹配标准，检查是否有任何包含关系
+                    for (String type : experimentTypes) {
+                        String lowerType = type.toLowerCase();
+                        String lowerSelected = selectedExperimentType.toLowerCase();
+                        
+                        // 检查是否有任何关键词匹配
+                        String[] typeWords = lowerType.split("\\s+");
+                        String[] selectedWords = lowerSelected.split("\\s+");
+                        
+                        for (String typeWord : typeWords) {
+                            for (String selectedWord : selectedWords) {
+                                if (typeWord.contains(selectedWord) || selectedWord.contains(typeWord)) {
+                                    filteredTypes.add(type);
+                                    Log.d("MixtureAdapter", "降级匹配: " + type + " 包含关键词 " + selectedWord);
+                                    break;
+                                }
+                            }
+                            if (filteredTypes.contains(type)) break;
+                        }
+                    }
+                    
+                    if (!filteredTypes.isEmpty()) {
+                        experimentTypes = filteredTypes;
+                        Log.d("MixtureAdapter", "降级过滤后保留: " + filteredTypes);
+                    } else {
+                        Log.w("MixtureAdapter", "过滤后无匹配实验，使用所有实验");
+                        // 如果仍然没有匹配，可以选择保留所有实验或使用最符合的一个
+                        if (selectedExperimentType.toLowerCase().contains("弯曲")) {
+                            for (String type : experimentTypes) {
+                                if (type.toLowerCase().contains("弯曲")) {
+                                    filteredTypes.add(type);
+                                }
+                            }
+                        }
+                        
+                        if (!filteredTypes.isEmpty()) {
+                            experimentTypes = filteredTypes;
+                        }
+                    }
+                }
+            }
+            
+            // 为每个实验类型创建一个项目，使用addedCombinations集合防止重复
             for (String experimentType : experimentTypes) {
+                // 对于选定的实验类型，只保留第一个匹配项
+                if (selectedExperimentType != null && !selectedExperimentType.isEmpty()) {
+                    // 如果已经添加了这个实验类型，跳过
+                    boolean alreadyHasExperiment = false;
+                    for (Map<String, Object> existingPair : mixRatioExperimentPairs) {
+                        String existingType = (String) existingPair.get("experimentType");
+                        if (existingType != null && existingType.equals(experimentType)) {
+                            alreadyHasExperiment = true;
+                            Log.d("MixtureAdapter", "跳过重复实验类型: " + experimentType);
+                            break;
+                        }
+                    }
+                    
+                    if (alreadyHasExperiment) {
+                        continue;
+                    }
+                }
+                
+                // 继续添加
                 Map<String, Object> item = new HashMap<>();
                 item.put("mixRatio", mixRatio);
                 item.put("experimentType", experimentType);
                 mixRatioExperimentPairs.add(item);
+                Log.d("MixtureAdapter", "添加配比-实验组合: 配比ID=" + mixRatioId + ", 实验=" + experimentType);
+            }
+        }
+        
+        // 如果在第一阶段没有创建任何配比-实验组合，则尝试备用策略
+        if (mixRatioExperimentPairs.isEmpty() && !experimentAssignments.isEmpty()) {
+            Log.w("MixtureAdapter", "无法创建任何配比-实验组合，但有实验分配数据，尝试备用策略");
+            
+            // 最后一次尝试：为每个实验分配创建一个通用的配比
+            for (String key : experimentAssignments.keySet()) {
+                String mixRatioId = key;
+                if (key.contains("_")) {
+                    mixRatioId = key.split("_")[0];
+                }
+                
+                Map<String, Object> genericMixRatio = new HashMap<>();
+                genericMixRatio.put("id", mixRatioId);
+                
+                List<String> types = experimentAssignments.get(key);
+                if (types != null) {
+                    for (String type : types) {
+                        // 创建唯一组合键
+                        String combinationKey = mixRatioId + "::" + type;
+                        
+                        // 如果有选定实验类型，只添加匹配的，并且确保不重复
+                        if (!addedCombinations.contains(combinationKey) && 
+                            (selectedExperimentType == null || 
+                             selectedExperimentType.isEmpty() || 
+                             type.toLowerCase().contains(selectedExperimentType.toLowerCase()) ||
+                             selectedExperimentType.toLowerCase().contains(type.toLowerCase()))) {
+                                
+                            Map<String, Object> item = new HashMap<>();
+                            item.put("mixRatio", genericMixRatio);
+                            item.put("experimentType", type);
+                            mixRatioExperimentPairs.add(item);
+                            
+                            // 将组合添加到已处理集合
+                            addedCombinations.add(combinationKey);
+                            
+                            Log.d("MixtureAdapter", "添加通用配比-实验组合: 配比ID=" + mixRatioId + ", 实验=" + type);
+                        }
+                    }
+                }
             }
         }
         
         Log.d("MixtureAdapter", "初始化了 " + mixRatioExperimentPairs.size() + " 个配比-实验类型组合");
+    }
+    
+    // 辅助方法：从任务分配中提取实验类型
+    private void extractExperimentTypesFromAssignments(List<Map<String, Object>> assignments, Set<String> experimentTypes, String key) {
+        if (assignments != null) {
+            for (Map<String, Object> assignment : assignments) {
+                if (assignment.containsKey("task_assignment")) {
+                    String type = (String) assignment.get("task_assignment");
+                    if (type != null && !type.isEmpty()) {
+                        experimentTypes.add(type);
+                        Log.d("MixtureAdapter", "从任务指派 " + key + " 提取实验类型: " + type);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -304,369 +575,198 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
      * @param specimenData 从API获取的试件制备数据
      */
     public void updateSpecimenData(Map<String, Object> specimenData) {
-        Log.d("MixtureAdapter", "收到试件数据: " + specimenData.toString());
+        Log.d("MixtureAdapter", "收到试件数据: " + specimenData);
         
-        // 确保mixRatioTaskAssignments被初始化
-        if (mixRatioTaskAssignments == null) {
-            mixRatioTaskAssignments = new HashMap<>();
-        } else {
-            mixRatioTaskAssignments.clear();
-        }
+        // 清空现有数据
+        methodsAndRatios.clear();
+        mixingEquipment.clear();
+        formingEquipment.clear();
+        taskAssignments.clear();
+        mixRatioTaskAssignments.clear();
         
-        // 创建specimen_id到mixratio_id的映射
-        Map<Long, Long> specimenToMixratioMap = new HashMap<>();
+        // 重要：清空mixRatios列表
+        mixRatios.clear();
         
-        // 先处理任务指派数据，建立specimen_id和mixratio_id的映射关系
-        if (specimenData.containsKey("taskAssignments")) {
-            try {
-                List<Map<String, Object>> taskList = (List<Map<String, Object>>) specimenData.get("taskAssignments");
-                
-                if (taskList != null && !taskList.isEmpty()) {
-                    Log.d("MixtureAdapter", "收到" + taskList.size() + "个任务指派");
-                    for (Map<String, Object> assignment : taskList) {
-                        // 获取mixratio_id和specimen_id
-                        Object mixRatioIdObj = assignment.get("mixratio_id");
-                        Object specimenIdObj = assignment.get("specimen_id");
-                        
-                        Long mixRatioId = parseLongSafely(mixRatioIdObj);
-                        Long specimenId = parseLongSafely(specimenIdObj);
-                        
-                        if (mixRatioId != null && specimenId != null) {
-                            // 建立specimen_id到mixratio_id的映射
-                            specimenToMixratioMap.put(specimenId, mixRatioId);
-                            Log.d("MixtureAdapter", "映射关系: 试件ID " + specimenId + " -> 配比ID " + mixRatioId);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("MixtureAdapter", "处理任务指派数据建立映射关系时出错", e);
-            }
-        }
-        
-        // 获取并处理方法和配比信息
-        if (specimenData.containsKey("methodsAndRatios")) {
-            try {
-                List<Map<String, Object>> methodsList = (List<Map<String, Object>>) specimenData.get("methodsAndRatios");
-                if (methodsList != null && !methodsList.isEmpty()) {
-                    Log.d("MixtureAdapter", "方法和配比数据: " + methodsList.toString());
-                    
-                    // 保存方法和配比数据
-                    this.methodsAndRatios = methodsList;
-                    
-                    // 清除现有数据
-                    this.mixRatios.clear();
-                    
-                    // 收集所有涉及的配比ID (不是制件ID)
-                    Set<Long> uniqueMixRatioIds = new HashSet<>();
-                    for (Map<String, Object> method : methodsList) {
-                        // 获取制件ID
-                        Object idObj = method.get("id");
-                        Long specimenId = parseLongSafely(idObj);
-                        
-                        // 查找对应的配比ID
-                        Long mixRatioId = null;
-                        if (specimenId != null) {
-                            mixRatioId = specimenToMixratioMap.get(specimenId);
-                            if (mixRatioId != null) {
-                                uniqueMixRatioIds.add(mixRatioId);
-                                
-                                // 将配比ID添加到方法数据中，便于后续引用
-                                method.put("mixratio_id", mixRatioId);
-                                Log.d("MixtureAdapter", "为试件ID " + specimenId + " 设置配比ID " + mixRatioId);
-                            } else {
-                                Log.w("MixtureAdapter", "找不到试件ID " + specimenId + " 对应的配比ID");
-                            }
-                        }
-                    }
-                    
-                    // 为每个唯一的配比ID创建一个mixRatio对象
-                    for (Long mixRatioId : uniqueMixRatioIds) {
-                        Map<String, Object> mixRatio = new HashMap<>();
-                        mixRatio.put("id", mixRatioId);
-                        
-                        // 查找该配比ID对应的所有制件
-                        List<Map<String, Object>> specimensForMixRatio = new ArrayList<>();
-                        for (Map<String, Object> method : methodsList) {
-                            Object methodMixRatioIdObj = method.get("mixratio_id");
-                            Long methodMixRatioId = parseLongSafely(methodMixRatioIdObj);
-                            
-                            if (methodMixRatioId != null && methodMixRatioId.equals(mixRatioId)) {
-                                specimensForMixRatio.add(method);
-                            }
-                        }
-                        
-                        // 设置配比名称 - 使用该配比下第一个制件的mix_name
-                        if (!specimensForMixRatio.isEmpty()) {
-                            String mixName = (String) specimensForMixRatio.get(0).get("mix_name");
-                            if (mixName != null) {
-                                // 将mix_name保存在两个位置：专用的mix_name字段和name字段
-                                mixRatio.put("mix_name", mixName);
-                                mixRatio.put("name", mixName);
-                                Log.d("MixtureAdapter", "为配比ID " + mixRatioId + " 设置mix_name: " + mixName);
-                            } else {
-                                mixRatio.put("name", "配比 " + mixRatioId);
-                                Log.d("MixtureAdapter", "配比ID " + mixRatioId + " 没有mix_name");
-                            }
-                            
-                            // 设置配比描述 - 标记为"制件信息"而非"配比信息"
-                            StringBuilder description = new StringBuilder("制件信息: ");
-                            for (int i = 0; i < specimensForMixRatio.size(); i++) {
-                                Map<String, Object> specimen = specimensForMixRatio.get(i);
-                                if (i > 0) description.append(" | ");
-                                
-                                Object specimenId = specimen.get("id");
-                                description.append("ID: ").append(specimenId);
-                                
-                                if (specimen.containsKey("mixing_temperature")) {
-                                    description.append(", 拌合温度: ").append(specimen.get("mixing_temperature")).append("°C");
-                                }
-                                if (specimen.containsKey("mixing_speed")) {
-                                    description.append(", 拌合速度: ").append(specimen.get("mixing_speed")).append("r/min");
-                                }
-                                if (specimen.containsKey("mixing_time")) {
-                                    description.append(", 拌合时间: ").append(specimen.get("mixing_time")).append("s");
-                                }
-                                if (specimen.containsKey("compaction_method")) {
-                                    description.append(", 压实方法: ").append(specimen.get("compaction_method"));
-                                }
-                            }
-                            mixRatio.put("description", description.toString());
-                        } else {
-                            mixRatio.put("name", "配比 " + mixRatioId);
-                            mixRatio.put("description", "无制件信息");
-                        }
-                        
-                        this.mixRatios.add(mixRatio);
-                    }
-                    
-                    // 输出DEBUG日志
-                    StringBuilder ratioIds = new StringBuilder();
-                    for (Map<String, Object> ratio : mixRatios) {
-                        Object idObj = ratio.get("id");
-                        if (idObj != null) {
-                            ratioIds.append(idObj).append(", ");
-                        }
-                    }
-                    Log.d("MixtureAdapter", "当前mixRatios包含的配比ID: " + ratioIds.toString());
-                }
-            } catch (Exception e) {
-                Log.e("MixtureAdapter", "处理方法和配比数据时出错", e);
-            }
-        }
-        
-        // 处理实验指派信息
-        if (specimenData.containsKey("experimentAssignments")) {
-            try {
-                Map<String, List<String>> assignments = (Map<String, List<String>>) specimenData.get("experimentAssignments");
-                if (assignments != null && !assignments.isEmpty()) {
-                    // 更新实验指派信息
-                    this.experimentAssignments.clear();
-                    
-                    // 直接添加所有指派，因为类型已匹配
-                    this.experimentAssignments.putAll(assignments);
-                    
-                    Log.d("MixtureAdapter", "更新实验分配: " + experimentAssignments.keySet());
-                    
-                    // 检查实验指派是否包含mixRatios中的所有配比ID
-                    StringBuilder missingIds = new StringBuilder();
-                    for (Map<String, Object> ratio : mixRatios) {
-                        String ratioId = String.valueOf(ratio.get("id"));
-                        if (!experimentAssignments.containsKey(ratioId)) {
-                            missingIds.append(ratioId).append(", ");
-                        }
-                    }
-                    
-                    if (missingIds.length() > 0) {
-                        Log.w("MixtureAdapter", "以下配比ID在experimentAssignments中缺失: " + missingIds.toString());
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("MixtureAdapter", "处理实验指派数据时出错", e);
-            }
+        if (specimenData == null) {
+            Log.w("MixtureAdapter", "试件数据为空");
+            return;
         }
         
         // 处理任务指派数据
         if (specimenData.containsKey("taskAssignments")) {
-            try {
-                List<Map<String, Object>> taskList = (List<Map<String, Object>>) specimenData.get("taskAssignments");
+            List<Map<String, Object>> tasks = (List<Map<String, Object>>) specimenData.get("taskAssignments");
+            if (tasks != null) {
+                Log.d("MixtureAdapter", "收到" + tasks.size() + "个任务指派");
+                taskAssignments.addAll(tasks);
                 
-                if (taskList != null && !taskList.isEmpty()) {
-                    Log.d("MixtureAdapter", "收到" + taskList.size() + "个任务指派");
-                    taskAssignments = taskList;
+                // 按配比ID和试件ID分组
+                for (Map<String, Object> task : tasks) {
+                    String specimenId = null;
+                    String mixRatioId = null;
                     
-                    // 清空并重新初始化任务分组映射
-                    mixRatioTaskAssignments.clear();
+                    if (task.containsKey("specimen_id")) {
+                        specimenId = String.valueOf(task.get("specimen_id"));
+                        Log.d("MixtureAdapter", "映射关系: 试件ID " + specimenId);
+                    }
                     
-                    // 用于分组的哈希表
-                    Map<String, List<Map<String, Object>>> groupedAssignments = new HashMap<>();
-                    StringBuilder taskIds = new StringBuilder();
+                    if (task.containsKey("mixratio_id")) {
+                        mixRatioId = String.valueOf(task.get("mixratio_id"));
+                        Log.d("MixtureAdapter", "映射关系: 配比ID " + mixRatioId);
+                    }
                     
-                    for (Map<String, Object> assignment : taskList) {
-                        // 从任务指派中获取配比ID和试件ID
-                        Object mixRatioIdObj = assignment.get("mixratio_id");
-                        Object specimenIdObj = assignment.get("specimen_id");
-                        String taskId = (String) assignment.get("task_id");
+                    if (specimenId != null && mixRatioId != null) {
+                        // 使用复合键 (配比ID_试件ID)
+                        String groupKey = mixRatioId + "_" + specimenId;
                         
-                        // 解析配比ID和试件ID
-                        Long mixRatioId = parseLongSafely(mixRatioIdObj);
-                        Long specimenId = parseLongSafely(specimenIdObj);
+                        if (!mixRatioTaskAssignments.containsKey(groupKey)) {
+                            mixRatioTaskAssignments.put(groupKey, new ArrayList<>());
+                        }
+                        mixRatioTaskAssignments.get(groupKey).add(task);
                         
-                        // 如果没有配比ID，尝试从任务ID中获取项目ID
-                        if (mixRatioId == null && taskId != null) {
-                            Log.w("MixtureAdapter", "任务中缺少配比ID，尝试从任务ID解析: " + taskId);
-                            // 尝试从任务ID中提取项目ID信息
-                            String[] parts = taskId.split("_");
-                            if (parts.length >= 2) {
-                                try {
-                                    mixRatioId = Long.parseLong(parts[0]);
-                                    Log.d("MixtureAdapter", "从任务ID解析出配比ID: " + mixRatioId);
-                                } catch (NumberFormatException e) {
-                                    Log.e("MixtureAdapter", "从任务ID解析配比ID失败: " + parts[0], e);
+                        // 同时添加单独的配比ID键，以提高匹配率
+                        if (!mixRatioTaskAssignments.containsKey(mixRatioId)) {
+                            mixRatioTaskAssignments.put(mixRatioId, new ArrayList<>());
+                        }
+                        mixRatioTaskAssignments.get(mixRatioId).add(task);
+                    }
+                }
+                
+                // 打印分组结果
+                StringBuilder keySetStr = new StringBuilder();
+                for (String key : mixRatioTaskAssignments.keySet()) {
+                    keySetStr.append(key).append(",");
+                }
+                Log.d("MixtureAdapter", "分组键集合: [" + keySetStr + "]");
+                Log.d("MixtureAdapter", "最终mixRatioTaskAssignments包含的键: [" + keySetStr + "]");
+                
+                // 打印任务ID列表
+                StringBuilder taskIds = new StringBuilder();
+                for (Map<String, Object> task : tasks) {
+                    if (task.containsKey("task_id")) {
+                        taskIds.append(task.get("task_id")).append(", ");
+                    }
+                }
+                Log.d("MixtureAdapter", "任务ID: " + taskIds);
+            }
+        }
+        
+        // 创建试件ID到配比ID的映射表
+        Map<String, String> specimenToMixRatio = new HashMap<>();
+        for (Map<String, Object> task : taskAssignments) {
+            if (task.containsKey("specimen_id") && task.containsKey("mixratio_id")) {
+                String specimenId = String.valueOf(task.get("specimen_id"));
+                String mixRatioId = String.valueOf(task.get("mixratio_id"));
+                specimenToMixRatio.put(specimenId, mixRatioId);
+                Log.d("MixtureAdapter", "映射: 试件ID " + specimenId + " -> 配比ID " + mixRatioId);
+            }
+        }
+        
+        // 保存已处理的配比ID
+        Set<String> processedMixRatioIds = new HashSet<>();
+        
+        // 处理方法和配比数据
+        if (specimenData.containsKey("methodsAndRatios")) {
+            List<Map<String, Object>> methods = (List<Map<String, Object>>) specimenData.get("methodsAndRatios");
+            if (methods != null) {
+                methodsAndRatios.addAll(methods);
+                Log.d("MixtureAdapter", "方法和配比数据: " + methods);
+                
+                // 处理配比数据
+                for (Map<String, Object> method : methods) {
+                    if (method.containsKey("id")) {
+                        String specimenId = String.valueOf(method.get("id"));
+                        String mixRatioId = specimenToMixRatio.getOrDefault(specimenId, null);
+                        
+                        if (mixRatioId == null) {
+                            Log.w("MixtureAdapter", "找不到试件ID " + specimenId + " 对应的配比ID，使用试件ID作为配比ID");
+                            mixRatioId = specimenId;
+                        }
+                        
+                        // 检查是否已处理过这个配比ID
+                        if (!processedMixRatioIds.contains(mixRatioId)) {
+                            // 创建新的mixRatio对象
+                            Map<String, Object> mixRatio = new HashMap<>();
+                            
+                            // 设置ID
+                            mixRatio.put("id", mixRatioId);
+                            
+                            // 保存原始试件ID
+                            mixRatio.put("specimenId", specimenId);
+                            
+                            // 复制方法信息
+                            for (Map.Entry<String, Object> entry : method.entrySet()) {
+                                if (!entry.getKey().equals("id")) {
+                                    mixRatio.put(entry.getKey(), entry.getValue());
                                 }
                             }
+                            
+                            // 添加到mixRatios列表
+                            mixRatios.add(mixRatio);
+                            processedMixRatioIds.add(mixRatioId);
+                            
+                            Log.d("MixtureAdapter", "添加配比: ID=" + mixRatioId + ", 试件ID=" + specimenId);
+                        } else {
+                            Log.d("MixtureAdapter", "配比ID " + mixRatioId + " 已处理，跳过");
                         }
-                        
-                        // 如果仍然无法获取配比ID，跳过此任务
-                        if (mixRatioId == null) {
-                            Log.e("MixtureAdapter", "无法确定配比ID，跳过任务指派: " + assignment);
-                            continue;
-                        }
-                        
-                        // 如果没有试件ID，使用配比ID代替
-                        if (specimenId == null) {
-                            specimenId = mixRatioId;
-                            Log.w("MixtureAdapter", "任务中缺少试件ID，使用配比ID替代: " + mixRatioId);
-                        }
-                        
-                        // 记录任务ID
-                        taskIds.append(taskId).append(", ");
-                        
-                        // 创建分组键
-                        String groupKey = String.valueOf(mixRatioId) + "_" + String.valueOf(specimenId);
-                        
-                        // 确保为该分组键创建列表
-                        if (!groupedAssignments.containsKey(groupKey)) {
-                            groupedAssignments.put(groupKey, new ArrayList<>());
-                        }
-                        
-                        // 将任务添加到组中
-                        groupedAssignments.get(groupKey).add(assignment);
-                    }
-                    
-                    Log.d("MixtureAdapter", "任务ID: " + taskIds.toString());
-                    Log.d("MixtureAdapter", "分组键集合: " + groupedAssignments.keySet());
-                    
-                    // 将分组后的任务分配添加到mixRatioTaskAssignments中
-                    for (String groupKey : groupedAssignments.keySet()) {
-                        List<Map<String, Object>> assignmentsInGroup = groupedAssignments.get(groupKey);
-                        
-                        // 解析分组键中的配比ID和试件ID
-                        String[] parts = groupKey.split("_");
-                        if (parts.length != 2) {
-                            Log.e("MixtureAdapter", "无效的分组键: " + groupKey);
-                            continue;
-                        }
-                        
-                        Long mixRatioId = Long.parseLong(parts[0]);
-                        
-                        // 将该组的任务指派添加到mixRatioTaskAssignments中
-                        mixRatioTaskAssignments.put(groupKey, new ArrayList<>(assignmentsInGroup));
-                        
-                        // 同时更新experimentAssignments，确保UI显示所有相关的实验类型
-                        if (!experimentAssignments.containsKey(String.valueOf(mixRatioId))) {
-                            experimentAssignments.put(String.valueOf(mixRatioId), new ArrayList<>());
-                        }
-                        
-                        // 添加该配比ID下的所有实验类型，避免重复
-                        for (Map<String, Object> assignment : assignmentsInGroup) {
-                            String taskAssignment = (String) assignment.get("task_assignment");
-                            if (taskAssignment != null && !experimentAssignments.get(String.valueOf(mixRatioId)).contains(taskAssignment)) {
-                                experimentAssignments.get(String.valueOf(mixRatioId)).add(taskAssignment);
-                            }
-                        }
-                    }
-                    
-                    Log.d("MixtureAdapter", "最终mixRatioTaskAssignments包含的键: " + mixRatioTaskAssignments.keySet());
-                    
-                    // 记录每个配比ID对应的实验
-                    for (String mixRatioId : experimentAssignments.keySet()) {
-                        Log.d("MixtureAdapter", "配比ID " + mixRatioId + " 的实验: " + experimentAssignments.get(mixRatioId));
                     }
                 }
-            } catch (Exception e) {
-                Log.e("MixtureAdapter", "处理任务指派数据时出错", e);
             }
         }
         
-        // 处理拌合设备信息
+        // 输出当前mixRatios中包含的配比ID和内容
+        Log.d("MixtureAdapter", "处理后的mixRatios大小: " + mixRatios.size());
+        for (Map<String, Object> ratio : mixRatios) {
+            StringBuilder ratioInfo = new StringBuilder("配比 {");
+            for (Map.Entry<String, Object> entry : ratio.entrySet()) {
+                ratioInfo.append(entry.getKey()).append("=").append(entry.getValue()).append(", ");
+            }
+            ratioInfo.append("}");
+            Log.d("MixtureAdapter", ratioInfo.toString());
+        }
+        
+        // 更新实验分配
+        if (specimenData.containsKey("experimentAssignments")) {
+            experimentAssignments.clear();
+            Map<String, List<String>> assignments = (Map<String, List<String>>) specimenData.get("experimentAssignments");
+            experimentAssignments.putAll(assignments);
+            
+            // 输出实验分配信息
+            StringBuilder assignmentKeys = new StringBuilder();
+            for (String key : experimentAssignments.keySet()) {
+                assignmentKeys.append(key).append(", ");
+            }
+            Log.d("MixtureAdapter", "更新实验分配: [" + assignmentKeys + "]");
+            
+            // 打印每个配比ID对应的实验
+            for (String key : experimentAssignments.keySet()) {
+                Log.d("MixtureAdapter", "配比ID " + key + " 的实验: " + experimentAssignments.get(key));
+            }
+        }
+        
+        // 处理拌合设备数据
         if (specimenData.containsKey("mixingEquipment")) {
-            try {
-                List<Map<String, Object>> equipmentList = (List<Map<String, Object>>) specimenData.get("mixingEquipment");
-                if (equipmentList != null && !equipmentList.isEmpty()) {
-                    Log.d("MixtureAdapter", "拌合设备数据: " + equipmentList.toString());
-                    
-                    this.mixingEquipment.clear();
-                    this.mixingEquipment.addAll(equipmentList);
-                    
-                    for (Map<String, Object> equipment : equipmentList) {
-                        if (equipment.containsKey("deviceid") && equipment.containsKey("manufacturer")) {
-                            String deviceId = (String) equipment.get("deviceid");
-                            String manufacturer = (String) equipment.get("manufacturer");
-                            String model = (String) equipment.get("model");
-                            
-                            // 创建设备信息对象
-                            DeviceInfo deviceInfo = new DeviceInfo();
-                            deviceInfo.setDeviceId(deviceId);
-                            deviceInfo.setManufacturer(manufacturer);
-                            deviceInfo.setModel(model);
-                            deviceInfo.setType("mixing");
-                            
-                            deviceData.put("mixing", deviceInfo);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("MixtureAdapter", "处理拌合设备数据时出错", e);
+            List<Map<String, Object>> equipment = (List<Map<String, Object>>) specimenData.get("mixingEquipment");
+            if (equipment != null) {
+                mixingEquipment.addAll(equipment);
+                Log.d("MixtureAdapter", "拌合设备数据: " + equipment);
             }
         }
         
-        // 处理成型设备信息
+        // 处理成型设备数据
         if (specimenData.containsKey("formingEquipment")) {
-            try {
-                List<Map<String, Object>> equipmentList = (List<Map<String, Object>>) specimenData.get("formingEquipment");
-                if (equipmentList != null && !equipmentList.isEmpty()) {
-                    Log.d("MixtureAdapter", "成型设备数据: " + equipmentList.toString());
-                    
-                    this.formingEquipment.clear();
-                    this.formingEquipment.addAll(equipmentList);
-                    
-                    for (Map<String, Object> equipment : equipmentList) {
-                        if (equipment.containsKey("deviceid") && equipment.containsKey("manufacturer")) {
-                            String deviceId = (String) equipment.get("deviceid");
-                            String manufacturer = (String) equipment.get("manufacturer");
-                            String model = (String) equipment.get("model");
-                            
-                            // 创建设备信息对象
-                            DeviceInfo deviceInfo = new DeviceInfo();
-                            deviceInfo.setDeviceId(deviceId);
-                            deviceInfo.setManufacturer(manufacturer);
-                            deviceInfo.setModel(model);
-                            deviceInfo.setType("forming");
-                            
-                            deviceData.put("forming", deviceInfo);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("MixtureAdapter", "处理成型设备数据时出错", e);
+            List<Map<String, Object>> equipment = (List<Map<String, Object>>) specimenData.get("formingEquipment");
+            if (equipment != null) {
+                formingEquipment.addAll(equipment);
+                Log.d("MixtureAdapter", "成型设备数据: " + equipment);
             }
         }
         
-        // 更新视图
+        // 重新初始化配比-实验类型组合
         initMixRatioExperimentPairs();
+        // 通知适配器数据已更新
         notifyDataSetChanged();
     }
-    
+
     /**
      * 安全地解析对象为Long，处理各种可能的数值格式
      * @param obj 要解析的对象
@@ -2749,8 +2849,8 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 hintText.setTextColor(Color.RED);
                 hintText.setLayoutParams(new LinearLayout.LayoutParams(
                         0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        2
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    2
                 ));
                 dataRow.addView(hintText);
                 
@@ -2988,8 +3088,9 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             avgValueText.setTextSize(14);
             avgValueText.setTypeface(null, android.graphics.Typeface.BOLD);
             avgValueText.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    1
             ));
             avgContainer.addView(avgValueText);
             
@@ -3022,10 +3123,10 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             TextWatcher pValueWatcher = new TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                
+        
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {}
-                
+        
                 @Override
                 public void afterTextChanged(Editable s) {
                     calculateAverage(pInputs, avgValueText, avgValueInput);

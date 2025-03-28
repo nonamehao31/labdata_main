@@ -160,7 +160,7 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         
         // 显示配比名称
         String mixName = task.getMixName();
-        String mixratioId = task.getMixratioId();
+        String mixratioId = task.getMixratioId(); // 保留mixratioId显示
         if (mixName != null && !mixName.isEmpty()) {
             if (mixratioId != null && !mixratioId.isEmpty()) {
                 tvMixName.setText("配比名称: " + mixName + " (ID: " + mixratioId + ")");
@@ -191,54 +191,57 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         String taskAssignment = task.getTaskAssignment();
         if (taskAssignment != null && !taskAssignment.isEmpty()) {
             tvExperimentName.setText("任务指派: " + taskAssignment);
-            // 检查任务指派是否包含"马歇尔"、"汉堡车辙"或"弯曲"关键词
-            if (taskAssignment.contains("马歇尔")) {
+            // 使用更灵活的方式检查实验类型
+            if (containsKeyword(taskAssignment, "马歇尔", "Marshall", "稳定度")) {
                 fetchMarshallTestData();
-            } else if (taskAssignment.contains("汉堡车辙")) {
+            } else if (containsKeyword(taskAssignment, "汉堡车辙", "Hamburg", "车辙")) {
                 fetchHamburgRuttingTestData();
-            } else if (taskAssignment.contains("沥青混合料弯曲实验")) {
+            } else if (containsKeyword(taskAssignment, "沥青混合料弯曲实验", "弯曲")) {
                 fetchMixtureBendingTestData();
-            } else if (taskAssignment.contains("动态模量")) {
+            } else if (containsKeyword(taskAssignment, "动态模量")) {
                 fetchDynamicModulusTestData();
-            } else if (taskAssignment.contains("直接拉伸循环疲劳") || taskAssignment.contains("疲劳") || taskAssignment.contains("黏弹损伤")) {
+            } else if (containsKeyword(taskAssignment, "直接拉伸循环疲劳", "疲劳", "黏弹损伤")) {
                 fetchDirectStretchingFatigueTestData();
-            } else if (taskAssignment.contains("沥青混合料四点弯曲疲劳寿命试验")) {
+            } else if (containsKeyword(taskAssignment, "沥青混合料四点弯曲疲劳寿命试验", "四点弯曲")) {
                 fetchFourPointBendingFatigueTestData();
-            } else if (taskAssignment.contains("沥青混合料单轴压缩试验")) {
+            } else if (containsKeyword(taskAssignment, "沥青混合料单轴压缩试验", "单轴压缩")) {
                 fetchUniaxialCompressionTestData();
-            } else if (taskAssignment.contains("劈裂") || taskAssignment.contains("沥青混合料劈裂试验")) {
+            } else if (containsKeyword(taskAssignment, "劈裂", "劈裂试验")) {
                 fetchSplittingTestData();
             } else {
-                showNoResultsMessage("当前任务不包含支持的实验数据");
+                // 根据关键字组合尝试确定实验类型
+                determineExperimentTypeAndFetchData(taskAssignment);
             }
         } else {
             // 如果taskAssignment为空，尝试使用taskName
             String taskName = task.getTaskName();
             if (taskName != null && !taskName.isEmpty()) {
                 tvExperimentName.setText("任务指派: " + taskName);
-                // 检查任务名称是否包含"马歇尔"、"汉堡车辙"或"弯曲"关键词
-                if (taskName.contains("马歇尔")) {
+                // 使用更灵活的方式检查实验类型
+                if (containsKeyword(taskName, "马歇尔", "Marshall", "稳定度")) {
                     fetchMarshallTestData();
-                } else if (taskName.contains("汉堡车辙")) {
+                } else if (containsKeyword(taskName, "汉堡车辙", "Hamburg", "车辙")) {
                     fetchHamburgRuttingTestData();
-                } else if (taskName.contains("沥青混合料弯曲实验")) {
+                } else if (containsKeyword(taskName, "沥青混合料弯曲实验", "弯曲")) {
                     fetchMixtureBendingTestData();
-                } else if (taskName.contains("动态模量")) {
+                } else if (containsKeyword(taskName, "动态模量")) {
                     fetchDynamicModulusTestData();
-                } else if (taskName.contains("沥青混合料直接拉伸循环疲劳测黏弹损伤试验")) {
+                } else if (containsKeyword(taskName, "直接拉伸循环疲劳", "疲劳", "黏弹损伤")) {
                     fetchDirectStretchingFatigueTestData();
-                } else if (taskName.contains("沥青混合料四点弯曲疲劳寿命试验")) {
+                } else if (containsKeyword(taskName, "沥青混合料四点弯曲疲劳寿命试验", "四点弯曲")) {
                     fetchFourPointBendingFatigueTestData();
-                } else if (taskName.contains("沥青混合料单轴压缩试验")) {
+                } else if (containsKeyword(taskName, "沥青混合料单轴压缩试验", "单轴压缩")) {
                     fetchUniaxialCompressionTestData();
-                } else if (taskName.contains("劈裂") || taskName.contains("沥青混合料劈裂试验")) {
+                } else if (containsKeyword(taskName, "劈裂", "劈裂试验")) {
                     fetchSplittingTestData();
                 } else {
-                    showNoResultsMessage("当前任务不包含支持的实验数据");
+                    // 根据关键字组合尝试确定实验类型
+                    determineExperimentTypeAndFetchData(taskName);
                 }
             } else {
                 tvExperimentName.setText("任务指派: 未知");
-                showNoResultsMessage("未知任务类型");
+                // 尝试获取所有类型的实验数据
+                tryFetchAllExperimentTypes();
             }
         }
         
@@ -281,21 +284,21 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                         Log.d(TAG, "成功获取任务指派信息: " + taskAssignment);
                         
                         // 检查任务指派是否包含"马歇尔"、"汉堡车辙"或"弯曲"关键词
-                        if (taskAssignment.contains("马歇尔")) {
+                        if (containsKeyword(taskAssignment, "马歇尔", "Marshall", "稳定度")) {
                             fetchMarshallTestData();
-                        } else if (taskAssignment.contains("汉堡车辙")) {
+                        } else if (containsKeyword(taskAssignment, "汉堡车辙", "Hamburg", "车辙")) {
                             fetchHamburgRuttingTestData();
-                        } else if (taskAssignment.contains("沥青混合料弯曲实验")) {
+                        } else if (containsKeyword(taskAssignment, "沥青混合料弯曲实验", "弯曲")) {
                             fetchMixtureBendingTestData();
-                        } else if (taskAssignment.contains("动态模量")) {
+                        } else if (containsKeyword(taskAssignment, "动态模量")) {
                             fetchDynamicModulusTestData();
-                        } else if (taskAssignment.contains("沥青混合料直接拉伸循环疲劳测黏弹损伤试验")) {
+                        } else if (containsKeyword(taskAssignment, "直接拉伸循环疲劳", "疲劳", "黏弹损伤")) {
                             fetchDirectStretchingFatigueTestData();
-                        } else if (taskAssignment.contains("沥青混合料四点弯曲疲劳寿命试验")) {
+                        } else if (containsKeyword(taskAssignment, "沥青混合料四点弯曲疲劳寿命试验", "四点弯曲")) {
                             fetchFourPointBendingFatigueTestData();
-                        } else if (taskAssignment.contains("沥青混合料单轴压缩试验")) {
+                        } else if (containsKeyword(taskAssignment, "沥青混合料单轴压缩试验", "单轴压缩")) {
                             fetchUniaxialCompressionTestData();
-                        } else if (taskAssignment.contains("劈裂") || taskAssignment.contains("沥青混合料劈裂试验")) {
+                        } else if (containsKeyword(taskAssignment, "劈裂", "劈裂试验")) {
                             fetchSplittingTestData();
                         } else {
                             showNoResultsMessage("当前任务不包含支持的实验数据");
@@ -373,12 +376,15 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
      */
     private void fetchMarshallTestData() {
         // 确保taskId不为空
-        String taskId = task.getTaskId();
+        String taskId = task != null ? task.getTaskId() : getIntent().getStringExtra("task_id");
         if (taskId == null || taskId.isEmpty()) {
             Log.e(TAG, "任务ID为空，无法获取马歇尔稳定度实验数据");
             showNoResultsMessage("无法获取马歇尔实验数据：任务ID为空");
             return;
         }
+        
+        // 增加更详细的日志，记录准确的任务ID
+        Log.d(TAG, "准备查询马歇尔实验数据，完整任务ID: " + taskId);
         
         // 隐藏无结果提示，准备显示数据
         tvNoResults.setVisibility(View.GONE);
@@ -392,12 +398,29 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     List<MarshallTestResponse> marshallTests = response.body();
                     
                     if (marshallTests.isEmpty()) {
-                        Log.w(TAG, "未找到马歇尔实验数据");
-                        showNoResultsMessage("未找到马歇尔实验数据");
+                        Log.w(TAG, "未找到马歇尔实验数据，尝试替代查询方式");
+                        
+                        // 尝试使用不同格式的任务ID
+                        if (taskId.contains("-")) {
+                            // 1. 尝试去除末尾的"-0"后缀
+                            String altTaskId = taskId;
+                            if (taskId.endsWith("-0")) {
+                                altTaskId = taskId.substring(0, taskId.length() - 2);
+                                Log.d(TAG, "尝试使用替代任务ID (去除-0后缀): " + altTaskId);
+                                
+                                // 尝试用替代ID重新查询
+                                tryMarshallTestWithAltId(altTaskId);
+                                return;
+                            }
+                        }
+                        
+                        // 如果没有尝试替代ID或尝试失败，则继续尝试从新API获取数据
+                        Log.w(TAG, "尝试从新API获取马歇尔实验数据");
+                        fetchMarshallTestDataFromNewAPI(taskId);
                         return;
                     }
                     
-                    Log.d(TAG, "成功获取马歇尔实验数据: " + marshallTests.size() + " 条");
+                    Log.d(TAG, "成功获取马歇尔稳定度实验数据: " + marshallTests.size() + " 条");
                     
                     // 初始化或更新适配器
                     if (marshallAdapter == null) {
@@ -410,15 +433,107 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     // 显示RecyclerView
                     rvExperimentResults.setVisibility(View.VISIBLE);
                 } else {
-                    Log.e(TAG, "获取马歇尔实验数据失败: " + response.code());
-                    showNoResultsMessage("获取马歇尔实验数据失败: " + response.code());
+                    Log.e(TAG, "获取马歇尔稳定度实验数据失败: " + response.code());
+                    // 尝试从新API获取数据
+                    fetchMarshallTestDataFromNewAPI(taskId);
                 }
             }
             
             @Override
             public void onFailure(Call<List<MarshallTestResponse>> call, Throwable t) {
-                Log.e(TAG, "获取马歇尔实验数据请求失败", t);
-                showNoResultsMessage("获取马歇尔实验数据失败: 网络错误");
+                Log.e(TAG, "获取马歇尔稳定度实验数据请求失败", t);
+                // 尝试从新API获取数据
+                fetchMarshallTestDataFromNewAPI(taskId);
+            }
+        });
+    }
+    
+    /**
+     * 使用替代任务ID尝试获取马歇尔实验数据
+     */
+    private void tryMarshallTestWithAltId(String altTaskId) {
+        Call<List<MarshallTestResponse>> call = mixtureTaskApi.getMarshallTestByTaskId(altTaskId);
+        call.enqueue(new Callback<List<MarshallTestResponse>>() {
+            @Override
+            public void onResponse(Call<List<MarshallTestResponse>> call, Response<List<MarshallTestResponse>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<MarshallTestResponse> marshallTests = response.body();
+                    
+                    if (marshallTests.isEmpty()) {
+                        Log.w(TAG, "使用替代任务ID仍未找到马歇尔实验数据，尝试从新API获取");
+                        // 如果替代ID查询仍然失败，尝试从新API获取数据
+                        fetchMarshallTestDataFromNewAPI(altTaskId);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "使用替代任务ID成功获取马歇尔稳定度实验数据: " + marshallTests.size() + " 条");
+                    
+                    // 初始化或更新适配器
+                    if (marshallAdapter == null) {
+                        marshallAdapter = new MarshallAdapter(MixtureTaskResultActivity.this, marshallTests);
+                        rvExperimentResults.setAdapter(marshallAdapter);
+                    } else {
+                        marshallAdapter.updateData(marshallTests);
+                    }
+                    
+                    // 显示RecyclerView
+                    rvExperimentResults.setVisibility(View.VISIBLE);
+                } else {
+                    Log.e(TAG, "使用替代任务ID获取马歇尔稳定度实验数据失败: " + response.code());
+                    // 尝试从新API获取数据
+                    fetchMarshallTestDataFromNewAPI(altTaskId);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<List<MarshallTestResponse>> call, Throwable t) {
+                Log.e(TAG, "使用替代任务ID获取马歇尔稳定度实验数据请求失败", t);
+                // 尝试从新API获取数据
+                fetchMarshallTestDataFromNewAPI(altTaskId);
+            }
+        });
+    }
+    
+    /**
+     * 从新API获取马歇尔稳定度实验数据
+     */
+    private void fetchMarshallTestDataFromNewAPI(String taskId) {
+        // 尝试使用新的动态模量实验数据API结构获取数据
+        Call<ApiResponse<List<DynamicModulusTestResponse>>> call = mixtureTaskApi.getDynamicModulusTestByTaskId(taskId);
+        call.enqueue(new Callback<ApiResponse<List<DynamicModulusTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Response<ApiResponse<List<DynamicModulusTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    List<DynamicModulusTestResponse> dynamicModulusTests = response.body().getData();
+                    
+                    if (dynamicModulusTests.isEmpty()) {
+                        Log.w(TAG, "未找到马歇尔实验数据");
+                        showNoResultsMessage("未找到马歇尔实验数据");
+                        return;
+                    }
+                    
+                    Log.d(TAG, "成功获取马歇尔实验数据(通过动态模量API): " + dynamicModulusTests.size() + " 条");
+                    
+                    // 初始化或更新适配器
+                    if (dynamicModulusAdapter == null) {
+                        dynamicModulusAdapter = new DynamicModulusAdapter(MixtureTaskResultActivity.this, dynamicModulusTests);
+                        rvExperimentResults.setAdapter(dynamicModulusAdapter);
+                    } else {
+                        dynamicModulusAdapter.updateData(dynamicModulusTests);
+                    }
+                    
+                    // 显示RecyclerView
+                    rvExperimentResults.setVisibility(View.VISIBLE);
+                } else {
+                    Log.e(TAG, "获取马歇尔实验数据失败(通过新API): " + response.code());
+                    showNoResultsMessage("未找到马歇尔实验数据");
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取马歇尔实验数据请求失败(通过新API)", t);
+                showNoResultsMessage("未找到马歇尔实验数据");
             }
         });
     }
@@ -428,12 +543,15 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
      */
     private void fetchHamburgRuttingTestData() {
         // 确保taskId不为空
-        String taskId = task.getTaskId();
+        String taskId = task != null ? task.getTaskId() : getIntent().getStringExtra("task_id");
         if (taskId == null || taskId.isEmpty()) {
             Log.e(TAG, "任务ID为空，无法获取汉堡车辙实验数据");
             showNoResultsMessage("无法获取汉堡车辙实验数据：任务ID为空");
             return;
         }
+        
+        // 增加更详细的日志，记录准确的任务ID
+        Log.d(TAG, "准备查询汉堡车辙实验数据，完整任务ID: " + taskId);
         
         // 隐藏无结果提示，准备显示数据
         tvNoResults.setVisibility(View.GONE);
@@ -444,36 +562,145 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<List<HamburgRuttingTestResponse>> call, Response<List<HamburgRuttingTestResponse>> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    List<HamburgRuttingTestResponse> hamburgRuttingTests = response.body();
+                    List<HamburgRuttingTestResponse> hamburgTests = response.body();
                     
-                    if (hamburgRuttingTests.isEmpty()) {
-                        Log.w(TAG, "未找到汉堡车辙实验数据");
-                        showNoResultsMessage("未找到汉堡车辙实验数据");
+                    if (hamburgTests.isEmpty()) {
+                        Log.w(TAG, "未找到汉堡车辙实验数据，尝试替代查询方式");
+                        
+                        // 尝试使用不同格式的任务ID
+                        if (taskId.contains("-")) {
+                            // 1. 尝试去除末尾的"-0"后缀
+                            String altTaskId = taskId;
+                            if (taskId.endsWith("-0")) {
+                                altTaskId = taskId.substring(0, taskId.length() - 2);
+                                Log.d(TAG, "尝试使用替代任务ID (去除-0后缀): " + altTaskId);
+                                
+                                // 尝试用替代ID重新查询
+                                tryHamburgRuttingTestWithAltId(altTaskId);
+                                return;
+                            }
+                        }
+                        
+                        // 如果没有尝试替代ID或尝试失败，则继续尝试从新API获取数据
+                        Log.w(TAG, "尝试从新API获取汉堡车辙实验数据");
+                        fetchHamburgRuttingTestDataFromNewAPI(taskId);
                         return;
                     }
                     
-                    Log.d(TAG, "成功获取汉堡车辙实验数据: " + hamburgRuttingTests.size() + " 条");
+                    Log.d(TAG, "成功获取汉堡车辙实验数据: " + hamburgTests.size() + " 条");
                     
                     // 初始化或更新适配器
                     if (hamburgRuttingAdapter == null) {
-                        hamburgRuttingAdapter = new HamburgRuttingAdapter(MixtureTaskResultActivity.this, hamburgRuttingTests);
+                        hamburgRuttingAdapter = new HamburgRuttingAdapter(MixtureTaskResultActivity.this, hamburgTests);
                         rvExperimentResults.setAdapter(hamburgRuttingAdapter);
                     } else {
-                        hamburgRuttingAdapter.updateData(hamburgRuttingTests);
+                        hamburgRuttingAdapter.updateData(hamburgTests);
                     }
                     
                     // 显示RecyclerView
                     rvExperimentResults.setVisibility(View.VISIBLE);
                 } else {
                     Log.e(TAG, "获取汉堡车辙实验数据失败: " + response.code());
-                    showNoResultsMessage("获取汉堡车辙实验数据失败: " + response.code());
+                    // 尝试从新API获取数据
+                    fetchHamburgRuttingTestDataFromNewAPI(taskId);
                 }
             }
             
             @Override
             public void onFailure(Call<List<HamburgRuttingTestResponse>> call, Throwable t) {
                 Log.e(TAG, "获取汉堡车辙实验数据请求失败", t);
-                showNoResultsMessage("获取汉堡车辙实验数据失败: 网络错误");
+                // 尝试从新API获取数据
+                fetchHamburgRuttingTestDataFromNewAPI(taskId);
+            }
+        });
+    }
+    
+    /**
+     * 使用替代任务ID尝试获取汉堡车辙实验数据
+     */
+    private void tryHamburgRuttingTestWithAltId(String altTaskId) {
+        Call<List<HamburgRuttingTestResponse>> call = mixtureTaskApi.getHamburgRuttingTestByTaskId(altTaskId);
+        call.enqueue(new Callback<List<HamburgRuttingTestResponse>>() {
+            @Override
+            public void onResponse(Call<List<HamburgRuttingTestResponse>> call, Response<List<HamburgRuttingTestResponse>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<HamburgRuttingTestResponse> hamburgTests = response.body();
+                    
+                    if (hamburgTests.isEmpty()) {
+                        Log.w(TAG, "使用替代任务ID仍未找到汉堡车辙实验数据，尝试从新API获取");
+                        // 如果替代ID查询仍然失败，尝试从新API获取数据
+                        fetchHamburgRuttingTestDataFromNewAPI(altTaskId);
+                        return;
+                    }
+                    
+                    Log.d(TAG, "使用替代任务ID成功获取汉堡车辙实验数据: " + hamburgTests.size() + " 条");
+                    
+                    // 初始化或更新适配器
+                    if (hamburgRuttingAdapter == null) {
+                        hamburgRuttingAdapter = new HamburgRuttingAdapter(MixtureTaskResultActivity.this, hamburgTests);
+                        rvExperimentResults.setAdapter(hamburgRuttingAdapter);
+                    } else {
+                        hamburgRuttingAdapter.updateData(hamburgTests);
+                    }
+                    
+                    // 显示RecyclerView
+                    rvExperimentResults.setVisibility(View.VISIBLE);
+                } else {
+                    Log.e(TAG, "使用替代任务ID获取汉堡车辙实验数据失败: " + response.code());
+                    // 尝试从新API获取数据
+                    fetchHamburgRuttingTestDataFromNewAPI(altTaskId);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<List<HamburgRuttingTestResponse>> call, Throwable t) {
+                Log.e(TAG, "使用替代任务ID获取汉堡车辙实验数据请求失败", t);
+                // 尝试从新API获取数据
+                fetchHamburgRuttingTestDataFromNewAPI(altTaskId);
+            }
+        });
+    }
+    
+    /**
+     * 从新API获取汉堡车辙实验数据
+     */
+    private void fetchHamburgRuttingTestDataFromNewAPI(String taskId) {
+        // 尝试使用新的动态模量实验数据API结构获取数据
+        Call<ApiResponse<List<DynamicModulusTestResponse>>> call = mixtureTaskApi.getDynamicModulusTestByTaskId(taskId);
+        call.enqueue(new Callback<ApiResponse<List<DynamicModulusTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Response<ApiResponse<List<DynamicModulusTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    List<DynamicModulusTestResponse> dynamicModulusTests = response.body().getData();
+                    
+                    if (dynamicModulusTests.isEmpty()) {
+                        Log.w(TAG, "未找到汉堡车辙实验数据");
+                        showNoResultsMessage("未找到汉堡车辙实验数据");
+                        return;
+                    }
+                    
+                    Log.d(TAG, "成功获取汉堡车辙实验数据(通过动态模量API): " + dynamicModulusTests.size() + " 条");
+                    
+                    // 初始化或更新适配器
+                    if (dynamicModulusAdapter == null) {
+                        dynamicModulusAdapter = new DynamicModulusAdapter(MixtureTaskResultActivity.this, dynamicModulusTests);
+                        rvExperimentResults.setAdapter(dynamicModulusAdapter);
+                    } else {
+                        dynamicModulusAdapter.updateData(dynamicModulusTests);
+                    }
+                    
+                    // 显示RecyclerView
+                    rvExperimentResults.setVisibility(View.VISIBLE);
+                } else {
+                    Log.e(TAG, "获取汉堡车辙实验数据失败(通过新API): " + response.code());
+                    showNoResultsMessage("未找到汉堡车辙实验数据");
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取汉堡车辙实验数据请求失败(通过新API)", t);
+                showNoResultsMessage("未找到汉堡车辙实验数据");
             }
         });
     }
@@ -718,10 +945,14 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
      * 获取沥青混合料单轴压缩试验（圆柱体法）数据
      */
     private void fetchUniaxialCompressionTestData() {
-        String taskId = task.getTaskId();
+        String taskId = task != null ? task.getTaskId() : getIntent().getStringExtra("task_id");
+        if (taskId == null || taskId.isEmpty()) {
+            showNoResultsMessage("无法获取任务ID");
+            return;
+        }
+
         Log.d(TAG, "开始获取沥青混合料单轴压缩试验数据，任务ID: " + taskId);
-        Call<ApiResponse<UniaxialCompressionTestResponse>> call = mixtureTaskApi.getUniaxialCompressionTestByTaskId(taskId);
-        call.enqueue(new Callback<ApiResponse<UniaxialCompressionTestResponse>>() {
+        mixtureTaskApi.getUniaxialCompressionTestByTaskId(taskId).enqueue(new Callback<ApiResponse<UniaxialCompressionTestResponse>>() {
             @Override
             public void onResponse(Call<ApiResponse<UniaxialCompressionTestResponse>> call, Response<ApiResponse<UniaxialCompressionTestResponse>> response) {
                 Log.d(TAG, "收到API响应: " + response.code() + ", isSuccessful: " + response.isSuccessful());
@@ -891,5 +1122,128 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         tvNoResults.setText(message);
         tvNoResults.setVisibility(View.VISIBLE);
         Log.d(TAG, "显示无结果提示: " + message);
+    }
+    
+    private boolean containsKeyword(String text, String... keywords) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private void determineExperimentTypeAndFetchData(String taskAssignment) {
+        // 根据关键字组合尝试确定实验类型
+        if (containsKeyword(taskAssignment, "沥青混合料", "混合料")) {
+            // 尝试获取沥青混合料相关实验数据
+            fetchMixtureRelatedTestData();
+        } else {
+            // 如果无法确定实验类型，显示错误信息
+            showNoResultsMessage("无法确定实验类型");
+        }
+    }
+    
+    private void fetchMixtureRelatedTestData() {
+        // 尝试获取沥青混合料相关实验数据
+        String taskId = task.getTaskId();
+        if (taskId == null || taskId.isEmpty()) {
+            Log.e(TAG, "任务ID为空，无法获取沥青混合料相关实验数据");
+            showNoResultsMessage("无法获取沥青混合料相关实验数据：任务ID为空");
+            return;
+        }
+        
+        // 调用API获取沥青混合料相关实验数据
+        Call<ApiResponse<List<DynamicModulusTestResponse>>> call = mixtureTaskApi.getDynamicModulusTestByTaskId(taskId);
+        call.enqueue(new Callback<ApiResponse<List<DynamicModulusTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Response<ApiResponse<List<DynamicModulusTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    List<DynamicModulusTestResponse> dynamicModulusTests = response.body().getData();
+                    
+                    if (dynamicModulusTests.isEmpty()) {
+                        Log.w(TAG, "未找到沥青混合料相关实验数据");
+                        showNoResultsMessage("未找到沥青混合料相关实验数据");
+                        return;
+                    }
+                    
+                    Log.d(TAG, "成功获取沥青混合料相关实验数据: " + dynamicModulusTests.size() + " 条");
+                    
+                    // 初始化或更新适配器
+                    if (dynamicModulusAdapter == null) {
+                        dynamicModulusAdapter = new DynamicModulusAdapter(MixtureTaskResultActivity.this, dynamicModulusTests);
+                        rvExperimentResults.setAdapter(dynamicModulusAdapter);
+                    } else {
+                        dynamicModulusAdapter.updateData(dynamicModulusTests);
+                    }
+                    
+                    // 显示RecyclerView
+                    rvExperimentResults.setVisibility(View.VISIBLE);
+                } else {
+                    Log.e(TAG, "获取沥青混合料相关实验数据失败: " + response.code());
+                    showNoResultsMessage("获取沥青混合料相关实验数据失败: " + response.code());
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取沥青混合料相关实验数据请求失败", t);
+                showNoResultsMessage("获取沥青混合料相关实验数据失败: 网络错误");
+            }
+        });
+    }
+    
+    private void tryFetchAllExperimentTypes() {
+        // 尝试获取所有类型的实验数据
+        String taskId = task.getTaskId();
+        if (taskId == null || taskId.isEmpty()) {
+            Log.e(TAG, "任务ID为空，无法获取实验数据");
+            showNoResultsMessage("无法获取实验数据：任务ID为空");
+            return;
+        }
+        
+        // 调用API获取实验数据
+        Call<ApiResponse<List<DynamicModulusTestResponse>>> call = mixtureTaskApi.getDynamicModulusTestByTaskId(taskId);
+        call.enqueue(new Callback<ApiResponse<List<DynamicModulusTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Response<ApiResponse<List<DynamicModulusTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    List<DynamicModulusTestResponse> dynamicModulusTests = response.body().getData();
+                    
+                    if (dynamicModulusTests.isEmpty()) {
+                        Log.w(TAG, "未找到实验数据");
+                        showNoResultsMessage("未找到实验数据");
+                        return;
+                    }
+                    
+                    Log.d(TAG, "成功获取实验数据: " + dynamicModulusTests.size() + " 条");
+                    
+                    // 初始化或更新适配器
+                    if (dynamicModulusAdapter == null) {
+                        dynamicModulusAdapter = new DynamicModulusAdapter(MixtureTaskResultActivity.this, dynamicModulusTests);
+                        rvExperimentResults.setAdapter(dynamicModulusAdapter);
+                    } else {
+                        dynamicModulusAdapter.updateData(dynamicModulusTests);
+                    }
+                    
+                    // 显示RecyclerView
+                    rvExperimentResults.setVisibility(View.VISIBLE);
+                } else {
+                    Log.e(TAG, "获取实验数据失败: " + response.code());
+                    showNoResultsMessage("获取实验数据失败: " + response.code());
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<List<DynamicModulusTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "获取实验数据请求失败", t);
+                showNoResultsMessage("获取实验数据失败: 网络错误");
+            }
+        });
     }
 }

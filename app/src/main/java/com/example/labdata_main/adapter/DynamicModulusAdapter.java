@@ -71,8 +71,13 @@ public class DynamicModulusAdapter extends RecyclerView.Adapter<DynamicModulusAd
         
         // 根据温度分组生成数据表格
         List<DynamicModulusTestResponse.TemperatureGroup> temperatureGroups = data.getTemperatureGroups();
-        if (temperatureGroups != null) {
+        android.util.Log.d("DynamicModulusAdapter", "温度组数量: " + (temperatureGroups != null ? temperatureGroups.size() : "null"));
+        
+        if (temperatureGroups != null && !temperatureGroups.isEmpty()) {
             for (DynamicModulusTestResponse.TemperatureGroup group : temperatureGroups) {
+                android.util.Log.d("DynamicModulusAdapter", "处理温度组: " + group.getTemperature() + "°C, 测量数据: " + 
+                    (group.getMeasurements() != null ? group.getMeasurements().size() : "null"));
+                
                 // 创建温度标题
                 TextView tvTemperature = new TextView(context);
                 tvTemperature.setText("温度: " + group.getTemperature() + "°C");
@@ -89,13 +94,17 @@ public class DynamicModulusAdapter extends RecyclerView.Adapter<DynamicModulusAd
                 
                 TextView headerFrequency = createTableHeaderTextView("频率(Hz)");
                 TextView headerCycleCount = createTableHeaderTextView("循环次数");
-                TextView headerDynamicModulus = createTableHeaderTextView("动态模量(MPa)");
                 TextView headerPhaseAngle = createTableHeaderTextView("相位角(°)");
+                TextView headerAxialStress = createTableHeaderTextView("轴向应力(kPa)");
+                TextView headerAxialStrain = createTableHeaderTextView("轴向应变(μɛ)");
+                TextView headerPermanentStrain = createTableHeaderTextView("永久轴向应变变化(μɛ)");
                 
                 headerRow.addView(headerFrequency);
                 headerRow.addView(headerCycleCount);
-                headerRow.addView(headerDynamicModulus);
                 headerRow.addView(headerPhaseAngle);
+                headerRow.addView(headerAxialStress);
+                headerRow.addView(headerAxialStrain);
+                headerRow.addView(headerPermanentStrain);
                 
                 tableLayout.addView(headerRow);
                 
@@ -106,13 +115,17 @@ public class DynamicModulusAdapter extends RecyclerView.Adapter<DynamicModulusAd
                         
                         TextView tvFrequency = createTableCellTextView(String.valueOf(measurement.getFrequency()));
                         TextView tvCycleCount = createTableCellTextView(String.valueOf(measurement.getCycleCount()));
-                        TextView tvDynamicModulus = createTableCellTextView(String.valueOf(measurement.getDynamicModulus()));
                         TextView tvPhaseAngle = createTableCellTextView(String.valueOf(measurement.getPhaseAngle()));
+                        TextView tvAxialStress = createTableCellTextView(String.valueOf(measurement.getAxialStress()));
+                        TextView tvAxialStrain = createTableCellTextView(String.valueOf(measurement.getAxialStrain()));
+                        TextView tvPermanentStrain = createTableCellTextView(String.valueOf(measurement.getPermanentStrain()));
                         
                         dataRow.addView(tvFrequency);
                         dataRow.addView(tvCycleCount);
-                        dataRow.addView(tvDynamicModulus);
                         dataRow.addView(tvPhaseAngle);
+                        dataRow.addView(tvAxialStress);
+                        dataRow.addView(tvAxialStrain);
+                        dataRow.addView(tvPermanentStrain);
                         
                         tableLayout.addView(dataRow);
                     }

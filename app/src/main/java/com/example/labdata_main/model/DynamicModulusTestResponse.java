@@ -21,7 +21,7 @@ public class DynamicModulusTestResponse {
     @SerializedName("specimen")
     private Specimen specimen;
     
-    @SerializedName("measurements")
+    @SerializedName("temperatureGroups")
     private List<TemperatureGroup> temperatureGroups;
     
     // 试件信息
@@ -123,6 +123,15 @@ public class DynamicModulusTestResponse {
         @SerializedName("phase_angle")
         private float phaseAngle;
         
+        @SerializedName("axial_stress")
+        private float axialStress;
+        
+        @SerializedName("axial_strain")
+        private float axialStrain;
+        
+        @SerializedName("permanent_strain")
+        private float permanentStrain;
+        
         // Getters and Setters
         public float getFrequency() {
             return frequency;
@@ -154,6 +163,30 @@ public class DynamicModulusTestResponse {
         
         public void setPhaseAngle(float phaseAngle) {
             this.phaseAngle = phaseAngle;
+        }
+        
+        public float getAxialStress() {
+            return axialStress;
+        }
+        
+        public void setAxialStress(float axialStress) {
+            this.axialStress = axialStress;
+        }
+        
+        public float getAxialStrain() {
+            return axialStrain;
+        }
+        
+        public void setAxialStrain(float axialStrain) {
+            this.axialStrain = axialStrain;
+        }
+        
+        public float getPermanentStrain() {
+            return permanentStrain;
+        }
+        
+        public void setPermanentStrain(float permanentStrain) {
+            this.permanentStrain = permanentStrain;
         }
     }
     
