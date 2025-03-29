@@ -168,7 +168,12 @@ public class DirectStretchingFatigueSpecimenAdapter extends RecyclerView.Adapter
     
     private TextView createTableCellTextView(String text) {
         TextView textView = new TextView(context);
-        textView.setText(text);
+        // 对于"0.0"或"0"的值，显示为"-"，表示无数据
+        if (text.equals("0.0") || text.equals("0")) {
+            textView.setText("-");
+        } else {
+            textView.setText(text);
+        }
         textView.setTextSize(14);
         textView.setPadding(4, 8, 4, 8);
         textView.setBackgroundResource(R.drawable.table_cell_background);

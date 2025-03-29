@@ -194,16 +194,16 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
             // 使用更灵活的方式检查实验类型
             if (containsKeyword(taskAssignment, "马歇尔", "Marshall", "稳定度")) {
                 fetchMarshallTestData();
+            } else if (containsKeyword(taskAssignment, "沥青混合料四点弯曲疲劳寿命试验", "四点弯曲")) {
+                fetchFourPointBendingFatigueTestData();
             } else if (containsKeyword(taskAssignment, "汉堡车辙", "Hamburg", "车辙")) {
                 fetchHamburgRuttingTestData();
-            } else if (containsKeyword(taskAssignment, "沥青混合料弯曲实验", "弯曲")) {
+            } else if (containsKeyword(taskAssignment, "沥青混合料弯曲实验")) {
                 fetchMixtureBendingTestData();
             } else if (containsKeyword(taskAssignment, "动态模量")) {
                 fetchDynamicModulusTestData();
             } else if (containsKeyword(taskAssignment, "直接拉伸循环疲劳", "疲劳", "黏弹损伤")) {
                 fetchDirectStretchingFatigueTestData();
-            } else if (containsKeyword(taskAssignment, "沥青混合料四点弯曲疲劳寿命试验", "四点弯曲")) {
-                fetchFourPointBendingFatigueTestData();
             } else if (containsKeyword(taskAssignment, "沥青混合料单轴压缩试验", "单轴压缩")) {
                 fetchUniaxialCompressionTestData();
             } else if (containsKeyword(taskAssignment, "劈裂", "劈裂试验")) {
@@ -856,7 +856,7 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     
                     if (allSpecimens.isEmpty()) {
                         Log.w(TAG, "未找到沥青混合料直接拉伸循环疲劳测黏弹损伤实验的试件数据");
-                        //showNoResultsMessage("未找到沥青混合料直接拉伸循环疲劳测黏弹损伤实验的试件数据");
+                        showNoResultsMessage("未找到沥青混合料直接拉伸循环疲劳测黏弹损伤实验的试件数据");
                         return;
                     }
                     
@@ -896,6 +896,9 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         // 隐藏无结果提示，准备显示数据
         tvNoResults.setVisibility(View.GONE);
         
+        // 记录详细日志，便于调试
+        Log.d(TAG, "开始获取四点弯曲疲劳寿命实验数据，使用任务ID: " + taskId);
+        
         // 使用已有的mixtureTaskApi实例，而不是创建新的AsphaltTaskApi实例
         Call<ApiResponse<FourPointBendingFatigueTestResponse>> call = mixtureTaskApi.getFourPointBendingTestByTaskId(taskId);
         call.enqueue(new Callback<ApiResponse<FourPointBendingFatigueTestResponse>>() {
@@ -905,9 +908,26 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     FourPointBendingFatigueTestResponse testData = response.body().getData();
                     
                     if (testData.getSpecimens() == null || testData.getSpecimens().isEmpty()) {
-                        Log.w(TAG, "未找到四点弯曲疲劳寿命实验数据");
-                        showNoResultsMessage("未找到四点弯曲疲劳寿命实验数据");
-                        return;
+                        Log.w(TAG, "未找到四点弯曲疲劳寿命实验数据，尝试使用替代任务ID");
+                        
+                        // 提取任务ID前缀，去掉可能的后缀
+                        if (taskId.contains("-")) {
+                            String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                            Log.d(TAG, "尝试使用任务ID前缀: " + taskIdPrefix);
+                            
+                            // 尝试使用前缀 + "-0" 后缀
+                            String altTaskId = taskIdPrefix + "-0";
+                            Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                            
+                            // 使用替代ID重新查询
+                            tryFourPointBendingWithAltId(altTaskId);
+                            return;
+                        } else {
+                            // 没有后缀，显示没有找到数据的消息
+                            Log.w(TAG, "未找到四点弯曲疲劳寿命实验数据，且任务ID没有后缀可供替换");
+                            showNoResultsMessage("未找到四点弯曲疲劳寿命实验数据");
+                            return;
+                        }
                     }
                     
                     Log.d(TAG, "成功获取四点弯曲疲劳寿命实验数据: " + testData.getSpecimens().size() + " 个试件");
@@ -927,15 +947,93 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     // 显示RecyclerView
                     rvExperimentResults.setVisibility(View.VISIBLE);
                 } else {
-                    String errorMessage = response.body() != null ? response.body().getMessage() : "未知错误";
-                    Log.e(TAG, "获取四点弯曲疲劳寿命实验数据失败: " + errorMessage);
-                    showNoResultsMessage("获取四点弯曲疲劳寿命实验数据失败: " + errorMessage);
+                    Log.e(TAG, "获取四点弯曲疲劳寿命实验数据失败，尝试使用替代任务ID");
+                    
+                    // 提取任务ID前缀，去掉可能的后缀
+                    if (taskId.contains("-")) {
+                        String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                        Log.d(TAG, "尝试使用任务ID前缀: " + taskIdPrefix);
+                        
+                        // 尝试使用前缀 + "-0" 后缀
+                        String altTaskId = taskIdPrefix + "-0";
+                        Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                        
+                        // 使用替代ID重新查询
+                        tryFourPointBendingWithAltId(altTaskId);
+                        return;
+                    } else {
+                        String errorMessage = response.body() != null ? response.body().getMessage() : "未知错误";
+                        Log.e(TAG, "获取四点弯曲疲劳寿命实验数据失败: " + errorMessage);
+                        showNoResultsMessage("获取四点弯曲疲劳寿命实验数据失败: " + errorMessage);
+                    }
                 }
             }
             
             @Override
             public void onFailure(Call<ApiResponse<FourPointBendingFatigueTestResponse>> call, Throwable t) {
                 Log.e(TAG, "获取四点弯曲疲劳寿命实验数据请求失败", t);
+                
+                // 提取任务ID前缀，去掉可能的后缀
+                if (taskId.contains("-")) {
+                    String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                    Log.d(TAG, "网络请求失败，尝试使用任务ID前缀: " + taskIdPrefix);
+                    
+                    // 尝试使用前缀 + "-0" 后缀
+                    String altTaskId = taskIdPrefix + "-0";
+                    Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                    
+                    // 使用替代ID重新查询
+                    tryFourPointBendingWithAltId(altTaskId);
+                } else {
+                    showNoResultsMessage("获取四点弯曲疲劳寿命实验数据失败: 网络错误");
+                }
+            }
+        });
+    }
+    
+    /**
+     * 使用替代任务ID尝试获取四点弯曲疲劳寿命实验数据
+     */
+    private void tryFourPointBendingWithAltId(String altTaskId) {
+        Call<ApiResponse<FourPointBendingFatigueTestResponse>> call = mixtureTaskApi.getFourPointBendingTestByTaskId(altTaskId);
+        call.enqueue(new Callback<ApiResponse<FourPointBendingFatigueTestResponse>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<FourPointBendingFatigueTestResponse>> call, Response<ApiResponse<FourPointBendingFatigueTestResponse>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    FourPointBendingFatigueTestResponse testData = response.body().getData();
+                    
+                    if (testData.getSpecimens() == null || testData.getSpecimens().isEmpty()) {
+                        Log.w(TAG, "使用替代任务ID仍未找到四点弯曲疲劳寿命实验数据");
+                        showNoResultsMessage("未找到四点弯曲疲劳寿命实验数据");
+                        return;
+                    }
+                    
+                    Log.d(TAG, "使用替代任务ID成功获取四点弯曲疲劳寿命实验数据: " + testData.getSpecimens().size() + " 个试件");
+                    
+                    // 创建包含单个测试数据的列表
+                    List<FourPointBendingFatigueTestResponse> testDataList = new ArrayList<>();
+                    testDataList.add(testData);
+                    
+                    // 初始化或更新适配器
+                    if (fourPointBendingFatigueAdapter == null) {
+                        fourPointBendingFatigueAdapter = new FourPointBendingFatigueAdapter(MixtureTaskResultActivity.this);
+                        rvExperimentResults.setAdapter(fourPointBendingFatigueAdapter);
+                    }
+                    
+                    fourPointBendingFatigueAdapter.updateData(testDataList);
+                    
+                    // 显示RecyclerView
+                    rvExperimentResults.setVisibility(View.VISIBLE);
+                } else {
+                    String errorMessage = response.body() != null ? response.body().getMessage() : "未知错误";
+                    Log.e(TAG, "使用替代任务ID获取四点弯曲疲劳寿命实验数据失败: " + errorMessage);
+                    showNoResultsMessage("获取四点弯曲疲劳寿命实验数据失败: " + errorMessage);
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<FourPointBendingFatigueTestResponse>> call, Throwable t) {
+                Log.e(TAG, "使用替代任务ID获取四点弯曲疲劳寿命实验数据请求失败", t);
                 showNoResultsMessage("获取四点弯曲疲劳寿命实验数据失败: 网络错误");
             }
         });
@@ -1068,19 +1166,109 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         mixtureTaskApi.getSplittingTestByTaskId(taskId).enqueue(new Callback<ApiResponse<List<SplittingTestResponse>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<SplittingTestResponse>>> call, Response<ApiResponse<List<SplittingTestResponse>>> response) {
-                if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
-                    List<SplittingTestResponse> testResults = response.body().getData();
-                    if (!testResults.isEmpty()) {
-                        Log.d(TAG, "成功获取沥青混合料劈裂试验数据: " + testResults.size() + "条");
-                        displaySplittingTestResults(testResults);
+                Log.d(TAG, "劈裂试验API响应状态码: " + response.code());
+                
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "劈裂试验API响应成功");
+                    if (response.body() != null) {
+                        Log.d(TAG, "劈裂试验API响应体不为空，成功状态: " + response.body().isSuccess() + ", 消息: " + response.body().getMessage());
+                        
+                        if (response.body().isSuccess() && response.body().getData() != null) {
+                            List<SplittingTestResponse> testResults = response.body().getData();
+                            Log.d(TAG, "劈裂试验数据不为空，包含" + testResults.size() + "条记录");
+                            
+                            if (!testResults.isEmpty()) {
+                                // 记录第一条数据的关键字段，帮助调试
+                                SplittingTestResponse firstItem = testResults.get(0);
+                                Log.d(TAG, "第一条劈裂试验数据: taskId=" + firstItem.getTaskId() 
+                                    + ", testId=" + firstItem.getTestId()
+                                    + ", 温度=" + firstItem.getTestTemperature()
+                                    + ", 操作员=" + firstItem.getOperator());
+                                
+                                if (firstItem.getSpecimens() != null) {
+                                    Log.d(TAG, "第一条数据包含" + firstItem.getSpecimens().size() + "个试件");
+                                } else {
+                                    Log.d(TAG, "第一条数据的试件列表为null");
+                                }
+                                
+                                Log.d(TAG, "成功获取沥青混合料劈裂试验数据: " + testResults.size() + "条");
+                                displaySplittingTestResults(testResults);
+                            } else {
+                                Log.w(TAG, "劈裂试验数据列表为空，尝试使用替代任务ID");
+                                
+                                // 尝试使用任务ID前缀
+                                if (taskId.contains("-")) {
+                                    String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                                    Log.d(TAG, "尝试使用任务ID前缀: " + taskIdPrefix);
+                                    
+                                    // 尝试使用前缀 + "-0" 后缀
+                                    String altTaskId = taskIdPrefix + "-0";
+                                    Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                                    
+                                    // 使用替代ID重新查询
+                                    trySplittingTestWithAltId(altTaskId);
+                                } else {
+                                    Log.w(TAG, "劈裂试验数据列表为空，且任务ID没有后缀可供替换");
+                                    showNoResultsMessage("未找到劈裂试验数据");
+                                }
+                            }
+                        } else {
+                            Log.w(TAG, "劈裂试验API返回失败或数据为null");
+                            
+                            // 尝试使用任务ID前缀
+                            if (taskId.contains("-")) {
+                                String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                                Log.d(TAG, "API返回失败，尝试使用任务ID前缀: " + taskIdPrefix);
+                                
+                                // 尝试使用前缀 + "-0" 后缀
+                                String altTaskId = taskIdPrefix + "-0";
+                                Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                                
+                                // 使用替代ID重新查询
+                                trySplittingTestWithAltId(altTaskId);
+                            } else {
+                                showNoResultsMessage("获取劈裂试验数据失败: " + 
+                                    (response.body() != null ? response.body().getMessage() : "返回数据为空"));
+                            }
+                        }
                     } else {
-                        showNoResultsMessage("未找到劈裂试验数据");
+                        Log.w(TAG, "劈裂试验API响应体为空，尝试使用替代任务ID");
+                        
+                        // 尝试使用任务ID前缀
+                        if (taskId.contains("-")) {
+                            String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                            Log.d(TAG, "响应体为空，尝试使用任务ID前缀: " + taskIdPrefix);
+                            
+                            // 尝试使用前缀 + "-0" 后缀
+                            String altTaskId = taskIdPrefix + "-0";
+                            Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                            
+                            // 使用替代ID重新查询
+                            trySplittingTestWithAltId(altTaskId);
+                        } else {
+                            showNoResultsMessage("获取劈裂试验数据失败，服务器返回为空");
+                        }
                     }
                 } else {
-                    if (response.body() != null) {
-                        showNoResultsMessage("获取劈裂试验数据失败: " + response.body().getMessage());
+                    Log.e(TAG, "劈裂试验API响应失败，状态码: " + response.code());
+                    
+                    // 尝试使用任务ID前缀
+                    if (taskId.contains("-")) {
+                        String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                        Log.d(TAG, "API响应失败，尝试使用任务ID前缀: " + taskIdPrefix);
+                        
+                        // 尝试使用前缀 + "-0" 后缀
+                        String altTaskId = taskIdPrefix + "-0";
+                        Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                        
+                        // 使用替代ID重新查询
+                        trySplittingTestWithAltId(altTaskId);
                     } else {
-                        showNoResultsMessage("获取劈裂试验数据失败，服务器返回为空");
+                        if (response.body() != null) {
+                            showNoResultsMessage("获取劈裂试验数据失败: " + response.body().getMessage());
+                        } else {
+                            showNoResultsMessage("获取劈裂试验数据失败，服务器返回为空");
+                        }
                     }
                 }
             }
@@ -1088,11 +1276,59 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<ApiResponse<List<SplittingTestResponse>>> call, Throwable t) {
                 Log.e(TAG, "获取劈裂试验数据网络请求失败", t);
+                
+                // 尝试使用任务ID前缀
+                if (taskId.contains("-")) {
+                    String taskIdPrefix = taskId.substring(0, taskId.lastIndexOf("-"));
+                    Log.d(TAG, "网络请求失败，尝试使用任务ID前缀: " + taskIdPrefix);
+                    
+                    // 尝试使用前缀 + "-0" 后缀
+                    String altTaskId = taskIdPrefix + "-0";
+                    Log.d(TAG, "尝试使用替代任务ID: " + altTaskId);
+                    
+                    // 使用替代ID重新查询
+                    trySplittingTestWithAltId(altTaskId);
+                } else {
+                    showNoResultsMessage("网络请求失败: " + t.getMessage());
+                }
+            }
+        });
+    }
+    
+    /**
+     * 使用替代任务ID尝试获取劈裂试验数据
+     */
+    private void trySplittingTestWithAltId(String altTaskId) {
+        Log.d(TAG, "使用替代任务ID获取劈裂试验数据: " + altTaskId);
+        mixtureTaskApi.getSplittingTestByTaskId(altTaskId).enqueue(new Callback<ApiResponse<List<SplittingTestResponse>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<SplittingTestResponse>>> call, Response<ApiResponse<List<SplittingTestResponse>>> response) {
+                Log.d(TAG, "使用替代ID的劈裂试验API响应状态码: " + response.code());
+                
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    List<SplittingTestResponse> testResults = response.body().getData();
+                    
+                    if (!testResults.isEmpty()) {
+                        Log.d(TAG, "使用替代任务ID成功获取劈裂试验数据: " + testResults.size() + "条");
+                        displaySplittingTestResults(testResults);
+                    } else {
+                        Log.w(TAG, "使用替代任务ID获取的劈裂试验数据列表为空");
+                        showNoResultsMessage("未找到劈裂试验数据");
+                    }
+                } else {
+                    Log.e(TAG, "使用替代任务ID获取劈裂试验数据失败");
+                    String errorMessage = response.body() != null ? response.body().getMessage() : "未知错误";
+                    showNoResultsMessage("获取劈裂试验数据失败: " + errorMessage);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<List<SplittingTestResponse>>> call, Throwable t) {
+                Log.e(TAG, "使用替代任务ID获取劈裂试验数据网络请求失败", t);
                 showNoResultsMessage("网络请求失败: " + t.getMessage());
             }
         });
     }
-
     /**
      * 显示沥青混合料劈裂试验结果数据
      * 
@@ -1107,7 +1343,6 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         
         Log.d(TAG, "显示劈裂试验数据：" + testResults.size() + "条");
     }
-    
     /**
      * 显示无结果提示信息
      */
@@ -1123,7 +1358,6 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         tvNoResults.setVisibility(View.VISIBLE);
         Log.d(TAG, "显示无结果提示: " + message);
     }
-    
     private boolean containsKeyword(String text, String... keywords) {
         if (text == null || text.isEmpty()) {
             return false;
@@ -1137,7 +1371,6 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         
         return false;
     }
-    
     private void determineExperimentTypeAndFetchData(String taskAssignment) {
         // 根据关键字组合尝试确定实验类型
         if (containsKeyword(taskAssignment, "沥青混合料", "混合料")) {
@@ -1148,7 +1381,6 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
             showNoResultsMessage("无法确定实验类型");
         }
     }
-    
     private void fetchMixtureRelatedTestData() {
         // 尝试获取沥青混合料相关实验数据
         String taskId = task.getTaskId();
@@ -1197,7 +1429,6 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
             }
         });
     }
-    
     private void tryFetchAllExperimentTypes() {
         // 尝试获取所有类型的实验数据
         String taskId = task.getTaskId();

@@ -1524,8 +1524,10 @@ public class MixtureTaskService {
                                     Float.parseFloat(data.get("phaseAngle")) : null,
                             data.get("forceLevel") != null && !data.get("forceLevel").isEmpty() ?
                                     Float.parseFloat(data.get("forceLevel")) : null,
-                            data.get("uniformStrain") != null && !data.get("uniformStrain").isEmpty() ?
-                                    Float.parseFloat(data.get("uniformStrain")) : null,
+                            (data.get("uniformStrain") != null && !data.get("uniformStrain").isEmpty()) ? 
+                                    Float.parseFloat(data.get("uniformStrain")) : 
+                                    (data.get("equilibriumStrain") != null && !data.get("equilibriumStrain").isEmpty()) ?
+                                    Float.parseFloat(data.get("equilibriumStrain")) : null,
                             data.get("temperature") != null && !data.get("temperature").isEmpty() ?
                                     Float.parseFloat(data.get("temperature")) : null,
                             new Timestamp(System.currentTimeMillis()),
@@ -1546,16 +1548,20 @@ public class MixtureTaskService {
                     jdbcTemplate.update(fatigueSql,
                             specimenId != null && !specimenId.isEmpty() ? Long.parseLong(specimenId) : null,
                             stage,
-                            data.get("dynamicModulus") != null && !data.get("dynamicModulus").isEmpty() ?
-                                    Float.parseFloat(data.get("dynamicModulus")) : null,
+                            (data.get("dynamicModulus") != null && !data.get("dynamicModulus").isEmpty()) ? 
+                                    Float.parseFloat(data.get("dynamicModulus")) : 
+                                    (data.get("dynamic_modulus") != null && !data.get("dynamic_modulus").isEmpty()) ?
+                                    Float.parseFloat(data.get("dynamic_modulus")) : null,
                             data.get("cycleCount") != null && !data.get("cycleCount").isEmpty() ?
                                     Integer.parseInt(data.get("cycleCount")) : null,
                             data.get("phaseAngle") != null && !data.get("phaseAngle").isEmpty() ?
                                     Float.parseFloat(data.get("phaseAngle")) : null,
                             data.get("forceLevel") != null && !data.get("forceLevel").isEmpty() ?
                                     Float.parseFloat(data.get("forceLevel")) : null,
-                            data.get("equilibrium_strain") != null && !data.get("equilibrium_strain").isEmpty() ?
-                                    Float.parseFloat(data.get("equilibrium_strain")) : null,
+                            (data.get("equilibriumStrain") != null && !data.get("equilibriumStrain").isEmpty()) ? 
+                                    Float.parseFloat(data.get("equilibriumStrain")) : 
+                                    (data.get("uniformStrain") != null && !data.get("uniformStrain").isEmpty()) ?
+                                    Float.parseFloat(data.get("uniformStrain")) : null,
                             data.get("temperature") != null && !data.get("temperature").isEmpty() ?
                                     Float.parseFloat(data.get("temperature")) : null,
                             new Timestamp(System.currentTimeMillis()),
@@ -2367,47 +2373,35 @@ public class MixtureTaskService {
             }
 
             // 获取mixratio_id和specimen_id并尝试转换为Long
-            Long mixratioId = null;
-            Long specimenId = null;
+            Object mixratioIdObj = results.get(0).get("mixratio_id");
+            Object specimenIdObj = results.get(0).get("specimen_id");
 
-            if (results.get(0).get("mixratio_id") != null) {
-                try {
-                    mixratioId = Long.parseLong(results.get(0).get("mixratio_id").toString());
-                } catch (NumberFormatException e) {
-                    logger.warn("无法将mixratio_id转换为Long: {}", results.get(0).get("mixratio_id"));
-                }
-            }
-
-            if (results.get(0).get("specimen_id") != null) {
-                try {
-                    specimenId = Long.parseLong(results.get(0).get("specimen_id").toString());
-                } catch (NumberFormatException e) {
-                    logger.warn("无法将specimen_id转换为Long: {}", results.get(0).get("specimen_id"));
-                }
-            }
+            // 使用安全的类型处理，避免类型转换异常
+            String mixratioIdStr = mixratioIdObj != null ? String.valueOf(mixratioIdObj) : null;
+            String specimenIdStr = specimenIdObj != null ? String.valueOf(specimenIdObj) : null;
 
             String mixName = null;
             String compactionMethod = null;
 
             // 根据mixratio_id查询mixratio表获取mix_name
-            if (mixratioId != null) {
+            if (mixratioIdStr != null) {
                 String mixratioSql = "SELECT mix_name FROM mixratio WHERE id = ?";
-                List<Map<String, Object>> mixratioResults = jdbcTemplate.queryForList(mixratioSql, mixratioId);
+                List<Map<String, Object>> mixratioResults = jdbcTemplate.queryForList(mixratioSql, mixratioIdStr);
 
                 if (!mixratioResults.isEmpty() && mixratioResults.get(0).get("mix_name") != null) {
                     mixName = mixratioResults.get(0).get("mix_name").toString();
-                    logger.info("找到配比 {} 的名称: {}", mixratioId, mixName);
+                    logger.info("找到配比 {} 的名称: {}", mixratioIdStr, mixName);
                 }
             }
 
             // 根据specimen_id查询specimens表获取compaction_method
-            if (specimenId != null) {
+            if (specimenIdStr != null) {
                 String specimenSql = "SELECT compaction_method FROM specimens WHERE id = ?";
-                List<Map<String, Object>> specimenResults = jdbcTemplate.queryForList(specimenSql, specimenId);
+                List<Map<String, Object>> specimenResults = jdbcTemplate.queryForList(specimenSql, specimenIdStr);
 
                 if (!specimenResults.isEmpty() && specimenResults.get(0).get("compaction_method") != null) {
                     compactionMethod = specimenResults.get(0).get("compaction_method").toString();
-                    logger.info("找到试件 {} 的压实方法: {}", specimenId, compactionMethod);
+                    logger.info("找到试件 {} 的压实方法: {}", specimenIdStr, compactionMethod);
                 }
             }
 
@@ -2571,23 +2565,40 @@ public class MixtureTaskService {
                     Map<String, Object> specimenData = new HashMap<>();
                     Long specimenDbId = (Long) specimen.get("specimen_db_id");
 
+                    // 重要修复：将试件基本信息添加到specimenData中
+                    specimenData.put("specimen_id", specimen.get("specimen_id"));
+                    specimenData.put("height", specimen.get("height"));
+                    specimenData.put("diameter", specimen.get("diameter"));
+                    specimenData.put("test_temperature", specimen.get("test_temperature"));
+
                     // 4. 获取动态模量数据
                     String modulusSql = "SELECT stage, dynamic_modulus, cycle_count, phase_angle, force_level, " +
                             "equilibrium_strain, temperature " +
                             "FROM direct_stretching_modulus_data " +
-                            "WHERE specimen_id = ? AND test_id = ? " +
+                            "WHERE test_id = ? " +
                             "ORDER BY stage";
-                    List<Map<String, Object>> modulusDataList = jdbcTemplate.queryForList(modulusSql, specimenDbId, testUuid);
+                    List<Map<String, Object>> modulusDataList = jdbcTemplate.queryForList(modulusSql, testUuid);
+
+                    for (Map<String, Object> modulusItem : modulusDataList) {
+                        // 确保dynamic_modulus字段值不为null
+                        if (modulusItem.get("dynamic_modulus") == null) {
+                            modulusItem.put("dynamic_modulus", 0.0f);
+                        }
+                        // 同样处理其他可能为null的字段
+                        if (modulusItem.get("equilibrium_strain") == null) {
+                            modulusItem.put("equilibrium_strain", 0.0f);
+                        }
+                    }
 
                     specimenData.put("modulus_data", modulusDataList);
 
                     // 5. 获取疲劳数据
-                    String fatigueSql = "SELECT stage, cycle_count, phase_angle, force_level, " +
+                    String fatigueSql = "SELECT stage, cycle_count, phase_angle, force_level, dynamic_modulus, " +
                             "equilibrium_strain, temperature " +
                             "FROM direct_stretching_fatigue_data " +
-                            "WHERE specimen_id = ? AND test_id = ? " +
+                            "WHERE test_id = ? " +
                             "ORDER BY stage";
-                    List<Map<String, Object>> fatigueDataList = jdbcTemplate.queryForList(fatigueSql, specimenDbId, testUuid);
+                    List<Map<String, Object>> fatigueDataList = jdbcTemplate.queryForList(fatigueSql, testUuid);
 
                     specimenData.put("fatigue_data", fatigueDataList);
 
@@ -2701,13 +2712,15 @@ public class MixtureTaskService {
             Map<String, Object> result = new HashMap<>();
 
             // 提取任务ID前缀，去掉末尾的数字后缀
-            String taskIdPrefix = extractTaskIdPrefix(taskId);
-            logger.info("使用任务ID前缀: {} 查询单轴压缩试验数据", taskIdPrefix);
+            String taskIdPrefix = taskId;
+            if (taskId.matches(".*-\\d+$")) {
+                taskIdPrefix = taskId.substring(0, taskId.lastIndexOf('-'));
+            }
 
+            logger.info("使用任务ID前缀: {} 查询单轴压缩试验数据", taskIdPrefix);
             // 1. 查询测试基本信息
             String testSql = "SELECT * FROM mixture_uniaxial_compression_test WHERE task_id LIKE ? ORDER BY created_at DESC LIMIT 1";
             List<Map<String, Object>> testResults = jdbcTemplate.queryForList(testSql, taskIdPrefix + "%");
-
 
             if (testResults == null || testResults.isEmpty()) {
                 logger.warn("未找到沥青混合料单轴压缩试验（圆柱体法）数据，任务ID: {}", taskId);
@@ -3043,10 +3056,10 @@ public class MixtureTaskService {
                 // 收集试件数据
                 if (row.get("specimen_id") != null) {
                     Map<String, Object> specimenData = new HashMap<>();
-                    Long specimenId = (Long) row.get("specimen_id");
+                    Object specimenIdObj = row.get("specimen_id");
 
                     // 基本信息
-                    specimenData.put("specimen_id", row.get("specimen_id"));
+                    specimenData.put("specimen_id", specimenIdObj);
                     specimenData.put("specimen_number", row.get("specimen_number"));
                     specimenData.put("diameter", row.get("diameter"));
                     specimenData.put("height", row.get("height"));

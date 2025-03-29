@@ -116,7 +116,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getDynamicModulus() {
-            return dynamicModulus;
+            return dynamicModulus > 0.001f ? dynamicModulus : 0;
         }
         
         public void setDynamicModulus(float dynamicModulus) {
@@ -124,7 +124,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public int getCycleCount() {
-            return cycleCount;
+            return cycleCount > 0 ? cycleCount : 0;
         }
         
         public void setCycleCount(int cycleCount) {
@@ -132,7 +132,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getPhaseAngle() {
-            return phaseAngle;
+            return phaseAngle > 0.001f ? phaseAngle : 0;
         }
         
         public void setPhaseAngle(float phaseAngle) {
@@ -140,7 +140,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getForceLevel() {
-            return forceLevel;
+            return forceLevel > 0.001f ? forceLevel : 0;
         }
         
         public void setForceLevel(float forceLevel) {
@@ -148,7 +148,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getEquilibriumStrain() {
-            return equilibriumStrain;
+            return equilibriumStrain > 0.001f ? equilibriumStrain : 0;
         }
         
         public void setEquilibriumStrain(float equilibriumStrain) {
@@ -197,7 +197,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getDynamicModulus() {
-            return dynamicModulus;
+            return dynamicModulus > 0.001f ? dynamicModulus : 0;
         }
         
         public void setDynamicModulus(float dynamicModulus) {
@@ -205,7 +205,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public int getCycleCount() {
-            return cycleCount;
+            return cycleCount > 0 ? cycleCount : 0;
         }
         
         public void setCycleCount(int cycleCount) {
@@ -213,7 +213,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getPhaseAngle() {
-            return phaseAngle;
+            return phaseAngle > 0.001f ? phaseAngle : 0;
         }
         
         public void setPhaseAngle(float phaseAngle) {
@@ -221,7 +221,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getForceLevel() {
-            return forceLevel;
+            return forceLevel > 0.001f ? forceLevel : 0;
         }
         
         public void setForceLevel(float forceLevel) {
@@ -229,7 +229,7 @@ public class DirectStretchingFatigueTestResponse {
         }
         
         public float getEquilibriumStrain() {
-            return equilibriumStrain;
+            return equilibriumStrain > 0.001f ? equilibriumStrain : 0;
         }
         
         public void setEquilibriumStrain(float equilibriumStrain) {
