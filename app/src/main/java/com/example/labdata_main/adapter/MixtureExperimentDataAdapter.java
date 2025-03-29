@@ -17,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.HorizontalScrollView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -254,6 +255,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                     // 创建新的配比记录
                     Map<String, Object> newRatio = new HashMap<>();
                     newRatio.put("id", mixRatioId);
+                    
                     mixRatios.add(newRatio);
                     Log.d("MixtureAdapter", "从任务分配创建新配比: ID=" + mixRatioId);
                 }
@@ -528,6 +530,14 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
 
     public Map<String, Map<String, String>> getExperimentData() {
         return experimentData;
+    }
+    
+    /**
+     * 获取用户选择的实验类型
+     * @return 选定的实验类型，如果未选择则返回null
+     */
+    public String getSelectedExperimentType() {
+        return selectedExperimentType;
     }
     
     /**
@@ -2177,9 +2187,9 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             headerRow.setPadding(0, 8, 0, 8);
             
             // 添加表头列
-            String[] headers = {"频率(Hz)", "循环次数", "动态模量(MPa)", "相位角(°)", "温度(°C)", 
-                               "轴向应力(kPa)", "轴向应变(με)", "永久轴向应变(με)"};
-            int[] weights = {1, 1, 1, 1, 1, 1, 1, 1};
+            String[] headers = {"频率(Hz)", "循环次数", "动态模量(MPa)", "相位角(°)", 
+                              "峰-峰应力水平(kPa)", "峰-峰平均轴向微应变", "峰-峰作动器微应变", "温度(°C)"};
+            int[] weights = {1, 1, 1, 1, 2, 2, 2, 1};
             
             for (int i = 0; i < headers.length; i++) {
                 TextView headerText = new TextView(itemView.getContext());
@@ -2440,6 +2450,14 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         }
 
         private void addDirectStretchingDynamicModulusTable(long mixRatioId, String experimentName, int specimenId) {
+            // 创建表格容器
+            LinearLayout tableContainer = new LinearLayout(itemView.getContext());
+            tableContainer.setOrientation(LinearLayout.VERTICAL);
+            tableContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            
             // 创建表格标题行
             LinearLayout headerRow = new LinearLayout(itemView.getContext());
             headerRow.setLayoutParams(new LinearLayout.LayoutParams(
@@ -2469,15 +2487,27 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 headerRow.addView(headerText);
             }
             
-            layoutInputs.addView(headerRow);
+            tableContainer.addView(headerRow);
             
             // 添加初始和最终数据行
-            addDirectStretchingDynamicModulusRow(mixRatioId, experimentName, specimenId, "Initial");
-            addDirectStretchingDynamicModulusRow(mixRatioId, experimentName, specimenId, "Final");
+            addDirectStretchingDynamicModulusRow(tableContainer, mixRatioId, experimentName, specimenId, "Initial");
+            addDirectStretchingDynamicModulusRow(tableContainer, mixRatioId, experimentName, specimenId, "Final");
+            
+            // 创建水平滚动视图包装表格
+            HorizontalScrollView scrollView = new HorizontalScrollView(itemView.getContext());
+            scrollView.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            scrollView.setHorizontalScrollBarEnabled(true);
+            scrollView.addView(tableContainer);
+            
+            // 添加滚动视图到主布局
+            layoutInputs.addView(scrollView);
         }
         
-        private void addDirectStretchingDynamicModulusRow(long mixRatioId, String experimentName, 
-                                                        int specimenId, String stage) {
+        private void addDirectStretchingDynamicModulusRow(LinearLayout container, long mixRatioId, String experimentName, 
+                                                       int specimenId, String stage) {
             // 创建数据行
             LinearLayout dataRow = new LinearLayout(itemView.getContext());
             dataRow.setLayoutParams(new LinearLayout.LayoutParams(
@@ -2532,10 +2562,33 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             String tempKey = experimentName + "_dynamic_" + specimenId + "_" + stage.toLowerCase() + "_temp";
             setupDataInput(tempInput, tempKey, mixRatioId);
             
-            layoutInputs.addView(dataRow);
+            container.addView(dataRow);
+        }
+        
+        private TextInputEditText createDataInput(LinearLayout parent, int weight) {
+            TextInputEditText editText = new TextInputEditText(itemView.getContext());
+            editText.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    weight
+            ));
+            editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | 
+                                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            editText.setHint("设备给出");
+            editText.setTextSize(12);
+            parent.addView(editText);
+            return editText;
         }
         
         private void addDirectStretchingFatigueTestTable(long mixRatioId, String experimentName, int specimenId) {
+            // 创建表格容器
+            LinearLayout tableContainer = new LinearLayout(itemView.getContext());
+            tableContainer.setOrientation(LinearLayout.VERTICAL);
+            tableContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            
             // 创建表格标题行
             LinearLayout headerRow = new LinearLayout(itemView.getContext());
             headerRow.setLayoutParams(new LinearLayout.LayoutParams(
@@ -2565,14 +2618,26 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 headerRow.addView(headerText);
             }
             
-            layoutInputs.addView(headerRow);
+            tableContainer.addView(headerRow);
             
             // 添加初始和最终数据行
-            addDirectStretchingFatigueTestRow(mixRatioId, experimentName, specimenId, "Initial");
-            addDirectStretchingFatigueTestRow(mixRatioId, experimentName, specimenId, "Final");
+            addDirectStretchingFatigueTestRow(tableContainer, mixRatioId, experimentName, specimenId, "Initial");
+            addDirectStretchingFatigueTestRow(tableContainer, mixRatioId, experimentName, specimenId, "Final");
+            
+            // 创建水平滚动视图包装表格
+            HorizontalScrollView scrollView = new HorizontalScrollView(itemView.getContext());
+            scrollView.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+            scrollView.setHorizontalScrollBarEnabled(true);
+            scrollView.addView(tableContainer);
+            
+            // 添加滚动视图到主布局
+            layoutInputs.addView(scrollView);
         }
         
-        private void addDirectStretchingFatigueTestRow(long mixRatioId, String experimentName, 
+        private void addDirectStretchingFatigueTestRow(LinearLayout container, long mixRatioId, String experimentName, 
                                                      int specimenId, String stage) {
             // 创建数据行
             LinearLayout dataRow = new LinearLayout(itemView.getContext());
@@ -2628,22 +2693,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             String tempKey = experimentName + "_fatigue_" + specimenId + "_" + stage.toLowerCase() + "_temp";
             setupDataInput(tempInput, tempKey, mixRatioId);
             
-            layoutInputs.addView(dataRow);
-        }
-        
-        private TextInputEditText createDataInput(LinearLayout parent, int weight) {
-            TextInputEditText editText = new TextInputEditText(itemView.getContext());
-            editText.setLayoutParams(new LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    weight
-            ));
-            editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | 
-                                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-            editText.setHint("设备给出");
-            editText.setTextSize(12);
-            parent.addView(editText);
-            return editText;
+            container.addView(dataRow);
         }
 
         private void addFourPointBendingFields(long mixRatioId) {
@@ -2848,7 +2898,7 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 hintText.setText("根据最终测试结果填入");
                 hintText.setTextColor(Color.RED);
                 hintText.setLayoutParams(new LinearLayout.LayoutParams(
-                        0,
+                    0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     2
                 ));
@@ -2857,9 +2907,9 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 // 最终疲劳寿命行的实时值为可编辑字段
                 TextInputEditText finalValueInput = new TextInputEditText(itemView.getContext());
                 finalValueInput.setLayoutParams(new LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        2
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    2
                 ));
                 finalValueInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
                 finalValueInput.setHint("输入次数");
@@ -2870,9 +2920,9 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 // 普通行的初始值为可编辑字段
                 TextInputEditText initialInput = new TextInputEditText(itemView.getContext());
                 initialInput.setLayoutParams(new LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        2
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    2
                 ));
                 initialInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | 
                                         android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
@@ -2884,9 +2934,9 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                 // 普通行的实时值为可编辑字段
                 TextInputEditText currentInput = new TextInputEditText(itemView.getContext());
                 currentInput.setLayoutParams(new LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        2
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    2
                 ));
                 currentInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | 
                                         android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);

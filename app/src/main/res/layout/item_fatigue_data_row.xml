@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    android:background="#F0F8FF">
+
+    <TextView
+        android:id="@+id/tvStage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="阶段: Initial"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvDynamicModulus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="动态模量: 0.00 MPa" />
+
+    <TextView
+        android:id="@+id/tvCycleCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="循环次数: 0" />
+
+    <TextView
+        android:id="@+id/tvForceLevel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="力水平: 0.00 N" />
+
+</LinearLayout>

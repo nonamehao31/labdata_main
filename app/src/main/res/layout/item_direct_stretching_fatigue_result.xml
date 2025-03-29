@@ -17,4 +17,173 @@
         android:textColor="@android:color/black"
         android:layout_marginBottom="8dp" />
 
+    <!-- 试件信息卡片 -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <!-- 试件标题 -->
+            <TextView
+                android:id="@+id/tvSpecimenTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="试件 #1"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="4dp" />
+
+            <!-- 试件ID -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="试件ID: "
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvSpecimenId"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="null" />
+            </LinearLayout>
+
+            <!-- 直径 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="直径: "
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDiameter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0.0 mm" />
+            </LinearLayout>
+
+            <!-- 高度 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="高度: "
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvHeight"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0.0 mm" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 动态模量数据卡片 -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="动态模量数据"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="4dp" />
+
+            <!-- 动态模量数据容器 -->
+            <LinearLayout
+                android:id="@+id/modulusDataContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 无数据提示 -->
+                <TextView
+                    android:id="@+id/tvNoModulusData"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="无动态模量数据"
+                    android:textStyle="italic"
+                    android:visibility="visible" />
+
+                <!-- 动态添加模量数据行 -->
+
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 疲劳数据卡片 -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="疲劳数据"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black"
+                android:layout_marginBottom="4dp" />
+
+            <!-- 疲劳数据容器 -->
+            <LinearLayout
+                android:id="@+id/fatigueDataContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 无数据提示 -->
+                <TextView
+                    android:id="@+id/tvNoFatigueData"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="无疲劳数据"
+                    android:textStyle="italic"
+                    android:visibility="visible" />
+
+                <!-- 动态添加疲劳数据行 -->
+
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
 </LinearLayout>

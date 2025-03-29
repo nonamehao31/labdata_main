@@ -381,8 +381,8 @@ public class MixtureTaskController {
         try {
             logger.info("接收到保存沥青混合料直接拉伸循环疲劳测黏弹损伤试验数据请求");
             
-            String taskId = (String) requestData.get("taskId");
-            String mixRatioId = (String) requestData.get("mixRatioId");
+            String taskId = requestData.get("taskId") != null ? requestData.get("taskId").toString() : null;
+            String mixRatioId = requestData.get("mixRatioId") != null ? requestData.get("mixRatioId").toString() : null;
             
             if (taskId == null || mixRatioId == null) {
                 logger.error("缺少必要参数: taskId={}, mixRatioId={}", taskId, mixRatioId);

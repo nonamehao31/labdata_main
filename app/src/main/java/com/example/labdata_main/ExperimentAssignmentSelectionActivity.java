@@ -2,6 +2,7 @@ package com.example.labdata_main;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -370,8 +371,10 @@ public class ExperimentAssignmentSelectionActivity extends AppCompatActivity imp
             return;
         }
         
-        // 明确指定使用Serializable接口，避免歧义
-        intent.putExtra("task", (Serializable) task);
+        // 使用Parcelable方式传递任务对象
+        intent.putExtra("task", (Parcelable) task);
+        // 同时添加序列化版本作为备份
+        intent.putExtra("task_serialized", (Serializable) task);
         intent.putExtra("selectedAssignment", assignment.getExperimentTypes().get(0));
         startActivity(intent);
     }

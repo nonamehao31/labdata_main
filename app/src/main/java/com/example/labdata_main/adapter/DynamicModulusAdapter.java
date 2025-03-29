@@ -4,6 +4,7 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -129,10 +130,39 @@ public class DynamicModulusAdapter extends RecyclerView.Adapter<DynamicModulusAd
                         
                         tableLayout.addView(dataRow);
                     }
+                } else {
+                    // 显示无数据行
+                    TableRow noDataRow = new TableRow(context);
+                    TextView noDataText = new TextView(context);
+                    noDataText.setText("无测量数据");
+                    noDataText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                    noDataText.setPadding(16, 16, 16, 16);
+                    
+                    TableRow.LayoutParams params = new TableRow.LayoutParams();
+                    params.span = 6; // 跨越所有列
+                    noDataRow.addView(noDataText, params);
+                    tableLayout.addView(noDataRow);
                 }
                 
-                holder.dataTableContainer.addView(tableLayout);
+                // 创建水平滚动视图包装表格
+                HorizontalScrollView scrollView = new HorizontalScrollView(context);
+                scrollView.setLayoutParams(new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                ));
+                scrollView.setHorizontalScrollBarEnabled(true);
+                scrollView.addView(tableLayout);
+                
+                // 添加滚动视图而不是直接添加表格
+                holder.dataTableContainer.addView(scrollView);
             }
+        } else {
+            // 显示无数据消息
+            TextView noDataText = new TextView(context);
+            noDataText.setText("无测试数据");
+            noDataText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+            noDataText.setPadding(16, 16, 16, 16);
+            holder.dataTableContainer.addView(noDataText);
         }
     }
 
