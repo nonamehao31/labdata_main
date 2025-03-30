@@ -22,11 +22,17 @@ public class PrinterDiscoveryManager {
     private static final String SERVICE_TYPE_PDL = "_pdl-datastream._tcp."; // PDL打印协议
     private static final String SERVICE_TYPE_PRINTER = "_printer._tcp."; // 通用打印机服务
     
+    // 添加超时时间常量，10秒
+    private static final long DISCOVERY_TIMEOUT = 10000; // 毫秒
+    
     private final Context context;
     private final NsdManager nsdManager;
     private final Map<String, PrinterInfo> discoveredPrinters = new HashMap<>();
     private NsdManager.DiscoveryListener discoveryListener;
     private PrinterDiscoveryListener listener;
+    private android.os.Handler timeoutHandler;
+    private Runnable timeoutRunnable;
+    private boolean isDiscoveryActive = false;
     
     /**
      * 打印机发现回调接口
@@ -59,28 +65,55 @@ public class PrinterDiscoveryManager {
      * 开始发现打印机
      */
     public void startDiscovery() {
-        if (discoveryListener != null) {
-            // 已经在搜索过程中
-            return;
+        Log.d(TAG, "开始搜索打印机");
+        
+        // 如果已经在搜索，先停止当前搜索
+        if (isDiscoveryActive || discoveryListener != null) {
+            Log.d(TAG, "已有搜索进行中，先停止");
+            stopDiscovery();
         }
         
+        isDiscoveryActive = true;
         discoveredPrinters.clear();
         
         if (listener != null) {
             listener.onPrinterDiscoveryStarted();
         }
         
+        // 设置超时处理
+        if (timeoutHandler == null) {
+            timeoutHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        }
+        
+        // 创建并执行超时任务
+        timeoutRunnable = () -> {
+            Log.d(TAG, "打印机搜索超时，停止搜索");
+            if (isDiscoveryActive) {
+                Log.d(TAG, "执行超时停止搜索");
+                stopDiscovery();
+                
+                // 通知搜索完成
+                if (listener != null) {
+                    Log.d(TAG, "通知UI搜索已完成（超时）");
+                    listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
+                }
+            }
+        };
+        
+        // 设置超时
+        timeoutHandler.postDelayed(timeoutRunnable, DISCOVERY_TIMEOUT);
+        
         discoveryListener = new NsdManager.DiscoveryListener() {
             @Override
             public void onDiscoveryStarted(String serviceType) {
-                Log.d(TAG, "打印机服务发现已启动: " + serviceType);
+                Log.d(TAG, "服务发现已开始: " + serviceType);
             }
             
             @Override
             public void onServiceFound(NsdServiceInfo serviceInfo) {
-                Log.d(TAG, "找到服务: " + serviceInfo.getServiceName());
+                Log.d(TAG, "发现服务: " + serviceInfo.getServiceName());
                 
-                // 解析服务详情
+                // 解析服务信息
                 nsdManager.resolveService(serviceInfo, new NsdManager.ResolveListener() {
                     @Override
                     public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {
@@ -90,6 +123,11 @@ public class PrinterDiscoveryManager {
                     @Override
                     public void onServiceResolved(NsdServiceInfo serviceInfo) {
                         Log.d(TAG, "已解析服务: " + serviceInfo.getServiceName());
+                        
+                        if (!isDiscoveryActive) {
+                            Log.d(TAG, "搜索已停止，忽略新找到的打印机");
+                            return;
+                        }
                         
                         InetAddress host = serviceInfo.getHost();
                         int port = serviceInfo.getPort();
@@ -110,6 +148,12 @@ public class PrinterDiscoveryManager {
                             // 通知发现了新的打印机
                             if (listener != null) {
                                 listener.onPrinterFound(printerInfo);
+                                
+                                // 如果找到至少一台打印机，并且搜索仍在进行，立即通知UI可以显示结果
+                                if (discoveredPrinters.size() == 1 && isDiscoveryActive) {
+                                    // 注意这里不停止搜索，但通知UI可以停止显示加载状态
+                                    listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
+                                }
                             }
                         }
                     }
@@ -125,56 +169,55 @@ public class PrinterDiscoveryManager {
             public void onDiscoveryStopped(String serviceType) {
                 Log.d(TAG, "服务发现已停止: " + serviceType);
                 
-                // 通知搜索完成
-                if (listener != null) {
-                    listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
+                // 只有当发现监听器与当前监听器相同时才处理
+                // 防止旧的停止回调误触发
+                if (discoveryListener != null) {
+                    discoveryListener = null;
+                    
+                    // 通知搜索完成
+                    if (listener != null && isDiscoveryActive) {
+                        isDiscoveryActive = false;
+                        listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
+                    }
                 }
-                
-                discoveryListener = null;
             }
             
             @Override
             public void onStartDiscoveryFailed(String serviceType, int errorCode) {
-                Log.e(TAG, "启动服务发现失败: " + errorCode);
+                Log.e(TAG, "启动服务发现失败: " + serviceType + ", 错误码: " + errorCode);
                 
                 if (listener != null) {
                     listener.onDiscoveryError("启动服务发现失败: " + errorCode);
                 }
                 
+                // 重置状态
+                isDiscoveryActive = false;
                 discoveryListener = null;
             }
             
             @Override
             public void onStopDiscoveryFailed(String serviceType, int errorCode) {
-                Log.e(TAG, "停止服务发现失败: " + errorCode);
+                Log.e(TAG, "停止服务发现失败: " + serviceType + ", 错误码: " + errorCode);
                 
                 if (listener != null) {
                     listener.onDiscoveryError("停止服务发现失败: " + errorCode);
                 }
                 
+                // 重置状态
+                isDiscoveryActive = false;
                 discoveryListener = null;
             }
         };
         
-        // 使用多种打印服务类型搜索
         try {
             nsdManager.discoverServices(SERVICE_TYPE_IPP, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
         } catch (Exception e) {
-            Log.e(TAG, "IPP服务搜索失败", e);
-            // 尝试其他类型
-            try {
-                nsdManager.discoverServices(SERVICE_TYPE_PDL, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
-            } catch (Exception e2) {
-                Log.e(TAG, "PDL服务搜索失败", e2);
-                try {
-                    nsdManager.discoverServices(SERVICE_TYPE_PRINTER, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
-                } catch (Exception e3) {
-                    Log.e(TAG, "通用打印机服务搜索失败", e3);
-                    if (listener != null) {
-                        listener.onDiscoveryError("搜索打印机服务失败");
-                    }
-                }
+            Log.e(TAG, "启动服务发现异常", e);
+            if (listener != null) {
+                listener.onDiscoveryError("启动服务发现异常: " + e.getMessage());
             }
+            isDiscoveryActive = false;
+            discoveryListener = null;
         }
     }
     
@@ -182,14 +225,30 @@ public class PrinterDiscoveryManager {
      * 停止发现打印机
      */
     public void stopDiscovery() {
+        Log.d(TAG, "停止搜索打印机");
+        
+        // 取消超时任务
+        if (timeoutHandler != null && timeoutRunnable != null) {
+            Log.d(TAG, "取消超时任务");
+            timeoutHandler.removeCallbacks(timeoutRunnable);
+            timeoutRunnable = null;
+        }
+        
         if (discoveryListener != null) {
+            Log.d(TAG, "停止NSD服务发现");
             try {
                 nsdManager.stopServiceDiscovery(discoveryListener);
             } catch (Exception e) {
                 Log.e(TAG, "停止服务发现时发生错误", e);
             }
+            
+            // 即使stopServiceDiscovery失败，也需要重置状态
+            // 因为onDiscoveryStopped回调可能不会被调用
             discoveryListener = null;
         }
+        
+        // 无论如何，设置标志位为false
+        isDiscoveryActive = false;
     }
     
     /**

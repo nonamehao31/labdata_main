@@ -409,6 +409,7 @@ public class AsphaltTaskService {
         experimentTypeMap.put("brookfield_viscosity", Arrays.asList("沥青旋转黏度试验", "布氏旋转黏度", "布鲁克菲尔德"));
         experimentTypeMap.put("dynamic_shear_rheometer", Arrays.asList("动态剪切流变仪试验", "动态剪切", "动剪"));
         experimentTypeMap.put("bending_beam_rheometer", Arrays.asList("沥青弯曲蠕变劲度试验", "BBR试验", "弯曲梁"));
+        experimentTypeMap.put("bbr", experimentTypeMap.get("bending_beam_rheometer")); // 添加"bbr"作为bending_beam_rheometer的别名
 
         // 获取要查找的中文实验类型列表
         List<String> targetTypesList = experimentTypeMap.get(experimentType);
@@ -704,6 +705,7 @@ public class AsphaltTaskService {
             experimentTypeMap.put("brookfield_viscosity", Arrays.asList("沥青旋转黏度试验", "布氏旋转黏度", "布鲁克菲尔德"));
             experimentTypeMap.put("dynamic_shear_rheometer", Arrays.asList("动态剪切流变仪试验", "动态剪切", "动剪"));
             experimentTypeMap.put("bending_beam_rheometer", Arrays.asList("沥青弯曲蠕变劲度试验", "BBR试验", "弯曲梁"));
+            experimentTypeMap.put("bbr", experimentTypeMap.get("bending_beam_rheometer")); // 添加"bbr"作为bending_beam_rheometer的别名
             
             // 初始化状态映射 - 默认所有类型为未完成
             Map<String, String> experimentStatusMap = new HashMap<>();

@@ -115,13 +115,26 @@ public class ExperimentFragment extends Fragment {
             if (task.isMixtureTask()) {
                 // 混合料任务，打开混合料结果界面
                 intent = new Intent(getContext(), MixtureTaskResultActivity.class);
+                // 只传递任务ID，避免序列化整个对象
+                intent.putExtra(MixtureTaskResultActivity.EXTRA_TASK_ID, task.getTaskId());
+                intent.putExtra("task_name", task.getTaskName());
+                intent.putExtra("experimenter", task.getExperimenter());
+                intent.putExtra("completion_time", task.getCompletionTime());
+                intent.putExtra("experiment_type", task.getExperimentType());
+                intent.putExtra("experiment_name", task.getExperimentName());
+                intent.putExtra("task_assignment", task.getTaskAssignment());
             } else {
                 // 沥青任务，打开沥青结果界面
                 intent = new Intent(getContext(), AsphaltTaskResultActivity.class);
+                // 只传递任务ID，避免序列化整个对象
+                intent.putExtra(AsphaltTaskResultActivity.EXTRA_TASK_ID, task.getTaskId());
+                intent.putExtra("task_name", task.getTaskName());
+                intent.putExtra("experimenter", task.getExperimenter());
+                intent.putExtra("completion_time", task.getCompletionTime());
+                intent.putExtra("experiment_type", task.getExperimentType());
+                intent.putExtra("experiment_name", task.getExperimentName());
+                intent.putExtra("task_assignment", task.getTaskAssignment());
             }
-            
-            // 传递任务数据（确保CompletedExperimentTask已实现Serializable接口）
-            intent.putExtra(MixtureTaskResultActivity.EXTRA_TASK, (Parcelable) task);
             
             // 启动对应的Activity
             startActivity(intent);

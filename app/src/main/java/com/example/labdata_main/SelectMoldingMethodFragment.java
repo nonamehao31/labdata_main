@@ -135,29 +135,47 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     private void loadMoldingMethods() {
         Log.d("SelectMoldingMethod", "开始加载制件方法数据...");
         
-        // 显示刷新动画
+        // 如果适当，显示刷新动画
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
         
         try {
-            // 获取应用级别初始化的API服务实例
-            CompactionMethodApiService apiService = LabDataApplication.getCompactionMethodApiService();
+            // 初始化数据库
+            if (database == null) {
+                database = AppDatabase.getInstance(requireContext());
+            }
+            
+            // 获取API服务
+            CompactionMethodApiService apiService = null;
+            try {
+                apiService = LabDataApplication.getCompactionMethodApiService();
+                if (apiService == null) {
+                    // 如果从Application中获取失败，尝试创建新实例
+                    apiService = new CompactionMethodApiService(requireContext());
+                    Log.d("SelectMoldingMethod", "从Application获取API服务失败，已创建新实例");
+                }
+            } catch (Exception e) {
+                Log.e("SelectMoldingMethod", "尝试获取API服务时发生异常: " + e.getMessage());
+                apiService = new CompactionMethodApiService(requireContext());
+                Log.d("SelectMoldingMethod", "已创建新的API服务实例");
+            }
             
             if (apiService == null) {
-                Log.e("SelectMoldingMethod", "API服务实例为空，尝试创建新实例");
-                apiService = new CompactionMethodApiService(requireContext());
+                Log.e("SelectMoldingMethod", "无法创建API服务，回退到本地数据库");
+                showErrorAndFallbackToLocal("无法创建API服务");
+                return;
             }
             
             Log.d("SelectMoldingMethod", "准备调用API服务");
             
-            // 调用API获取当前用户所属单位的制件方法
+            // 调用API获取制件方法
             apiService.getOrganizationCompactionMethods(new Callback<ApiResponse<List<MoldingMethod>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<MoldingMethod>>> call, Response<ApiResponse<List<MoldingMethod>>> response) {
                     if (getActivity() == null) {
                         Log.d("SelectMoldingMethod", "Fragment已分离，忽略API响应");
-                        return;  // 避免Fragment已分离的情况
+                        return;
                     }
                     
                     Log.d("SelectMoldingMethod", "收到API响应: " + response.code());
@@ -168,29 +186,47 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
                               ", 消息: " + apiResponse.getMessage());
                         
                         if (apiResponse.isSuccess() && apiResponse.getData() != null) {
-                            // 成功获取数据
                             requireActivity().runOnUiThread(() -> {
+                                // 更新UI
                                 moldingMethods.clear();
-                                moldingMethods.addAll(apiResponse.getData());
+                                List<MoldingMethod> methods = apiResponse.getData();
+                                
+                                // 验证每个制件方法的ID
+                                for (MoldingMethod method : methods) {
+                                    Log.d("SelectMoldingMethod", "加载制件方法: ID=" + method.getId() + 
+                                          ", 压实方法=" + method.getCompactionMethod() +
+                                          ", 拌合温度=" + method.getMixingTemperature() +
+                                          ", 拌合速度=" + method.getMixingSpeed());
+                                    
+                                    // 检查ID是否有效 (避免使用无效ID如0或负数)
+                                    if (method.getId() <= 0) {
+                                        Log.w("SelectMoldingMethod", "检测到无效的制件方法ID: " + method.getId());
+                                        continue;
+                                    }
+                                }
+                                
+                                moldingMethods.addAll(methods);
                                 moldingMethodAdapter.notifyDataSetChanged();
-                                updateEmptyView();
                                 
                                 // 隐藏刷新动画
                                 if (swipeRefreshLayout != null) {
                                     swipeRefreshLayout.setRefreshing(false);
                                 }
                                 
+                                updateEmptyView();
+                                
+                                // 保存到本地数据库以备离线使用
+                                saveMoldingMethodsToLocalDb(methods);
+                                
                                 Log.d("SelectMoldingMethod", "成功从服务器获取" + moldingMethods.size() + "个制件方法");
                             });
                         } else {
-                            // API返回失败信息
-                            String errorMsg = apiResponse.getMessage() != null ? apiResponse.getMessage() : "获取制件方法失败";
+                            String errorMsg = apiResponse.getMessage() != null ? apiResponse.getMessage() : "未知错误";
                             Log.e("SelectMoldingMethod", "API返回错误: " + errorMsg);
-                            showErrorAndFallbackToLocal(errorMsg);
+                            showErrorAndFallbackToLocal("获取制件方法失败: " + errorMsg);
                         }
                     } else {
-                        // HTTP请求失败
-                        String errorMsg = "服务器连接失败: " + response.code();
+                        String errorMsg = "服务器响应错误，状态码: " + response.code();
                         Log.e("SelectMoldingMethod", errorMsg);
                         showErrorAndFallbackToLocal(errorMsg);
                     }
@@ -445,5 +481,25 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
      */
     public List<MixRatio> getSelectedMixRatios() {
         return selectedMixRatios;
+    }
+
+    /**
+     * 将制件方法保存到本地数据库
+     * @param methods 制件方法列表
+     */
+    private void saveMoldingMethodsToLocalDb(List<MoldingMethod> methods) {
+        new Thread(() -> {
+            try {
+                // 清除旧数据
+                database.moldingMethodDao().deleteAllMoldingMethods();
+                
+                // 保存新数据
+                database.moldingMethodDao().insertAll(methods.toArray(new MoldingMethod[0]));
+                
+                Log.d("SelectMoldingMethod", "成功将" + methods.size() + "个制件方法保存到本地数据库");
+            } catch (Exception e) {
+                Log.e("SelectMoldingMethod", "保存制件方法到本地数据库失败", e);
+            }
+        }).start();
     }
 }

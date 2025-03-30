@@ -44,6 +44,7 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
     private static final String TAG = "MixtureTaskResult";
     
     public static final String EXTRA_TASK = "extra_task";
+    public static final String EXTRA_TASK_ID = "extra_task_id";
     
     private TextView tvTaskId;
     private TextView tvMixName;
@@ -89,8 +90,43 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         // 初始化API
         mixtureTaskApi = ApiClient.getClient().create(MixtureTaskApi.class);
         
-        // 获取传递的任务数据
-        if (getIntent().hasExtra(EXTRA_TASK) || getIntent().hasExtra("task_id")) {
+        // 优先检查是否有单独的参数传递
+        if (getIntent().hasExtra(EXTRA_TASK_ID)) {
+            try {
+                // 从Intent中获取各个独立参数
+                String taskId = getIntent().getStringExtra(EXTRA_TASK_ID);
+                String taskName = getIntent().getStringExtra("task_name");
+                String experimenter = getIntent().getStringExtra("experimenter");
+                long completionTime = getIntent().getLongExtra("completion_time", 0);
+                String experimentType = getIntent().getStringExtra("experiment_type");
+                String experimentName = getIntent().getStringExtra("experiment_name");
+                
+                // 创建临时CompletedExperimentTask对象以保持现有逻辑兼容
+                task = new CompletedExperimentTask();
+                task.setTaskId(taskId);
+                task.setTaskName(taskName);
+                task.setExperimenter(experimenter);
+                task.setCompletionTime(completionTime);
+                task.setExperimentType(experimentType);
+                task.setExperimentName(experimentName);
+                task.setMixtureTask(true); // 由于这是MixtureTaskResultActivity，所以设为true
+                
+                Log.d(TAG, "通过独立参数创建任务对象: " + taskId);
+                displayTaskDetails();
+                
+                // 获取任务指派信息
+                fetchTaskAssignment();
+                
+                // 获取配比和压实方法信息
+                fetchMixratioAndCompaction();
+            } catch (Exception e) {
+                Log.e(TAG, "处理独立参数时发生异常", e);
+                Toast.makeText(this, "无法获取任务信息: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        }
+        // 兼容旧版本的Parcelable传递方式
+        else if (getIntent().hasExtra(EXTRA_TASK) || getIntent().hasExtra("task_id")) {
             try {
                 // 尝试两种方式获取数据，增加容错能力
                 if (getIntent().hasExtra(EXTRA_TASK)) {
@@ -145,7 +181,7 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                 }
             }
         } else {
-            Log.e(TAG, "没有传递任务数据");
+            Toast.makeText(this, "未提供任务信息", Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -1059,7 +1095,7 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                 if (response.body() != null) {
                     Log.d(TAG, "响应成功状态: " + response.body().isSuccess() + ", 消息: " + response.body().getMessage());
                     
-                    if (response.body().getData() != null) {
+                    if (response.body().isSuccess() && response.body().getData() != null) {
                         UniaxialCompressionTestResponse testData = response.body().getData();
                         Log.d(TAG, "测试日期: " + testData.getTestDate() + 
                                 ", 操作员: " + testData.getOperator() + 

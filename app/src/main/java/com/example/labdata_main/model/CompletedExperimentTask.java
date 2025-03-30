@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 @Keep
 public class CompletedExperimentTask implements Serializable, Parcelable {
     // 添加序列化ID，确保序列化兼容性
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1234567890123456789L;
     
     // 任务基本信息
     private String taskId;
@@ -52,6 +52,9 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
     
     // Parcelable 构造函数
     protected CompletedExperimentTask(Parcel in) {
+        // 使用 ClassLoader 读取防止类加载器问题
+        ClassLoader classLoader = CompletedExperimentTask.class.getClassLoader();
+        
         taskId = in.readString();
         taskName = in.readString();
         taskAssignment = in.readString();
@@ -72,6 +75,7 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
     }
     
     // 实现 Parcelable.Creator
+    @Keep
     public static final Creator<CompletedExperimentTask> CREATOR = new Creator<CompletedExperimentTask>() {
         @Override
         public CompletedExperimentTask createFromParcel(Parcel in) {

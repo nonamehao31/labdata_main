@@ -44,6 +44,7 @@ import retrofit2.Response;
 public class AsphaltTaskResultActivity extends AppCompatActivity {
     private static final String TAG = "AsphaltTaskResult";
     public static final String EXTRA_TASK = "extra_task";
+    public static final String EXTRA_TASK_ID = "extra_task_id";
     
     // UI组件
     private TextView tvTaskId;
@@ -92,61 +93,135 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
         // 初始化适配器
         setupRecyclerView();
         
-        // 获取传递的任务数据
-        if (getIntent().hasExtra(EXTRA_TASK)) {
-            task = (CompletedExperimentTask) getIntent().getSerializableExtra(EXTRA_TASK);
-            if (task != null) {
+        // 优先检查是否有单独的参数传递
+        if (getIntent().hasExtra(EXTRA_TASK_ID)) {
+            try {
+                // 从Intent中获取各个独立参数
+                String taskId = getIntent().getStringExtra(EXTRA_TASK_ID);
+                String taskName = getIntent().getStringExtra("task_name");
+                String experimenter = getIntent().getStringExtra("experimenter");
+                long completionTime = getIntent().getLongExtra("completion_time", 0);
+                String experimentType = getIntent().getStringExtra("experiment_type");
+                String experimentName = getIntent().getStringExtra("experiment_name");
+                String taskAssignment = getIntent().getStringExtra("task_assignment");
+                
+                // 创建临时CompletedExperimentTask对象以保持现有逻辑兼容
+                task = new CompletedExperimentTask();
+                task.setTaskId(taskId);
+                task.setTaskName(taskName);
+                task.setExperimenter(experimenter);
+                task.setCompletionTime(completionTime);
+                task.setExperimentType(experimentType);
+                task.setExperimentName(experimentName);
+                task.setTaskAssignment(taskAssignment);
+                task.setMixtureTask(false); // 由于这是AsphaltTaskResultActivity，所以设为false
+                
+                Log.d(TAG, "通过独立参数创建任务对象: " + taskId);
                 displayTaskDetails();
                 fetchAsphaltTaskDetails();
                 
                 // 根据任务指派类型加载相应的实验数据
-                String taskAssignment = task.getTaskAssignment();
                 if (taskAssignment != null) {
-                    if (taskAssignment.contains("针入度")) {
-                        // 获取针入度实验数据
-                        fetchPenetrationTestResult();
-                    } else if (taskAssignment.contains("软化点")) {
-                        // 获取软化点实验数据
-                        fetchSofteningPointResult();
-                    } else if (taskAssignment.contains("延度")) {
-                        // 获取延度实验数据
-                        fetchDuctilityTestResult();
-                    } else if (taskAssignment.contains("旋转黏度") || taskAssignment.contains("布鲁克菲尔德")) {
-                        // 获取旋转黏度实验数据
-                        fetchBrookfieldViscosityResult();
-                    } else if (taskAssignment.contains("弯曲梁") || taskAssignment.contains("BBR") || taskAssignment.contains("流变仪")) {
-                        // 获取弯曲梁流变仪实验数据
-                        fetchBbrTestResult();
-                    } else if (taskAssignment.contains("动态剪切") || taskAssignment.contains("DSR")) {
-                        // 获取动态剪切流变仪实验数据
-                        fetchDsrTestResult();
-                    } else if (taskAssignment.contains("动态模量")) {
-                        // 获取动态模量实验数据
-                        fetchDynamicModulusResult();
-                    } else if (taskAssignment.contains("沥青混合料直接拉伸循环疲劳") || taskAssignment.contains("黏弹损伤")) {
-                        // 获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
-                        fetchDirectStretchingFatigueResult();
-                    } else if (taskAssignment.contains("沥青混合料四点弯曲疲劳寿命")) {
-                        // 获取沥青混合料四点弯曲疲劳寿命实验数据
-                        fetchFourPointBendingFatigueResult();
+                    determineExperimentTypeAndFetchData(taskAssignment);
+                } else {
+                    // 如果没有指派信息，尝试加载所有类型
+                    fetchAllPossibleExperiments();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "处理独立参数时发生异常", e);
+                showErrorAndFinish("无法获取任务信息: " + e.getMessage());
+            }
+        }
+        // 兼容旧版本的方式
+        else if (getIntent().hasExtra(EXTRA_TASK)) {
+            try {
+                task = (CompletedExperimentTask) getIntent().getSerializableExtra(EXTRA_TASK);
+                if (task != null) {
+                    displayTaskDetails();
+                    fetchAsphaltTaskDetails();
+                    
+                    // 根据任务指派类型加载相应的实验数据
+                    String taskAssignment = task.getTaskAssignment();
+                    if (taskAssignment != null) {
+                        determineExperimentTypeAndFetchData(taskAssignment);
                     } else {
-                        // 未知实验类型，显示无数据提示
-                        Log.d(TAG, "未知实验类型，无法获取对应的实验数据");
-                        showNoResultsMessage();
+                        // 如果没有指派信息，尝试加载所有类型
+                        fetchAllPossibleExperiments();
                     }
                 } else {
-                    // 任务指派类型未知，显示无数据提示
-                    Log.d(TAG, "任务指派类型未知，无法获取对应的实验数据");
-                    showNoResultsMessage();
+                    showErrorAndFinish("无法获取任务信息");
                 }
-            } else {
-                Log.e(TAG, "无法获取任务信息");
-                finish();
+            } catch (Exception e) {
+                Log.e(TAG, "获取任务数据时发生异常", e);
+                showErrorAndFinish("加载任务信息失败: " + e.getMessage());
             }
         } else {
-            Log.e(TAG, "未传递任务信息");
-            finish();
+            showErrorAndFinish("未提供任务信息");
         }
+    }
+    
+    /**
+     * 根据任务指派类型确定要加载的实验数据
+     */
+    private void determineExperimentTypeAndFetchData(String taskAssignment) {
+        if (taskAssignment.contains("针入度")) {
+            // 获取针入度实验数据
+            fetchPenetrationTestResult();
+        } else if (taskAssignment.contains("软化点")) {
+            // 获取软化点实验数据
+            fetchSofteningPointResult();
+        } else if (taskAssignment.contains("延度")) {
+            // 获取延度实验数据
+            fetchDuctilityTestResult();
+        } else if (taskAssignment.contains("旋转黏度") || taskAssignment.contains("布鲁克菲尔德")) {
+            // 获取旋转黏度实验数据
+            fetchBrookfieldViscosityResult();
+        } else if (taskAssignment.contains("弯曲梁") || taskAssignment.contains("BBR") || taskAssignment.contains("流变仪")) {
+            // 获取弯曲梁流变仪实验数据
+            fetchBbrTestResult();
+        } else if (taskAssignment.contains("动态剪切") || taskAssignment.contains("DSR")) {
+            // 获取动态剪切流变仪
+            fetchDsrTestResult();
+        } else if (taskAssignment.contains("动态模量")) {
+            // 获取动态模量实验数据
+            fetchDynamicModulusResult();
+        } else if (taskAssignment.contains("直接拉伸") || taskAssignment.contains("疲劳")) {
+            // 获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
+            fetchDirectStretchingFatigueResult();
+        } else if (taskAssignment.contains("四点弯曲") || taskAssignment.contains("疲劳寿命")) {
+            // 获取沥青混合料四点弯曲疲劳寿命实验数据
+            fetchFourPointBendingFatigueResult();
+        } else {
+            // 如果没有匹配的实验类型，尝试加载所有可能的实验类型
+            fetchAllPossibleExperiments();
+        }
+    }
+    
+    /**
+     * 加载所有可能的实验类型数据
+     */
+    private void fetchAllPossibleExperiments() {
+        Log.d(TAG, "尝试加载所有可能的实验类型数据");
+        fetchPenetrationTestResult();
+        fetchSofteningPointResult();
+        fetchDuctilityTestResult();
+        fetchBrookfieldViscosityResult();
+        fetchBbrTestResult();
+        fetchDsrTestResult();
+        fetchDynamicModulusResult();
+        fetchDirectStretchingFatigueResult();
+        fetchFourPointBendingFatigueResult();
+    }
+    
+    /**
+     * 显示错误并关闭Activity
+     */
+    private void showErrorAndFinish(String message) {
+        Log.e(TAG, message);
+        tvNoResults.setVisibility(View.VISIBLE);
+        tvNoResults.setText(message);
+        rvExperimentResults.setVisibility(View.GONE);
+        // 不立即结束活动，以便用户可以看到错误消息
     }
     
     /**

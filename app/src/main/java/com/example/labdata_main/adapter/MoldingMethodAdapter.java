@@ -102,6 +102,7 @@ public class MoldingMethodAdapter extends RecyclerView.Adapter<MoldingMethodAdap
 
     private void setupMixRatioDropdown(MoldingMethodViewHolder holder, int position, MoldingMethod method) {
         Log.d("MoldingMethodAdapter", "Setting up dropdown for position " + position + ", available mix ratios: " + availableMixRatios.size());
+        Log.d("MoldingMethodAdapter", "当前制件方法ID: " + method.getId() + ", 压实方法: " + method.getCompactionMethod());
         
         // 创建下拉菜单选项，使用配比的实际名称
         String[] items = new String[availableMixRatios.size()];
@@ -136,6 +137,7 @@ public class MoldingMethodAdapter extends RecyclerView.Adapter<MoldingMethodAdap
         holder.actvMixRatioSelector.setOnItemClickListener((parent, view, pos, id) -> {
             MixRatio selectedRatio = availableMixRatios.get(pos);
             Log.d("MoldingMethodAdapter", "Selected mix ratio at position " + pos + " for molding method " + position);
+            Log.d("MoldingMethodAdapter", "将配比ID " + selectedRatio.getId() + " 关联到制件方法ID " + method.getId());
             selectedMixRatios.put(position, selectedRatio);
             method.setMixRatioId(selectedRatio.getId());
             notifyItemChanged(position);
