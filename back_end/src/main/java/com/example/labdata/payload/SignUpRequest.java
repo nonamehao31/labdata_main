@@ -28,5 +28,6 @@ public class SignUpRequest {
     private String phone;
     
     private String organization;
+    
+    private Boolean admin;
 }
-

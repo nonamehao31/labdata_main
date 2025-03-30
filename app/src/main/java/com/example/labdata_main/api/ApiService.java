@@ -22,8 +22,10 @@ import com.example.labdata_main.api.response.SupportedDeviceResponse;
 import com.example.labdata_main.model.ExperimentTask;
 import com.example.labdata_main.model.MixtureTaskModel;
 import com.example.labdata_main.model.SupportMixtureTaskModel;
+import com.example.labdata_main.model.User;
 
 import java.util.List;
+import java.util.Map;
 
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
@@ -325,4 +327,38 @@ public interface ApiService {
      */
     @GET(ApiConfig.GET_COMPLETED_ASPHALT_TASKS_URL)
     Call<ApiResponse<List<CompletedAsphaltTaskResponse>>> getCompletedAsphaltTasks(@Query("companyId") String companyId);
+
+    /**
+     * 通过用户名获取用户信息
+     * @param username 用户名
+     * @return 用户信息响应
+     */
+    @GET(ApiConfig.BASE_AUTH_URL + "/user/by-username/{username}")
+    Call<ApiResponse<Map<String, Object>>> getUserInfoByUsername(@Path("username") String username);
+
+    /**
+     * 获取同一单位下的所有用户
+     * @param organizationId 单位ID
+     * @return 用户列表响应
+     */
+    @GET(ApiConfig.GET_COMPANY_USERS_URL)
+    Call<ApiResponse<List<User>>> getCompanyUsers(@Path("organizationId") String organizationId);
+
+    /**
+     * 更新用户权限
+     * @param userId 用户ID
+     * @param permissions 权限信息
+     * @return 更新结果
+     */
+    @POST(ApiConfig.BASE_AUTH_URL + "/users/{userId}/permissions")
+    Call<ApiResponse<Boolean>> updateUserPermissions(@Path("userId") int userId, @Body Map<String, Boolean> permissions);
+
+    /**
+     * 获取用户权限信息
+     * @param userId 用户ID
+     * @return 用户权限信息
+     */
+    @GET(ApiConfig.BASE_AUTH_URL + "/users/{userId}/permissions")
+    Call<ApiResponse<Map<String, Boolean>>> getUserPermissions(@Path("userId") int userId);
+
 }

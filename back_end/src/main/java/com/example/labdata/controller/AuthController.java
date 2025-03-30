@@ -28,6 +28,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,11 +69,12 @@ public class AuthController {
         User user = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new AppException("找不到用户信息"));
                 
-        // 返回带有公司信息的响应
+        // 返回带有用户真实姓名和公司信息的响应
         return ResponseEntity.ok(new JwtAuthenticationResponse(
             jwt, 
             userPrincipal.getId(), 
             userPrincipal.getUsername(),
+            user.getName(), // 添加用户真实姓名
             user.getOrganization(),
             user.getOrganizationId() != null ? user.getOrganizationId().toString() : null
         ));
@@ -99,7 +104,23 @@ public class AuthController {
         user.setPhone(signUpRequest.getPhone());
         user.setOrganization(signUpRequest.getOrganization());
         user.setOrganizationId(organizationId); // 设置组织ID
-        user.setAdmin(false); // Default value
+        
+        // 如果前端传递了admin值，使用前端传递的值；否则默认为false
+        if (signUpRequest.getAdmin() != null) {
+            user.setAdmin(signUpRequest.getAdmin());
+            // 记录用户类型设置
+            System.out.println("设置用户 " + signUpRequest.getUsername() + " 的管理员状态为: " + signUpRequest.getAdmin());
+        } else {
+            user.setAdmin(false); // 默认值
+            System.out.println("用户 " + signUpRequest.getUsername() + " 未提供管理员状态，使用默认值false");
+        }
+        
+        // 设置初始权限
+        // 如果是管理员，默认拥有所有权限；如果是实验员，默认没有任何权限
+        boolean hasPermissions = user.isAdmin();
+        user.setAllowAddMixture(hasPermissions);
+        user.setAllowAddAsphalt(hasPermissions);
+        user.setAllowAddMixratio(hasPermissions);
 
         User result = userRepository.save(user);
 
@@ -164,5 +185,138 @@ public class AuthController {
         boolean exists = userRepository.existsByEmail(email);
         ApiResponse<Boolean> response = new ApiResponse<>(true, null, exists);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 通过用户名获取用户信息
+     * @param username 用户名
+     * @return 包含用户信息的响应实体
+     */
+    @GetMapping("/user/by-username/{username}")
+    public ResponseEntity<?> getUserInfoByUsername(@PathVariable(value = "username") String username) {
+        Optional<User> userOptional = userRepository.findByUsername(username);
+        
+        if (!userOptional.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        User user = userOptional.get();
+        
+        // 创建只返回必要信息的响应对象
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("id", user.getId());
+        userInfo.put("username", user.getUsername());
+        userInfo.put("name", user.getName());
+        userInfo.put("organization", user.getOrganization());
+        userInfo.put("organizationId", user.getOrganizationId());
+        
+        return ResponseEntity.ok(new ApiResponse(true, "用户信息获取成功", userInfo));
+    }
+
+    /**
+     * 获取同一单位的所有用户信息
+     * @param organizationId 单位ID
+     * @return 包含用户列表的响应实体
+     */
+    @GetMapping("/users/by-organization/{organizationId}")
+    public ResponseEntity<?> getUsersByOrganization(@PathVariable(value = "organizationId") Long organizationId) {
+        List<User> users = userRepository.findByOrganizationId(organizationId);
+        
+        if (users.isEmpty()) {
+            return ResponseEntity.ok(new ApiResponse(true, "未找到该单位下的用户", new ArrayList<>()));
+        }
+        
+        // 处理返回数据，移除敏感信息
+        List<Map<String, Object>> safeUsers = new ArrayList<>();
+        for (User user : users) {
+            Map<String, Object> safeUser = new HashMap<>();
+            safeUser.put("id", user.getId());
+            safeUser.put("username", user.getUsername());
+            safeUser.put("name", user.getName());
+            safeUser.put("email", user.getEmail());
+            safeUser.put("organization", user.getOrganization());
+            safeUser.put("phone", user.getPhone());
+            safeUser.put("userType", user.isAdmin() ? 1 : 0); // 将admin布尔值转换为整数类型
+            safeUser.put("allowAddMixture", user.isAllowAddMixture());
+            safeUser.put("allowAddAsphalt", user.isAllowAddAsphalt());
+            safeUser.put("allowAddMixratio", user.isAllowAddMixratio());
+            
+            safeUsers.add(safeUser);
+        }
+        
+        return ResponseEntity.ok(new ApiResponse(true, "获取单位用户成功", safeUsers));
+    }
+
+    /**
+     * 更新用户权限
+     * @param userId 用户ID
+     * @param permissions 用户权限参数
+     * @return 操作结果
+     */
+    @PostMapping("/users/{userId}/permissions")
+    public ResponseEntity<?> updateUserPermissions(
+            @PathVariable(value = "userId") Long userId,
+            @RequestBody Map<String, Boolean> permissions) {
+        
+        Optional<User> userOptional = userRepository.findById(userId);
+        
+        if (!userOptional.isPresent()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "找不到指定用户", null));
+        }
+        
+        User user = userOptional.get();
+        
+        // 只能更新普通用户的权限，管理员默认拥有所有权限
+        if (!user.isAdmin()) {
+            // 更新权限字段
+            if (permissions.containsKey("allowAddMixture")) {
+                user.setAllowAddMixture(permissions.get("allowAddMixture"));
+            }
+            
+            if (permissions.containsKey("allowAddAsphalt")) {
+                user.setAllowAddAsphalt(permissions.get("allowAddAsphalt"));
+            }
+            
+            if (permissions.containsKey("allowAddMixratio")) {
+                user.setAllowAddMixratio(permissions.get("allowAddMixratio"));
+            }
+            
+            userRepository.save(user);
+        }
+        
+        return ResponseEntity.ok(new ApiResponse(true, "用户权限更新成功", true));
+    }
+
+    /**
+     * 获取用户权限
+     * @param userId 用户ID
+     * @return 用户权限信息
+     */
+    @GetMapping("/users/{userId}/permissions")
+    public ResponseEntity<?> getUserPermissions(
+            @PathVariable(value = "userId") Long userId) {
+        
+        Optional<User> userOptional = userRepository.findById(userId);
+        
+        if (!userOptional.isPresent()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "找不到指定用户", null));
+        }
+        
+        User user = userOptional.get();
+        Map<String, Boolean> permissions = new HashMap<>();
+        
+        // 如果是管理员，返回所有权限为true
+        if (user.isAdmin()) {
+            permissions.put("allowAddMixture", true);
+            permissions.put("allowAddAsphalt", true);
+            permissions.put("allowAddMixratio", true);
+        } else {
+            // 返回该用户的实际权限
+            permissions.put("allowAddMixture", user.isAllowAddMixture());
+            permissions.put("allowAddAsphalt", user.isAllowAddAsphalt());
+            permissions.put("allowAddMixratio", user.isAllowAddMixratio());
+        }
+        
+        return ResponseEntity.ok(new ApiResponse(true, "获取用户权限成功", permissions));
     }
 }

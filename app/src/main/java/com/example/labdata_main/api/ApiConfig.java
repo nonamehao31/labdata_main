@@ -12,6 +12,11 @@ public class ApiConfig {
     public static final String BASE_URL = "http://10.11.232.216:8080/";
     
     /**
+     * API基础路径前缀
+     */
+    public static final String BASE_AUTH_URL = "auth";
+    
+    /**
      * 超时设置（秒）
      */
     public static final int CONNECT_TIMEOUT = 60;
@@ -25,6 +30,7 @@ public class ApiConfig {
     public static final String LOGIN_URL = "auth/login";
     public static final String REGISTER_URL = "auth/register";
     public static final String CHECK_EMAIL_EXISTS_URL = "auth/check-email";
+    public static final String GET_COMPANY_USERS_URL = "auth/users/by-organization/{organizationId}";
     
     // 设备相关
     public static final String SAVE_DEVICE_URL = "devices/save";

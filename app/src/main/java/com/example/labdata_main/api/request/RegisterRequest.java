@@ -10,6 +10,7 @@ public class RegisterRequest {
     private String password;
     private String phone;
     private String organization;
+    private Boolean admin;
     
     public RegisterRequest(String name, String username, String email, String password, String phone, String organization) {
         this.name = name;
@@ -18,6 +19,16 @@ public class RegisterRequest {
         this.password = password;
         this.phone = phone;
         this.organization = organization;
+    }
+
+    public RegisterRequest(String name, String username, String email, String password, String phone, String organization, Boolean admin) {
+        this.name = name;
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.phone = phone;
+        this.organization = organization;
+        this.admin = admin;
     }
 
     public String getName() {
@@ -66,5 +77,13 @@ public class RegisterRequest {
 
     public void setOrganization(String organization) {
         this.organization = organization;
+    }
+    
+    public Boolean getAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(Boolean admin) {
+        this.admin = admin;
     }
 }

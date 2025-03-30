@@ -19,6 +19,13 @@ public class User {
     private String password;
     // 用户类型：0表示实验员，1表示管理员
     private int userType;
+    // 用户权限：是否允许添加混合料实验
+    private boolean allowAddMixture;
+    // 用户权限：是否允许添加沥青实验
+    private boolean allowAddAsphalt;
+    // 用户权限：是否允许添加配合比
+    private boolean allowAddMixratio;
+    
     // 默认构造函数
     public User() {
     }
@@ -96,5 +103,37 @@ public class User {
 
     public void setUserType(int userType) {
         this.userType = userType;    
+    }
+    
+    public boolean isAllowAddMixture() {
+        return allowAddMixture;
+    }
+
+    public void setAllowAddMixture(boolean allowAddMixture) {
+        this.allowAddMixture = allowAddMixture;
+    }
+
+    public boolean isAllowAddAsphalt() {
+        return allowAddAsphalt;
+    }
+
+    public void setAllowAddAsphalt(boolean allowAddAsphalt) {
+        this.allowAddAsphalt = allowAddAsphalt;
+    }
+
+    public boolean isAllowAddMixratio() {
+        return allowAddMixratio;
+    }
+
+    public void setAllowAddMixratio(boolean allowAddMixratio) {
+        this.allowAddMixratio = allowAddMixratio;
+    }
+    
+    /**
+     * 判断用户是否为管理员
+     * @return 如果是管理员则返回true，否则返回false
+     */
+    public boolean isAdmin() {
+        return userType == 1;
     }
 }

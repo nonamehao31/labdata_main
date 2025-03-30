@@ -23,4 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // 根据组织名称查找用户
     Optional<User> findFirstByOrganization(String organization);
+    
+    // 根据组织ID查找所有用户
+    List<User> findByOrganizationId(Long organizationId);
 }

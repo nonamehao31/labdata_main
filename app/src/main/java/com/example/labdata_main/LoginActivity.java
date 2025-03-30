@@ -127,13 +127,21 @@ public class LoginActivity extends AppCompatActivity {
                             loginResponse.getCompanyId() != null && !loginResponse.getCompanyId().trim().isEmpty() ?
                                 loginResponse.getCompanyId() : user.getCompany(), // 优先使用API返回的公司ID
                             user.getPhone(),
-                            user.getUserType()
+                            user.getUserType(),
+                            loginResponse.getName() // 添加用户真实姓名
                         );
                         
                         // 保存token信息
                         sharedPrefsManager.saveAuthToken(
                             loginResponse.getAccessToken(),
                             loginResponse.getTokenType()
+                        );
+                        
+                        // 保存用户权限信息
+                        sharedPrefsManager.saveUserPermissions(
+                            loginResponse.isAllowAddMixture(),
+                            loginResponse.isAllowAddAsphalt(),
+                            loginResponse.isAllowAddMixratio()
                         );
                         
                         // 解析并保存JWT令牌信息用于测试
@@ -165,7 +173,7 @@ public class LoginActivity extends AppCompatActivity {
                         // 用户在后端存在但本地数据库没有记录，创建本地记录
                         User newUser = new User();
                         newUser.setEmail(email);
-                        newUser.setName(loginResponse.getUsername());
+                        newUser.setName(loginResponse.getName() != null ? loginResponse.getName() : loginResponse.getUsername()); // 优先使用真实姓名，如没有则使用用户名
                         newUser.setPassword(password); // 密码应该加密保存
                         newUser.setUserType(0); // 默认普通用户(0:实验员, 1:管理员)
                         
@@ -178,16 +186,24 @@ public class LoginActivity extends AppCompatActivity {
                                 loginResponse.getUserId(),
                                 email,
                                 loginResponse.getUsername(),
-                                loginResponse.getCompanyId() != null && !loginResponse.getCompanyId().trim().isEmpty() ? 
-                                    loginResponse.getCompanyId() : "default", // 使用API返回的公司ID或默认值
-                                "", // 电话信息为空
-                                0  // 默认用户类型
+                                loginResponse.getCompanyId() != null && !loginResponse.getCompanyId().trim().isEmpty() ?
+                                    loginResponse.getCompanyId() : "",
+                                "",
+                                0,
+                                loginResponse.getName() // 添加用户真实姓名
                             );
                             
                             // 保存token信息
                             sharedPrefsManager.saveAuthToken(
                                 loginResponse.getAccessToken(),
                                 loginResponse.getTokenType()
+                            );
+                            
+                            // 保存用户权限信息
+                            sharedPrefsManager.saveUserPermissions(
+                                loginResponse.isAllowAddMixture(),
+                                loginResponse.isAllowAddAsphalt(),
+                                loginResponse.isAllowAddMixratio()
                             );
                             
                             // 解析并保存JWT令牌信息用于测试

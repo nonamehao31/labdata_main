@@ -51,4 +51,13 @@ public class User extends DateAudit {
     private String organization;
     private Long organizationId; 
     private boolean admin;
+    
+    @Column(name = "allow_add_mixture", nullable = false, columnDefinition = "boolean default false")
+    private boolean allowAddMixture;
+    
+    @Column(name = "allow_add_asphalt", nullable = false, columnDefinition = "boolean default false")
+    private boolean allowAddAsphalt;
+    
+    @Column(name = "allow_add_mixratio", nullable = false, columnDefinition = "boolean default false")
+    private boolean allowAddMixratio;
 }

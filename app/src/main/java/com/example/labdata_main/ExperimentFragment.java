@@ -4,11 +4,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -50,8 +54,11 @@ public class ExperimentFragment extends Fragment {
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView rvExperiments;
     private TextView tvNoData;
+    private EditText etSearch;
+    private ImageView ivClearSearch;
     private CompletedExperimentAdapter adapter;
     private final List<CompletedExperimentTask> allTasks = new ArrayList<>();
+    private final List<CompletedExperimentTask> filteredTasks = new ArrayList<>();
     
     // API服务
     private ApiService apiService;
@@ -91,6 +98,8 @@ public class ExperimentFragment extends Fragment {
         rvExperiments = view.findViewById(R.id.rvExperiments);
         tvNoData = view.findViewById(R.id.tvNoData);
         swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
+        etSearch = view.findViewById(R.id.etSearch);
+        ivClearSearch = view.findViewById(R.id.ivClearSearch);
         
         // 初始化适配器
         adapter = new CompletedExperimentAdapter(getContext());
@@ -121,18 +130,36 @@ public class ExperimentFragment extends Fragment {
         // 设置下拉刷新监听器
         swipeRefreshLayout.setOnRefreshListener(this::loadData);
         
-        // 处理筛选按钮
-        Button btnFilter = view.findViewById(R.id.btnFilter);
-        btnFilter.setOnClickListener(v -> {
-            // 暂不实现筛选功能，可以在这里添加筛选逻辑
-            Toast.makeText(getContext(), "筛选功能暂未实现", Toast.LENGTH_SHORT).show();
+        // 设置搜索框文本变化监听器
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                // 不需要实现
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // 实时筛选
+                filterTasks(s.toString());
+                
+                // 根据输入内容显示/隐藏清除按钮
+                if (TextUtils.isEmpty(s)) {
+                    ivClearSearch.setVisibility(View.GONE);
+                } else {
+                    ivClearSearch.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // 不需要实现
+            }
         });
         
-        // 处理分析按钮
-        Button btnAnalyze = view.findViewById(R.id.btnAnalyze);
-        btnAnalyze.setOnClickListener(v -> {
-            // 暂不实现分析功能，可以在这里添加分析逻辑
-            Toast.makeText(getContext(), "分析功能暂未实现", Toast.LENGTH_SHORT).show();
+        // 设置清除按钮点击事件
+        ivClearSearch.setOnClickListener(v -> {
+            etSearch.setText("");
+            ivClearSearch.setVisibility(View.GONE);
         });
     }
 
@@ -249,11 +276,18 @@ public class ExperimentFragment extends Fragment {
             // 停止刷新动画
             swipeRefreshLayout.setRefreshing(false);
             
-            // 更新数据列表
-            adapter.updateData(allTasks);
+            // 先执行一次筛选（如果搜索框有内容）
+            if (etSearch != null && etSearch.getText() != null && !etSearch.getText().toString().isEmpty()) {
+                filterTasks(etSearch.getText().toString());
+            } else {
+                // 如果搜索框为空，直接显示所有数据
+                filteredTasks.clear();
+                filteredTasks.addAll(allTasks);
+                adapter.updateData(filteredTasks, "");
+            }
             
             // 显示/隐藏空数据提示
-            if (allTasks.isEmpty()) {
+            if (filteredTasks.isEmpty()) {
                 tvNoData.setVisibility(View.VISIBLE);
                 rvExperiments.setVisibility(View.GONE);
             } else {
@@ -261,7 +295,67 @@ public class ExperimentFragment extends Fragment {
                 rvExperiments.setVisibility(View.VISIBLE);
             }
             
-            Log.d(TAG, "UI更新完成，显示 " + allTasks.size() + " 个任务");
+            Log.d(TAG, "UI更新完成，显示 " + filteredTasks.size() + " 个任务（总共 " + allTasks.size() + " 个）");
         });
+    }
+    
+    /**
+     * 筛选任务
+     * @param keyword 关键词
+     */
+    private void filterTasks(String keyword) {
+        if (getActivity() == null) return;
+        
+        getActivity().runOnUiThread(() -> {
+            Log.d(TAG, "执行筛选，关键词: " + keyword);
+            
+            filteredTasks.clear();
+            
+            if (keyword == null || keyword.trim().isEmpty()) {
+                // 如果关键词为空，显示所有任务
+                filteredTasks.addAll(allTasks);
+                adapter.updateData(filteredTasks, "");
+            } else {
+                String normalizedKeyword = keyword.toLowerCase().trim();
+                
+                // 从所有任务中筛选
+                for (CompletedExperimentTask task : allTasks) {
+                    // 匹配各个字段
+                    if (containsIgnoreCase(task.getExperimentName(), normalizedKeyword) ||
+                        containsIgnoreCase(task.getExperimentType(), normalizedKeyword) ||
+                        containsIgnoreCase(task.getTaskId(), normalizedKeyword) ||
+                        containsIgnoreCase(task.getTaskAssignment(), normalizedKeyword) ||
+                        containsIgnoreCase(task.getExperimenter(), normalizedKeyword) ||
+                        (task.isMixtureTask() && containsIgnoreCase(task.getMixName(), normalizedKeyword)) ||
+                        (task.isMixtureTask() && containsIgnoreCase(task.getCompactionMethod(), normalizedKeyword)) ||
+                        (!task.isMixtureTask() && containsIgnoreCase(task.getTaskName(), normalizedKeyword))) {
+                        
+                        filteredTasks.add(task);
+                    }
+                }
+                
+                // 更新适配器，并传递关键词用于高亮
+                adapter.updateData(filteredTasks, normalizedKeyword);
+            }
+            
+            // 显示/隐藏空数据提示
+            if (filteredTasks.isEmpty()) {
+                tvNoData.setText("没有找到匹配\"" + keyword + "\"的实验");
+                tvNoData.setVisibility(View.VISIBLE);
+                rvExperiments.setVisibility(View.GONE);
+            } else {
+                tvNoData.setVisibility(View.GONE);
+                rvExperiments.setVisibility(View.VISIBLE);
+            }
+            
+            Log.d(TAG, "筛选完成，找到 " + filteredTasks.size() + " 个匹配任务");
+        });
+    }
+    
+    /**
+     * 判断字符串是否包含关键词（忽略大小写）
+     */
+    private boolean containsIgnoreCase(String text, String keyword) {
+        return text != null && text.toLowerCase().contains(keyword);
     }
 }

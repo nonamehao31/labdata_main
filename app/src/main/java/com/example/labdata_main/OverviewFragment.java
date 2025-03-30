@@ -3,8 +3,8 @@ package com.example.labdata_main;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.BroadcastReceiver;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
@@ -35,9 +35,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.labdata_main.adapter.ExperimentTaskAdapter;
 import com.example.labdata_main.adapter.ProjectCardAdapter;
 import com.example.labdata_main.adapter.AsphaltProjectCardAdapter;
-import com.example.labdata_main.api.model.ApiResponse;
 import com.example.labdata_main.api.model.AsphaltTaskResponse;
 import com.example.labdata_main.api.model.MixtureTaskResponse;
+import com.example.labdata_main.api.model.ApiResponse;
+import com.example.labdata_main.api.ApiService;
 import com.example.labdata_main.api.service.AsphaltTaskService;
 import com.example.labdata_main.api.service.MixtureTaskService;
 import com.example.labdata_main.database.AppDatabase;
@@ -51,6 +52,13 @@ import com.example.labdata_main.utils.SharedPrefsManager;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.GET;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -69,12 +77,6 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.http.GET;
 import okhttp3.Request;
 
 import com.google.gson.Gson;
@@ -192,15 +194,25 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         LinearLayout btnAssignAsphaltExperiment = view.findViewById(R.id.btnAssignAsphaltExperiment);
         LinearLayout btnAddMixRatio = view.findViewById(R.id.btnAddMixRatio);
 
+        // 设置按钮点击事件，但不立即设置可见性
+        // 可见性将由fetchUserPermissions方法中的实时权限检查决定
+        Log.d(TAG, "设置按钮点击事件，等待实时权限检查...");
+        
         if (btnAssignExperiment != null) {
+            // 先隐藏按钮，等待实时权限检查结果
+            btnAssignExperiment.setVisibility(View.GONE);
             btnAssignExperiment.setOnClickListener(v -> showAddExperimentDialog());
         }
 
         if (btnAssignAsphaltExperiment != null) {
+            // 先隐藏按钮，等待实时权限检查结果
+            btnAssignAsphaltExperiment.setVisibility(View.GONE);
             btnAssignAsphaltExperiment.setOnClickListener(v -> showAddAsphaltTaskDialog());
         }
 
         if (btnAddMixRatio != null) {
+            // 先隐藏按钮，等待实时权限检查结果
+            btnAddMixRatio.setVisibility(View.GONE);
             btnAddMixRatio.setOnClickListener(v -> {
                 MixRatioBottomSheetFragment bottomSheet = MixRatioBottomSheetFragment.newInstance();
                 bottomSheet.show(getChildFragmentManager(), "MixRatioBottomSheet");
@@ -329,6 +341,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 测试API连接状态
         testApiConnection();
+
+        // 获取实时权限信息
+        fetchUserPermissions();
     }
 
     private void refreshData() {
@@ -375,145 +390,124 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void fetchMixtureTasks() {
         Log.d(TAG, "开始获取混合料任务");
         String companyId = sharedPrefsManager.getUserCompany();
-        Call<ApiResponse<List<MixtureTaskResponse>>> call = mixtureTaskService.getUserMixtureTasks(companyId);
+        Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> call = mixtureTaskService.getUserMixtureTasks(companyId);
         
         // 打印请求详情
         Request request = call.request();
-        Log.d(TAG, "混合料任务请求URL: " + request.url());
         Log.d(TAG, "混合料任务请求方法: " + request.method());
         Log.d(TAG, "混合料任务请求头: " + request.headers());
         
-        call.enqueue(new Callback<ApiResponse<List<MixtureTaskResponse>>>() {
+        call.enqueue(new Callback<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>>() {
             @Override
-            public void onResponse(Call<ApiResponse<List<MixtureTaskResponse>>> call, Response<ApiResponse<List<MixtureTaskResponse>>> response) {
+            public void onResponse(Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> call, Response<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> response) {
                 Log.d(TAG, "混合料任务响应码: " + response.code());
                 swipeRefreshLayout.setRefreshing(false);
                 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    Log.d(TAG, "混合料任务获取成功");
-                    
-                    // 获取任务列表
-                    List<MixtureTaskResponse> taskResponses = response.body().getData();
-                    Log.d(TAG, "获取到 " + (taskResponses != null ? taskResponses.size() : 0) + " 个混合料任务");
-                    
-                    if (taskResponses != null && !taskResponses.isEmpty()) {
-                        // 清空旧数据，确保使用最新数据
-                        apiMixtureUnacceptedTasks.clear();
-                        apiMixtureAcceptedTasks.clear();
-                        
-                        // 处理任务响应
-                        handleMixtureTaskResponse(taskResponses);
+                if (response.isSuccessful() && response.body() != null) {
+                    if (response.body().isSuccess()) {
+                        // 响应成功，处理数据
+                        List<MixtureTaskResponse> tasks = response.body().getData();
+                        if (tasks != null && !tasks.isEmpty()) {
+                            Log.d(TAG, "获取到混合料任务数量: " + tasks.size());
+                            handleMixtureTaskResponse(tasks);
+                        } else {
+                            Log.d(TAG, "未获取到混合料任务或任务为空");
+                            showEmptyState("MIXTURE");
+                        }
                     } else {
-                        Log.d(TAG, "没有混合料任务");
-                        // 清空旧数据并显示空状态
-                        apiMixtureUnacceptedTasks.clear();
-                        apiMixtureAcceptedTasks.clear();
+                        // API返回错误信息
+                        Log.e(TAG, "API错误: " + response.body().getMessage());
+                        Toast.makeText(requireContext(), "错误: " + response.body().getMessage(), Toast.LENGTH_SHORT).show();
                         showEmptyState("MIXTURE");
                     }
                 } else {
-                    // 请求失败
-                    int code = response.code();
-                    String message = "";
+                    // HTTP请求失败
+                    Log.e(TAG, "HTTP错误码: " + response.code());
                     try {
                         if (response.errorBody() != null) {
-                            message = response.errorBody().string();
+                            Log.e(TAG, "错误响应: " + response.errorBody().string());
                         }
                     } catch (IOException e) {
-                        Log.e(TAG, "获取错误消息失败", e);
+                        Log.e(TAG, "读取错误响应失败", e);
                     }
                     
-                    Log.e(TAG, "获取混合料任务失败: " + code + ", " + message);
+                    // 显示错误提示
+                    Toast.makeText(requireContext(), "网络请求失败，状态码: " + response.code(), Toast.LENGTH_SHORT).show();
                     showEmptyState("MIXTURE");
-                    Toast.makeText(requireContext(), "获取混合料任务失败: " + code, Toast.LENGTH_SHORT).show();
                 }
+                
+                // 标记API数据已加载
+                hasLoadedApiData = true;
             }
             
             @Override
-            public void onFailure(Call<ApiResponse<List<MixtureTaskResponse>>> call, Throwable t) {
+            public void onFailure(Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> call, Throwable t) {
                 Log.e(TAG, "网络请求失败: " + t.getMessage(), t);
                 swipeRefreshLayout.setRefreshing(false);
                 showEmptyState("MIXTURE");
-                Toast.makeText(requireContext(), "网络请求失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
     
     private void fetchAsphaltTasks() {
         Log.d(TAG, "开始获取沥青任务");
-        Call<ApiResponse<List<AsphaltTaskResponse>>> call = asphaltTaskService.getUserAsphaltTasks(sharedPrefsManager.getUserCompany());
+        Call<com.example.labdata_main.api.model.ApiResponse<List<AsphaltTaskResponse>>> call = asphaltTaskService.getUserAsphaltTasks(sharedPrefsManager.getUserCompany());
         
         // 打印请求详情
         Request request = call.request();
-        Log.d(TAG, "请求URL: " + request.url());
         Log.d(TAG, "请求方法: " + request.method());
         Log.d(TAG, "请求头: " + request.headers());
         
-        call.enqueue(new Callback<ApiResponse<List<AsphaltTaskResponse>>>() {
+        call.enqueue(new Callback<com.example.labdata_main.api.model.ApiResponse<List<AsphaltTaskResponse>>>() {
             @Override
-            public void onResponse(Call<ApiResponse<List<AsphaltTaskResponse>>> call, Response<ApiResponse<List<AsphaltTaskResponse>>> response) {
+            public void onResponse(Call<com.example.labdata_main.api.model.ApiResponse<List<AsphaltTaskResponse>>> call, Response<com.example.labdata_main.api.model.ApiResponse<List<AsphaltTaskResponse>>> response) {
                 // 停止刷新动画
                 swipeRefreshLayout.setRefreshing(false);
                 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    Log.d(TAG, "沥青任务获取成功");
-                    
-                    // 获取任务列表
-                    List<AsphaltTaskResponse> taskResponses = response.body().getData();
-                    Log.d(TAG, "获取到 " + (taskResponses != null ? taskResponses.size() : 0) + " 个沥青任务");
-                    
-                    // 打印原始API响应数据，用于诊断
-                    if (taskResponses != null) {
-                        Log.d(TAG, "API响应原始JSON: " + new Gson().toJson(taskResponses));
-                        
-                        for (int i = 0; i < taskResponses.size(); i++) {
-                            AsphaltTaskResponse task = taskResponses.get(i);
-                            Log.d(TAG, "任务 " + i + " 详情：");
-                            Log.d(TAG, "  实验ID: " + task.getAsphaltExperimentId());
-                            Log.d(TAG, "  实验名称: " + task.getAsphaltExperimentName());
-                            Log.d(TAG, "  任务名称: " + task.getAsphaltTaskName());
-                            Log.d(TAG, "  任务状态: " + task.getTaskStatus());
-                            Log.d(TAG, "  状态: " + task.getStatus());
-                            Log.d(TAG, "  公司ID: " + task.getCompanyId());
+                if (response.isSuccessful() && response.body() != null) {
+                    if (response.body().isSuccess()) {
+                        // 响应成功，处理数据
+                        List<AsphaltTaskResponse> tasks = response.body().getData();
+                        if (tasks != null && !tasks.isEmpty()) {
+                            Log.d(TAG, "获取到沥青任务数量: " + tasks.size());
+                            handleAsphaltTaskResponse(tasks);
+                        } else {
+                            Log.d(TAG, "未获取到沥青任务或任务为空");
+                            showEmptyState("ASPHALT");
                         }
-                    }
-                    
-                    if (taskResponses != null && !taskResponses.isEmpty()) {
-                        // 清空旧数据，确保使用最新数据
-                        apiAsphaltUnacceptedTasks.clear();
-                        apiAsphaltAcceptedTasks.clear();
-                        
-                        // 处理任务响应
-                        processAsphaltTasks(taskResponses);
                     } else {
-                        Log.d(TAG, "没有沥青任务");
-                        // 清空旧数据并显示空状态
-                        apiAsphaltUnacceptedTasks.clear();
-                        apiAsphaltAcceptedTasks.clear();
+                        // API返回错误信息
+                        Log.e(TAG, "API错误: " + response.body().getMessage());
+                        Toast.makeText(requireContext(), "错误: " + response.body().getMessage(), Toast.LENGTH_SHORT).show();
                         showEmptyState("ASPHALT");
                     }
                 } else {
-                    // 记录错误
-                    int statusCode = response.code();
-                    String errorBody = "";
+                    // HTTP请求失败
+                    Log.e(TAG, "HTTP错误码: " + response.code());
                     try {
                         if (response.errorBody() != null) {
-                            errorBody = response.errorBody().string();
+                            Log.e(TAG, "错误响应: " + response.errorBody().string());
                         }
                     } catch (IOException e) {
                         Log.e(TAG, "读取错误响应失败", e);
                     }
                     
-                    Log.e(TAG, "获取沥青任务失败, 状态码: " + statusCode + ", 错误信息: " + errorBody);
+                    // 显示错误提示
+                    Toast.makeText(requireContext(), "网络请求失败，状态码: " + response.code(), Toast.LENGTH_SHORT).show();
                     showEmptyState("ASPHALT");
                 }
+                
+                // 标记API数据已加载
+                hasLoadedApiData = true;
             }
             
             @Override
-            public void onFailure(Call<ApiResponse<List<AsphaltTaskResponse>>> call, Throwable t) {
+            public void onFailure(Call<com.example.labdata_main.api.model.ApiResponse<List<AsphaltTaskResponse>>> call, Throwable t) {
                 // 停止刷新动画
                 swipeRefreshLayout.setRefreshing(false);
                 
-                Log.e(TAG, "获取沥青任务请求失败", t);
+                Log.e(TAG, "网络请求失败: " + t.getMessage(), t);
+                Toast.makeText(requireContext(), "网络请求失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 showEmptyState("ASPHALT");
             }
         });
@@ -1069,9 +1063,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             // 获取当前选中的实验类型
             String selectedType = spinner.getSelectedItem().toString();
             
-            if ("沥青混合料试验".equals(selectedType)) {
+            if ("MIXTURE".equals(selectedType)) {
                 updateTaskUI(apiMixtureUnacceptedTasks, apiMixtureAcceptedTasks, "MIXTURE");
-            } else if ("沥青试验".equals(selectedType)) {
+            } else if ("ASPHALT".equals(selectedType)) {
                 updateTaskUI(apiAsphaltUnacceptedTasks, apiAsphaltAcceptedTasks, "ASPHALT");
             } else {
                 // 默认使用混合料任务数据
@@ -1226,9 +1220,9 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 taskId, 
                 currentUser, 
                 System.currentTimeMillis()
-        ).enqueue(new Callback<ApiResponse<Boolean>>() {
+        ).enqueue(new Callback<com.example.labdata_main.api.model.ApiResponse<Boolean>>() {
             @Override
-            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+            public void onResponse(Call<com.example.labdata_main.api.model.ApiResponse<Boolean>> call, Response<com.example.labdata_main.api.model.ApiResponse<Boolean>> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     // 显示成功提示
                     Toast.makeText(requireContext(), "成功接受任务：" + task.getTaskName(), Toast.LENGTH_SHORT).show();
@@ -1246,7 +1240,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
             }
             
             @Override
-            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+            public void onFailure(Call<com.example.labdata_main.api.model.ApiResponse<Boolean>> call, Throwable t) {
                 Toast.makeText(requireContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -1479,36 +1473,48 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 使用混合料实验API端点测试认证，避免使用可能有问题的沥青API
         String companyId = sharedPrefsManager.getUserCompany();
-        Call<ApiResponse<List<MixtureTaskResponse>>> testCall = mixtureService.getUserMixtureTasks(companyId);
+        Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> testCall = mixtureService.getUserMixtureTasks(companyId);
         
-        testCall.enqueue(new Callback<ApiResponse<List<MixtureTaskResponse>>>() {
+        testCall.enqueue(new Callback<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>>() {
             @Override
-            public void onResponse(Call<ApiResponse<List<MixtureTaskResponse>>> call, Response<ApiResponse<List<MixtureTaskResponse>>> response) {
+            public void onResponse(Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> call, Response<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> response) {
                 Log.d(TAG, "测试API连接响应码: " + response.code());
                 Log.d(TAG, "测试API连接响应头: " + response.headers());
                 
-                if (response.isSuccessful()) {
-                    ApiResponse<List<MixtureTaskResponse>> apiResponse = response.body();
-                    Log.d(TAG, "API连接测试成功，响应体: " + (apiResponse != null ? "数据获取成功" : "响应体为空"));
-                    Toast.makeText(requireContext(), "API连接测试成功: " + response.code(), Toast.LENGTH_SHORT).show();
-                    
-                    // 成功后尝试获取混合料和沥青任务
-                    if (sharedPrefsManager.isLoggedIn()) {
-                        fetchMixtureTasks();
-                        fetchAsphaltTasks();
+                if (response.isSuccessful() && response.body() != null) {
+                    if (response.body().isSuccess()) {
+                        // 响应成功，处理数据
+                        List<MixtureTaskResponse> tasks = response.body().getData();
+                        if (tasks != null && !tasks.isEmpty()) {
+                            Log.d(TAG, "获取到混合料任务数量: " + tasks.size());
+                        } else {
+                            Log.d(TAG, "未获取到混合料任务或任务为空");
+                        }
+                    } else {
+                        // API返回错误信息
+                        Log.e(TAG, "API错误: " + response.body().getMessage());
                     }
                 } else {
-                    // 获取错误信息
-                    String errorMsg = "接受任务失败";
-                    if (response.body() != null) {
-                        errorMsg = response.body().getMessage();
+                    // HTTP请求失败
+                    Log.e(TAG, "HTTP错误码: " + response.code());
+                    try {
+                        if (response.errorBody() != null) {
+                            Log.e(TAG, "错误响应: " + response.errorBody().string());
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG, "读取错误响应失败", e);
                     }
-                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show();
+                }
+                
+                // 成功后尝试获取混合料和沥青任务
+                if (sharedPrefsManager.isLoggedIn()) {
+                    fetchMixtureTasks();
+                    fetchAsphaltTasks();
                 }
             }
 
             @Override
-            public void onFailure(Call<ApiResponse<List<MixtureTaskResponse>>> call, Throwable t) {
+            public void onFailure(Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> call, Throwable t) {
                 Toast.makeText(requireContext(), "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -1564,27 +1570,43 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 调用API更新备料状态
         mixtureTaskService.updatePrepareStatus(task.getTaskId())
-            .enqueue(new Callback<ApiResponse<Boolean>>() {
+            .enqueue(new Callback<com.example.labdata_main.api.model.ApiResponse<Boolean>>() {
                 @Override
-                public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        Log.d(TAG, "成功更新任务备料状态: " + task.getTaskId());
-                        
-                        // 显示成功消息
-                        Toast.makeText(requireContext(), "备料完成！", Toast.LENGTH_SHORT).show();
-                        
-                        // 刷新任务列表数据
-                        refreshData();
+                public void onResponse(Call<com.example.labdata_main.api.model.ApiResponse<Boolean>> call, Response<com.example.labdata_main.api.model.ApiResponse<Boolean>> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        if (response.body().isSuccess()) {
+                            Log.d(TAG, "成功更新任务备料状态: " + task.getTaskId());
+                            
+                            // 显示成功消息
+                            Toast.makeText(requireContext(), "备料完成！", Toast.LENGTH_SHORT).show();
+                            
+                            // 刷新任务列表数据
+                            refreshData();
+                        } else {
+                            // API返回错误信息
+                            Log.e(TAG, "API错误: " + response.body().getMessage());
+                            Toast.makeText(requireContext(), "错误: " + response.body().getMessage(), Toast.LENGTH_SHORT).show();
+                        }
                     } else {
-                        Log.e(TAG, "更新任务备料状态失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
-                        Toast.makeText(requireContext(), "更新备料状态失败，请重试", Toast.LENGTH_SHORT).show();
+                        // HTTP请求失败
+                        Log.e(TAG, "HTTP错误码: " + response.code());
+                        try {
+                            if (response.errorBody() != null) {
+                                Log.e(TAG, "错误响应: " + response.errorBody().string());
+                            }
+                        } catch (IOException e) {
+                            Log.e(TAG, "读取错误响应失败", e);
+                        }
+                        
+                        // 显示错误提示
+                        Toast.makeText(requireContext(), "网络请求失败，状态码: " + response.code(), Toast.LENGTH_SHORT).show();
                     }
                 }
                 
                 @Override
-                public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
-                    Log.e(TAG, "更新任务备料状态请求失败: " + t.getMessage(), t);
-                    Toast.makeText(requireContext(), "网络错误，请重试", Toast.LENGTH_SHORT).show();
+                public void onFailure(Call<com.example.labdata_main.api.model.ApiResponse<Boolean>> call, Throwable t) {
+                    Log.e(TAG, "网络请求失败: " + t.getMessage(), t);
+                    Toast.makeText(requireContext(), "网络请求失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 }
             });
     }
@@ -1738,5 +1760,100 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 记录日志
         Log.d(TAG, "更新欢迎信息: 未接受混合料任务: " + mixtureTaskCount + ", 未接受沥青任务: " + asphaltTaskCount);
+    }
+
+    /**
+     * 获取用户实时权限信息
+     */
+    private void fetchUserPermissions() {
+        // 获取用户ID
+        long userId = sharedPrefsManager.getUserId();
+        Log.d(TAG, "正在获取用户ID=" + userId + "的实时权限信息...");
+        
+        // 确保ApiClient已正确初始化
+        ApiClient.init(requireContext());
+        
+        // 创建API服务接口实例
+        ApiService apiService = ApiClient.getClient().create(ApiService.class);
+        
+        // 从后端获取用户权限
+        apiService.getUserPermissions((int)userId).enqueue(new Callback<com.example.labdata_main.api.response.ApiResponse<Map<String, Boolean>>>() {
+            @Override
+            public void onResponse(Call<com.example.labdata_main.api.response.ApiResponse<Map<String, Boolean>>> call, Response<com.example.labdata_main.api.response.ApiResponse<Map<String, Boolean>>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    if (response.body().isSuccess()) {
+                        Map<String, Boolean> permissions = response.body().getData();
+                        Log.d(TAG, "成功获取用户权限: " + permissions);
+                        
+                        // 使用获取到的权限更新按钮可见性
+                        updateButtonVisibility(permissions);
+                    } else {
+                        // API返回错误信息
+                        Log.e(TAG, "API错误: " + response.body().getMessage());
+                    }
+                } else {
+                    // HTTP请求失败
+                    Log.e(TAG, "HTTP错误码: " + response.code());
+                    try {
+                        if (response.errorBody() != null) {
+                            Log.e(TAG, "错误响应: " + response.errorBody().string());
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG, "读取错误响应失败", e);
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<com.example.labdata_main.api.response.ApiResponse<Map<String, Boolean>>> call, Throwable t) {
+                Log.e(TAG, "获取用户权限网络请求失败", t);
+            }
+        });
+    }
+    
+    /**
+     * 使用获取到的权限更新按钮可见性
+     * @param permissions 从后端获取的权限信息
+     */
+    private void updateButtonVisibility(Map<String, Boolean> permissions) {
+        if (permissions == null) {
+            Log.e(TAG, "权限信息为空");
+            return;
+        }
+        
+        Log.d(TAG, "更新按钮可见性: permissions=" + permissions);
+        
+        // 获取按钮视图
+        View view = getView();
+        if (view == null) {
+            Log.e(TAG, "Fragment视图为空");
+            return;
+        }
+        
+        LinearLayout btnAssignExperiment = view.findViewById(R.id.btnAssignExperiment);
+        LinearLayout btnAssignAsphaltExperiment = view.findViewById(R.id.btnAssignAsphaltExperiment);
+        LinearLayout btnAddMixRatio = view.findViewById(R.id.btnAddMixRatio);
+        
+        // 根据权限信息更新按钮可见性
+        if (btnAssignExperiment != null) {
+            Boolean canAddMixture = permissions.get("allowAddMixture");
+            boolean visible = canAddMixture != null && canAddMixture;
+            btnAssignExperiment.setVisibility(visible ? View.VISIBLE : View.GONE);
+            Log.d(TAG, "制定实验任务按钮可见性(实时): " + (visible ? "可见" : "不可见"));
+        }
+        
+        if (btnAssignAsphaltExperiment != null) {
+            Boolean canAddAsphalt = permissions.get("allowAddAsphalt");
+            boolean visible = canAddAsphalt != null && canAddAsphalt;
+            btnAssignAsphaltExperiment.setVisibility(visible ? View.VISIBLE : View.GONE);
+            Log.d(TAG, "制定沥青任务按钮可见性(实时): " + (visible ? "可见" : "不可见"));
+        }
+        
+        if (btnAddMixRatio != null) {
+            Boolean canAddMixratio = permissions.get("allowAddMixratio");
+            boolean visible = canAddMixratio != null && canAddMixratio;
+            btnAddMixRatio.setVisibility(visible ? View.VISIBLE : View.GONE);
+            Log.d(TAG, "添加配合比按钮可见性(实时): " + (visible ? "可见" : "不可见"));
+        }
     }
 }

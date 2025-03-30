@@ -26,10 +26,18 @@ import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.example.labdata_main.db.DatabaseHelper;  // 添加这行导入语句
+import com.example.labdata_main.db.DatabaseHelper;  
 import com.example.labdata_main.utils.SharedPrefsManager;
+import com.example.labdata_main.api.ApiClient;
+import com.example.labdata_main.api.ApiService;
+import com.example.labdata_main.api.response.ApiResponse;
 
 import java.io.File;
+import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * "我的"界面Fragment
@@ -42,15 +50,16 @@ public class MyFragment extends Fragment {
     private ImageView ivAvatar;
     private TextView tvCompany;
     private TextView tvName;
-    private TextView tvPhone;
     private TextView tvEmail;
     private TextView tvPosition;
     private Button btnModifyInfo;
     private Button btnLogout;
+    private Button btnUserManagement;
 
     private SharedPrefsManager sharedPrefsManager;
     private Uri tempImageUri;
-    private DatabaseHelper databaseHelper; // 新增数据库帮助类
+    private DatabaseHelper databaseHelper; 
+    private ApiService apiService; 
 
     private ActivityResultLauncher<Intent> imagePickerLauncher;
     private ActivityResultLauncher<Intent> cropImageLauncher;
@@ -62,7 +71,8 @@ public class MyFragment extends Fragment {
 
         // 初始化 SharedPrefsManager
         sharedPrefsManager = new SharedPrefsManager(requireContext());
-        databaseHelper = new DatabaseHelper(requireContext()); // 初始化数据库帮助类
+        databaseHelper = new DatabaseHelper(requireContext()); 
+        apiService = ApiClient.getApiService(); 
 
         // 初始化图片选择器
         imagePickerLauncher = registerForActivityResult(
@@ -137,11 +147,11 @@ public class MyFragment extends Fragment {
         ivAvatar = view.findViewById(R.id.ivAvatar);
         tvCompany = view.findViewById(R.id.tvCompany);
         tvName = view.findViewById(R.id.tvName);
-        tvPhone = view.findViewById(R.id.tvPhone);
         tvEmail = view.findViewById(R.id.tvEmail);
         tvPosition = view.findViewById(R.id.tvPosition);
         btnModifyInfo = view.findViewById(R.id.btnModifyInfo);
         btnLogout = view.findViewById(R.id.btnLogout);
+        btnUserManagement = view.findViewById(R.id.btnUserManagement);
     }
 
     /**
@@ -158,6 +168,13 @@ public class MyFragment extends Fragment {
             startActivity(intent);
         });
 
+        // 权限管理按钮点击事件
+        btnUserManagement.setOnClickListener(v -> {
+            // 处理权限管理的点击事件
+            Intent intent = new Intent(getActivity(), UserManagementActivity.class);
+            startActivity(intent);
+        });
+
         // 退出登录按钮点击事件
         btnLogout.setOnClickListener(v -> logout());
     }
@@ -169,22 +186,51 @@ public class MyFragment extends Fragment {
         String company = sharedPrefsManager.getUserCompany();
         String name = sharedPrefsManager.getUserName();
         String email = sharedPrefsManager.getUserEmail();
-        String phone = sharedPrefsManager.getUserPhone();
+        String username = sharedPrefsManager.getUserEmail(); // 默认使用邮箱作为用户名
 
         // 从数据库获取用户类型
         int userType = databaseHelper.getUserTypeByEmail(email);
-
-        Log.d("MyFragment", "显示用户信息:");
-        Log.d("MyFragment", "公司: " + company);
-        Log.d("MyFragment", "姓名: " + name);
-        Log.d("MyFragment", "邮箱: " + email);
-        Log.d("MyFragment", "电话: " + phone);
-
+        
+        // 先显示本地存储的信息
         tvName.setText(name);
         tvEmail.setText(email);
         tvCompany.setText(company);
-        tvPhone.setText(phone != null && !phone.isEmpty() ? phone : "未设置");
         tvPosition.setText(userType == 1 ? "管理员" : "实验员");
+        
+        // 根据用户类型显示或隐藏权限管理按钮
+        boolean isAdmin = userType == 1;
+        btnUserManagement.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+        
+        // 通过API获取用户组织信息
+        fetchUserOrganizationByUsername(username);
+        
+        Log.d("MyFragment", "显示用户信息:");
+        Log.d("MyFragment", "公司ID: " + company);
+        Log.d("MyFragment", "姓名: " + name);
+        Log.d("MyFragment", "邮箱: " + email);
+        Log.d("MyFragment", "用户类型: " + (isAdmin ? "管理员" : "普通用户"));
+    }
+    
+    /**
+     * 从数据库获取用户的公司名称
+     * @param email 用户邮箱
+     * @param fallbackCompanyId 如果查询失败则使用的备用公司ID
+     * @return 公司名称
+     */
+    private String getCompanyNameFromDatabase(String email, String fallbackCompanyId) {
+        try {
+            // 尝试从数据库获取用户完整信息
+            com.example.labdata_main.model.User user = databaseHelper.getUserByEmail(email);
+            if (user != null && user.getCompany() != null && !user.getCompany().trim().isEmpty()) {
+                return user.getCompany(); // 返回用户表中存储的公司名称
+            }
+            
+            // 如果没有找到用户或公司名称为空，则使用传入的公司ID作为显示值
+            return fallbackCompanyId;
+        } catch (Exception e) {
+            Log.e("MyFragment", "获取公司名称时出错: " + e.getMessage());
+            return fallbackCompanyId; // 出错时返回备用ID
+        }
     }
 
     /**
@@ -311,5 +357,57 @@ public class MyFragment extends Fragment {
             e.printStackTrace();
             Toast.makeText(requireContext(), "图片裁剪失败", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * 通过用户名从API获取用户组织信息
+     * @param username 用户名
+     */
+    private void fetchUserOrganizationByUsername(String username) {
+        if (username == null || username.isEmpty()) {
+            Log.e("MyFragment", "用户名为空，无法获取用户组织信息");
+            return;
+        }
+        
+        // 显示加载提示
+        // 这里可以添加进度指示器，但为了保持最小修改，我们不添加UI变化
+
+        Log.d("MyFragment", "开始获取用户 " + username + " 的组织信息");
+        
+        // 调用API获取用户信息
+        apiService.getUserInfoByUsername(username).enqueue(new Callback<ApiResponse<Map<String, Object>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, Object>>> call, Response<ApiResponse<Map<String, Object>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    Map<String, Object> userData = response.body().getData();
+                    
+                    // 提取组织信息
+                    String organization = null;
+                    if (userData.containsKey("organization")) {
+                        organization = (String) userData.get("organization");
+                    }
+                    
+                    Log.d("MyFragment", "成功获取用户组织信息: " + organization);
+                    
+                    // 更新UI显示
+                    if (organization != null && !organization.isEmpty()) {
+                        // 创建一个 final 的副本，以便在 lambda 表达式中使用
+                        final String finalOrganization = organization;
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                tvCompany.setText(finalOrganization);
+                            });
+                        }
+                    }
+                } else {
+                    Log.e("MyFragment", "获取用户组织信息失败: " + (response.errorBody() != null ? response.errorBody().toString() : "未知错误"));
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Map<String, Object>>> call, Throwable t) {
+                Log.e("MyFragment", "获取用户组织信息网络请求失败: " + t.getMessage());
+            }
+        });
     }
 }

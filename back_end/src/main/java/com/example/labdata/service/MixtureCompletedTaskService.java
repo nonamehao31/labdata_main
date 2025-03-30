@@ -78,13 +78,15 @@ public class MixtureCompletedTaskService {
             "    mt.status, " +
             "    mt.mixratio_id, " +
             "    mt.specimen_id, " +
-            "    mt.acceptor, " +
+            "    mt.acceptor as username, " +  
+            "    u.name as acceptor, " +       
             "    mt.accept_time, " +
             "    mt.creation_time, " +
             "    mt.task_assignment, " +
             "    mt.task_company " +
             "FROM " +
             "    mixture_task mt " +
+            "LEFT JOIN users u ON mt.acceptor = u.username " +  
             "WHERE " +
             "    mt.status = 'COMPLETE' " +
             "    AND mt.task_company = ? " + 

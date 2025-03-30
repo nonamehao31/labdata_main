@@ -56,11 +56,11 @@ public class SharedPrefsManager {
         editor.apply();
     }
 
-    public void saveUserLoginSession(int id, String email, String name, String company, String phone, int userType) {
+    public void saveUserLoginSession(int id, String email, String username, String company, String phone, int userType, String name) {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt("id", id);
         editor.putString("email", email);
-        editor.putString("name", name);
+        editor.putString("name", name != null && !name.isEmpty() ? name : username); // 优先使用真实姓名，如果没有则使用用户名
         editor.putString("company", company);
         editor.putString("phone", phone);
         editor.putInt(KEY_USER_TYPE, userType);  // 保存用户类型

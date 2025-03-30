@@ -52,6 +52,7 @@ public class DuctilityTestService {
      * @return 延度实验数据列表
      */
     public List<DuctilityTest> getDuctilityTestDataByTaskId(String taskId) {
-        return ductilityTestRepository.findByTaskId(taskId);
+        logger.info("获取延度实验数据，任务ID: {}, 使用关联用户表查询以获取操作者真实姓名", taskId);
+        return ductilityTestRepository.findByTaskIdWithExperimenterName(taskId);
     }
 }

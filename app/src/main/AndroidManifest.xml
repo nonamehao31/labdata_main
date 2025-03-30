@@ -157,7 +157,13 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
-            
+
+        <activity
+            android:name=".UserManagementActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".AsphaltExperimentSelectionActivity"
             android:exported="false"

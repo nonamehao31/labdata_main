@@ -747,10 +747,11 @@ public class RegisterActivity extends AppCompatActivity {
                     sharedPrefsManager.saveUserLoginSession(
                         (int) id,
                         email,
-                        name,
+                        email, // 用户名 - 注册时默认使用邮箱作为用户名
                         company,
                         phone,
-                        userType
+                        userType,
+                        name // 用户真实姓名
                     );
                     
                     // 同时将用户数据发送到后端API
@@ -789,7 +790,14 @@ public class RegisterActivity extends AppCompatActivity {
         
         // 创建注册请求
         String username = generateValidUsername(email);
-        RegisterRequest request = new RegisterRequest(name, username, email, password, phone, organization);
+        
+        // 获取用户类型（管理员状态）
+        int userType = rgUserType.getCheckedRadioButtonId() == R.id.rbAdmin ? 1 : 0;
+        Boolean isAdmin = userType == 1;
+        Log.d(TAG, "用户类型: " + (isAdmin ? "管理员" : "普通用户") + ", userType值: " + userType);
+        
+        // 使用包含admin字段的构造函数
+        RegisterRequest request = new RegisterRequest(name, username, email, password, phone, organization, isAdmin);
         
         // 关闭任何可能存在的进度对话框
         dismissProgressDialog();

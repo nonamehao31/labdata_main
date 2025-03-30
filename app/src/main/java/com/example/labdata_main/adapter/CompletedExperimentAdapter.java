@@ -1,6 +1,10 @@
 package com.example.labdata_main.adapter;
 
 import android.content.Context;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.R;
@@ -29,6 +34,7 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
     private final List<TaskWithData> tasksWithData = new ArrayList<>();
     private OnItemClickListener onItemClickListener;
     private boolean isAnalysisMode = false;  // 是否为分析模式（包含详细数据）
+    private String highlightKeyword = "";  // 高亮关键词
 
     public CompletedExperimentAdapter(Context context) {
         this.context = context;
@@ -53,12 +59,12 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
             task = tasks.get(position);
         }
         
-        // 设置基本信息
-        holder.tvExperimentType.setText(task.getExperimentType());
-        holder.tvExperimentName.setText(task.getExperimentName());
-        holder.tvTaskId.setText("任务ID: " + task.getTaskId());
-        holder.tvTaskAssignment.setText(task.getTaskAssignment());
-        holder.tvExperimenter.setText(task.getExperimenter());
+        // 设置基本信息，支持关键词高亮
+        setTextWithHighlight(holder.tvExperimentType, task.getExperimentType());
+        setTextWithHighlight(holder.tvExperimentName, task.getExperimentName());
+        setTextWithHighlight(holder.tvTaskId, "任务ID: " + task.getTaskId());
+        setTextWithHighlight(holder.tvTaskAssignment, task.getTaskAssignment());
+        setTextWithHighlight(holder.tvExperimenter, task.getExperimenter());
         holder.tvAcceptTime.setText(CompletedExperimentTask.formatTime(task.getAcceptTime()));
         holder.tvCompletionTime.setText(CompletedExperimentTask.formatTime(task.getCompletionTime()));
         
@@ -69,8 +75,8 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
             holder.llAsphaltInfo.setVisibility(View.GONE);
             
             // 配比名称可能包含ID和压实方法，所以显示原始配比名
-            holder.tvMixName.setText(task.getMixName());
-            holder.tvCompactionMethod.setText(task.getCompactionMethod());
+            setTextWithHighlight(holder.tvMixName, task.getMixName());
+            setTextWithHighlight(holder.tvCompactionMethod, task.getCompactionMethod());
             
             // 记录日志以便调试
             Log.d(TAG, "绑定混合料任务: " + task.getTaskId() + 
@@ -83,7 +89,7 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
             
             // 显示沥青实验类型
             String asphaltType = task.getTaskName() != null ? task.getTaskName() : "未知沥青实验";
-            holder.tvAsphaltExperimentType.setText(asphaltType);
+            setTextWithHighlight(holder.tvAsphaltExperimentType, asphaltType);
             
             // 记录日志以便调试
             Log.d(TAG, "绑定沥青任务: " + task.getTaskId() +
@@ -103,6 +109,55 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
         });
     }
 
+    /**
+     * 设置文本并高亮关键词
+     */
+    private void setTextWithHighlight(TextView textView, String text) {
+        if (text == null) {
+            textView.setText("");
+            return;
+        }
+
+        if (highlightKeyword == null || highlightKeyword.isEmpty()) {
+            // 没有关键词，直接设置文本
+            textView.setText(text);
+            return;
+        }
+
+        // 创建可变文本
+        SpannableString spannableString = new SpannableString(text);
+        String lowerText = text.toLowerCase();
+        String lowerKeyword = highlightKeyword.toLowerCase();
+        
+        // 找出所有匹配的位置
+        int startIndex = 0;
+        while (startIndex < lowerText.length()) {
+            int index = lowerText.indexOf(lowerKeyword, startIndex);
+            if (index == -1) break;  // 没有更多匹配
+            
+            // 添加高亮样式
+            int highlightColor = ContextCompat.getColor(context, R.color.highlight_color);
+            int textColor = ContextCompat.getColor(context, android.R.color.black);
+            spannableString.setSpan(
+                new BackgroundColorSpan(highlightColor),
+                index, 
+                index + lowerKeyword.length(), 
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            );
+            spannableString.setSpan(
+                new ForegroundColorSpan(textColor),
+                index, 
+                index + lowerKeyword.length(), 
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            );
+            
+            // 继续查找下一个匹配
+            startIndex = index + lowerKeyword.length();
+        }
+        
+        textView.setText(spannableString);
+    }
+
     @Override
     public int getItemCount() {
         return isAnalysisMode ? tasksWithData.size() : tasks.size();
@@ -112,7 +167,15 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
      * 更新数据
      */
     public void updateData(List<CompletedExperimentTask> newTasks) {
-        Log.d(TAG, "更新数据: " + (newTasks != null ? newTasks.size() : 0) + " 个任务");
+        updateData(newTasks, "");
+    }
+    
+    /**
+     * 更新数据并设置高亮关键词
+     */
+    public void updateData(List<CompletedExperimentTask> newTasks, String keyword) {
+        Log.d(TAG, "更新数据: " + (newTasks != null ? newTasks.size() : 0) + " 个任务, 关键词: " + keyword);
+        this.highlightKeyword = keyword;
         isAnalysisMode = false;
         tasks.clear();
         if (newTasks != null) {
@@ -147,7 +210,7 @@ public class CompletedExperimentAdapter extends RecyclerView.Adapter<CompletedEx
         
         // 使用任务分配ID作为任务分配信息
         completedTask.setTaskAssignment(task.getTaskAssignmentId() != null ? 
-                                       task.getTaskAssignmentId() : "");
+                                        task.getTaskAssignmentId() : "");
         
         completedTask.setExperimenter(task.getExperimenter());
         

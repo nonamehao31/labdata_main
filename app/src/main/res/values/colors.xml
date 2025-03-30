@@ -48,4 +48,7 @@
     <color name="selected_mix_ratio_background">#E6E6E6</color>
     <color name="cardStrokeColor">#E0E0E0</color>
     <color name="green_complete">#4CAF50</color>
+    
+    <!-- 搜索高亮颜色 -->
+    <color name="highlight_color">#FFEB3B</color>
 </resources>

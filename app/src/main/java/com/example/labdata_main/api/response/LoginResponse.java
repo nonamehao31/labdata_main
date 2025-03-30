@@ -19,20 +19,37 @@ public class LoginResponse {
     @SerializedName("username")
     private String username;
     
+    @SerializedName("name")
+    private String name;
+    
     @SerializedName("companyId")
     private String companyId;
+    
+    @SerializedName("allowAddMixture")
+    private boolean allowAddMixture;
+    
+    @SerializedName("allowAddAsphalt")
+    private boolean allowAddAsphalt;
+    
+    @SerializedName("allowAddMixratio")
+    private boolean allowAddMixratio;
     
     // 默认构造函数
     public LoginResponse() {
     }
     
     // 带参数的构造函数
-    public LoginResponse(String accessToken, String tokenType, long userId, String username, String companyId) {
+    public LoginResponse(String accessToken, String tokenType, long userId, String username, String name, String companyId,
+                         boolean allowAddMixture, boolean allowAddAsphalt, boolean allowAddMixratio) {
         this.accessToken = accessToken;
         this.tokenType = tokenType;
         this.userId = userId;
         this.username = username;
+        this.name = name;
         this.companyId = companyId;
+        this.allowAddMixture = allowAddMixture;
+        this.allowAddAsphalt = allowAddAsphalt;
+        this.allowAddMixratio = allowAddMixratio;
     }
     
     // Getters and Setters
@@ -68,11 +85,43 @@ public class LoginResponse {
         this.username = username;
     }
     
+    public String getName() {
+        return name;
+    }
+    
+    public void setName(String name) {
+        this.name = name;
+    }
+    
     public String getCompanyId() {
         return companyId;
     }
     
     public void setCompanyId(String companyId) {
         this.companyId = companyId;
+    }
+    
+    public boolean isAllowAddMixture() {
+        return allowAddMixture;
+    }
+    
+    public void setAllowAddMixture(boolean allowAddMixture) {
+        this.allowAddMixture = allowAddMixture;
+    }
+    
+    public boolean isAllowAddAsphalt() {
+        return allowAddAsphalt;
+    }
+    
+    public void setAllowAddAsphalt(boolean allowAddAsphalt) {
+        this.allowAddAsphalt = allowAddAsphalt;
+    }
+    
+    public boolean isAllowAddMixratio() {
+        return allowAddMixratio;
+    }
+    
+    public void setAllowAddMixratio(boolean allowAddMixratio) {
+        this.allowAddMixratio = allowAddMixratio;
     }
 }

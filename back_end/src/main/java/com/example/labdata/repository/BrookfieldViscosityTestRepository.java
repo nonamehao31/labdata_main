@@ -27,6 +27,14 @@ public interface BrookfieldViscosityTestRepository extends JpaRepository<Brookfi
     List<BrookfieldViscosityTest> findByTaskIdNative(@Param("taskId") String taskId);
     
     /**
+     * 通过原生SQL查询，并关联users表获取操作者真实姓名
+     */
+    @Query(value = "SELECT bvt.*, u.name as experimenter_name FROM brookfield_viscosity_test bvt " +
+                   "LEFT JOIN users u ON bvt.experimenter = u.username " +
+                   "WHERE bvt.task_id = :taskId", nativeQuery = true)
+    List<BrookfieldViscosityTest> findByTaskIdWithExperimenterName(@Param("taskId") String taskId);
+    
+    /**
      * 根据任务ID查找实验数据，同时获取所有关联的温度点和测量值
      * 使用LEFT JOIN FETCH确保即使没有关联数据也能返回主表记录
      */

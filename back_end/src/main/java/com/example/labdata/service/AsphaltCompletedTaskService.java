@@ -31,25 +31,27 @@ public class AsphaltCompletedTaskService {
         
         StringBuilder sql = new StringBuilder(
             "SELECT " +
-            "    asphalt_task_assignment_id AS asphalt_task_id, " +
-            "    asphalt_experiment_name AS asphalt_task_name, " +
-            "    task_status, " +
-            "    acceptor, " +
-            "    accept_time, " +
-            "    created_at, " +
-            "    updated_at, " +
-            "    asphalt_task_assignment, " +
-            "    asphalt_experiment_type, " +
-            "    experiment_status, " +
-            "    assigned_asphalt_equipment, " +
-            "    assigned_asphalt_equipment_manufacturer " +
+            "    at.asphalt_task_assignment_id AS asphalt_task_id, " +
+            "    at.asphalt_experiment_name AS asphalt_task_name, " +
+            "    at.task_status, " +
+            "    at.acceptor as username, " +  
+            "    u.name as acceptor, " +       
+            "    at.accept_time, " +
+            "    at.created_at, " +
+            "    at.updated_at, " +
+            "    at.asphalt_task_assignment, " +
+            "    at.asphalt_experiment_type, " +
+            "    at.experiment_status, " +
+            "    at.assigned_asphalt_equipment, " +
+            "    at.assigned_asphalt_equipment_manufacturer " +
             "FROM " +
-            "    asphalt_task " +
+            "    asphalt_task at " +
+            "LEFT JOIN users u ON at.acceptor = u.username " +  
             "WHERE " +
-            "    experiment_status = 'finished' " +
-            "    AND company_id = ? " +
+            "    at.experiment_status = 'finished' " +
+            "    AND at.company_id = ? " +
             "ORDER BY " +
-            "    created_at DESC"
+            "    at.created_at DESC"
         );
         
         List<Map<String, Object>> results = jdbcTemplate.queryForList(sql.toString(), companyId);

@@ -21,6 +21,11 @@ public class SharedPrefsManager {
     private static final String KEY_USER_AVATAR = "userAvatar";
     private static final String KEY_USER_TYPE = "userType";
     
+    // 新增权限相关的键
+    private static final String KEY_ALLOW_ADD_MIXTURE = "allowAddMixture";
+    private static final String KEY_ALLOW_ADD_ASPHALT = "allowAddAsphalt";
+    private static final String KEY_ALLOW_ADD_MIXRATIO = "allowAddMixratio";
+    
     // 新增JWT相关的键
     private static final String KEY_AUTH_TOKEN = "authToken";
     private static final String KEY_TOKEN_TYPE = "tokenType";
@@ -41,16 +46,17 @@ public class SharedPrefsManager {
      * 保存用户登录状态和基本信息
      * @param id 用户ID
      * @param email 用户邮箱
-     * @param name 用户姓名
+     * @param username 用户名
      * @param company 用户单位
      * @param phone 用户电话
      * @param userType 用户类型
+     * @param name 用户真实姓名
      */
-    public void saveUserLoginSession(long id, String email, String name, String company, String phone, int userType) {
+    public void saveUserLoginSession(long id, String email, String username, String company, String phone, int userType, String name) {
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.putLong(KEY_USER_ID, id);
         editor.putString(KEY_USER_EMAIL, email);
-        editor.putString(KEY_USER_NAME, name);
+        editor.putString(KEY_USER_NAME, name != null && !name.isEmpty() ? name : username); // 优先使用真实姓名，如果没有则使用用户名
         editor.putString(KEY_USER_COMPANY, company);
         editor.putString(KEY_USER_PHONE, phone);
         editor.putInt(KEY_USER_TYPE, userType);
@@ -61,16 +67,17 @@ public class SharedPrefsManager {
      * 保存用户登录状态和基本信息（字符串类型的用户类型）
      * @param id 用户ID
      * @param email 用户邮箱
-     * @param name 用户姓名
+     * @param username 用户名
      * @param company 用户单位
      * @param phone 用户电话
      * @param userType 用户类型（字符串）
+     * @param name 用户真实姓名
      */
-    public void saveUserLoginSession(long id, String email, String name, String company, String phone, String userType) {
+    public void saveUserLoginSession(long id, String email, String username, String company, String phone, String userType, String name) {
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.putLong(KEY_USER_ID, id);
         editor.putString(KEY_USER_EMAIL, email);
-        editor.putString(KEY_USER_NAME, name);
+        editor.putString(KEY_USER_NAME, name != null && !name.isEmpty() ? name : username); // 优先使用真实姓名，如果没有则使用用户名
         editor.putString(KEY_USER_COMPANY, company);
         editor.putString(KEY_USER_PHONE, phone);
         editor.putInt(KEY_USER_TYPE, "admin".equals(userType) ? 1 : 0); // admin类型为1，其他类型为0
@@ -243,5 +250,54 @@ public class SharedPrefsManager {
         editor.remove(KEY_AUTH_TOKEN);
         editor.remove(KEY_TOKEN_TYPE);
         editor.apply();
+    }
+
+    /**
+     * 保存用户权限信息
+     * @param allowAddMixture 是否允许添加混合料实验
+     * @param allowAddAsphalt 是否允许添加沥青实验
+     * @param allowAddMixratio 是否允许添加配合比
+     */
+    public void saveUserPermissions(boolean allowAddMixture, boolean allowAddAsphalt, boolean allowAddMixratio) {
+        editor.putBoolean(KEY_ALLOW_ADD_MIXTURE, allowAddMixture);
+        editor.putBoolean(KEY_ALLOW_ADD_ASPHALT, allowAddAsphalt);
+        editor.putBoolean(KEY_ALLOW_ADD_MIXRATIO, allowAddMixratio);
+        editor.apply();
+    }
+
+    /**
+     * 检查用户是否有添加混合料实验的权限
+     * @return 如果有权限返回true，否则返回false
+     */
+    public boolean canAddMixture() {
+        // 如果是管理员，自动拥有所有权限
+        if (getUserType() == 1) {
+            return true;
+        }
+        return sharedPreferences.getBoolean(KEY_ALLOW_ADD_MIXTURE, false);
+    }
+
+    /**
+     * 检查用户是否有添加沥青实验的权限
+     * @return 如果有权限返回true，否则返回false
+     */
+    public boolean canAddAsphalt() {
+        // 如果是管理员，自动拥有所有权限
+        if (getUserType() == 1) {
+            return true;
+        }
+        return sharedPreferences.getBoolean(KEY_ALLOW_ADD_ASPHALT, false);
+    }
+
+    /**
+     * 检查用户是否有添加配合比的权限
+     * @return 如果有权限返回true，否则返回false
+     */
+    public boolean canAddMixratio() {
+        // 如果是管理员，自动拥有所有权限
+        if (getUserType() == 1) {
+            return true;
+        }
+        return sharedPreferences.getBoolean(KEY_ALLOW_ADD_MIXRATIO, false);
     }
 }

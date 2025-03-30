@@ -939,8 +939,6 @@ public class MixtureTaskService {
 
             result.put("methodsAndRatios", methodsAndRatios);
 
-
-
             // 4. 获取混合设备信息
             try {
                 List<Map<String, Object>> mixingEquipment = jdbcTemplate.queryForList(
@@ -996,10 +994,11 @@ public class MixtureTaskService {
             try {
                 // 查询当前任务的指派信息 - 从mixture_task表获取，而不是mixture_task_assignment
                 List<Map<String, Object>> taskAssignments = jdbcTemplate.queryForList(
-                        "SELECT task_id, task_assignment, acceptor as assigned_to, status, " +
-                                "mixratio_id, specimen_id " +  // 添加mixratio_id和specimen_id字段
-                                "FROM mixture_task " +
-                                "WHERE task_id LIKE ? AND acceptor IS NOT NULL AND task_assignment IS NOT NULL",
+                        "SELECT mt.task_id, mt.task_assignment, u.name as assigned_to, mt.status, " +
+                                "mt.mixratio_id, mt.specimen_id " +  // 添加mixratio_id和specimen_id字段
+                                "FROM mixture_task mt " +
+                                "LEFT JOIN users u ON mt.acceptor = u.username " +
+                                "WHERE mt.task_id LIKE ? AND mt.acceptor IS NOT NULL AND mt.task_assignment IS NOT NULL",
                         taskIdPrefix + "%"
                 );
 
@@ -1193,7 +1192,9 @@ public class MixtureTaskService {
             }
 
             // 查询条件：精确匹配传入的taskId或匹配前缀下的所有任务
-            String sql = "SELECT * FROM mixture_task WHERE task_id = ? OR task_id LIKE ?";
+            String sql = "SELECT mt.*, u.name as acceptor_name FROM mixture_task mt " +
+                         "LEFT JOIN users u ON mt.acceptor = u.username " +
+                         "WHERE mt.task_id = ? OR mt.task_id LIKE ?";
             List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, taskId, taskIdPrefix + "%");
 
             if (results.isEmpty()) {
@@ -1225,7 +1226,9 @@ public class MixtureTaskService {
 
                 // 只添加有指派人的任务
                 if (task.get("acceptor") != null) {
-                    assignment.put("assigned_to", task.get("acceptor"));
+                    // 使用真实姓名，如果为空则回退到用户名
+                    assignment.put("assigned_to", task.get("acceptor_name") != null ? 
+                                                 task.get("acceptor_name") : task.get("acceptor"));
                     taskAssignments.add(assignment);
                 }
             }
