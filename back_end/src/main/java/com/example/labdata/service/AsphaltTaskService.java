@@ -602,6 +602,72 @@ public class AsphaltTaskService {
     }
 
     /**
+     * 根据任务ID更新实验设备信息
+     * @param taskId 任务ID字符串（可能是asphalt_task_assignment_id）
+     * @param equipment 设备型号
+     * @param manufacturer 设备厂家
+     * @return 更新后的任务
+     */
+    public AsphaltTask updateEquipmentInfo(String taskId, String equipment, String manufacturer) {
+        logger.info("更新实验设备信息: taskId={}, equipment={}, manufacturer={}", 
+                taskId, equipment, manufacturer);
+        
+        // 根据分配ID查找任务
+        List<AsphaltTask> tasks = getAsphaltTasksByAssignmentId(taskId);
+        if (tasks.isEmpty()) {
+            logger.warn("未找到分配ID为 {} 的沥青实验任务", taskId);
+            
+            // 尝试使用任务ID直接查找
+            try {
+                Long numericId = Long.parseLong(taskId);
+                Optional<AsphaltTask> taskOpt = asphaltTaskRepository.findById(numericId);
+                if (taskOpt.isPresent()) {
+                    AsphaltTask task = taskOpt.get();
+                    task.setAssignedAsphaltEquipment(equipment);
+                    task.setAssignedAsphaltEquipmentManufacturer(manufacturer);
+                    task.setUpdatedAt(Instant.now());
+                    
+                    AsphaltTask updatedTask = asphaltTaskRepository.save(task);
+                    logger.info("已使用数字ID更新沥青任务的设备信息: ID={}, 设备={}, 厂家={}", 
+                            numericId, equipment, manufacturer);
+                    return updatedTask;
+                }
+            } catch (NumberFormatException e) {
+                logger.warn("任务ID {} 无法转换为数字", taskId);
+            }
+            
+            return null;
+        }
+        
+        // 更新找到的第一个任务的设备信息
+        AsphaltTask task = tasks.get(0);
+        task.setAssignedAsphaltEquipment(equipment);
+        task.setAssignedAsphaltEquipmentManufacturer(manufacturer);
+        task.setUpdatedAt(Instant.now());
+        
+        AsphaltTask updatedTask = asphaltTaskRepository.save(task);
+        logger.info("已更新沥青任务的设备信息: ID={}, 设备={}, 厂家={}", 
+                task.getAsphaltExperimentId(), equipment, manufacturer);
+        
+        // 如果有多个相关任务，也一并更新它们的设备信息
+        if (tasks.size() > 1) {
+            logger.info("发现多个关联任务 ({} 个)，正在更新所有任务的设备信息", tasks.size());
+            
+            for (int i = 1; i < tasks.size(); i++) {
+                AsphaltTask relatedTask = tasks.get(i);
+                relatedTask.setAssignedAsphaltEquipment(equipment);
+                relatedTask.setAssignedAsphaltEquipmentManufacturer(manufacturer);
+                relatedTask.setUpdatedAt(Instant.now());
+                
+                asphaltTaskRepository.save(relatedTask);
+                logger.info("已更新关联沥青任务的设备信息: ID={}", relatedTask.getAsphaltExperimentId());
+            }
+        }
+        
+        return updatedTask;
+    }
+
+    /**
      * 生成沥青任务分配ID
      *
      * @return 生成的分配ID

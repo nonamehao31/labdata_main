@@ -91,7 +91,16 @@
                         android:id="@+id/tvCompletionTime"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
                         android:text="完成时间: "
+                        android:textColor="#555555"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/tvEquipmentInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="实验设备: "
                         android:textColor="#555555"
                         android:textSize="16sp" />
                 </LinearLayout>

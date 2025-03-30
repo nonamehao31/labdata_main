@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 21,
-    "identityHash": "0313f88c8e827f08baf8cd501fc51e29",
+    "identityHash": "9605aace3f316aa403bd2460084d876d",
     "entities": [
       {
         "tableName": "mix_ratios",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` INTEGER NOT NULL, `materials` TEXT, `total_amount` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` TEXT, `materials` TEXT, `total_amount` TEXT, `aggregate_percentage` REAL NOT NULL, `asphalt_percentage` REAL NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -35,8 +35,8 @@
           {
             "fieldPath": "projectId",
             "columnName": "project_id",
-            "affinity": "INTEGER",
-            "notNull": true
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "materials",
@@ -49,6 +49,18 @@
             "columnName": "total_amount",
             "affinity": "TEXT",
             "notNull": false
+          },
+          {
+            "fieldPath": "aggregatePercentage",
+            "columnName": "aggregate_percentage",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "asphaltPercentage",
+            "columnName": "asphalt_percentage",
+            "affinity": "REAL",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -62,7 +74,7 @@
       },
       {
         "tableName": "specimens",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER NOT NULL, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, FOREIGN KEY(`mix_ratio_id`) REFERENCES `mix_ratios`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mix_ratio_id` INTEGER DEFAULT 0, `mixing_temperature` REAL NOT NULL, `mixing_speed` REAL NOT NULL, `mixing_time` INTEGER, `compaction_method` TEXT DEFAULT '', `creation_time` INTEGER NOT NULL, `cut_shape` TEXT, `cut_count` INTEGER NOT NULL DEFAULT 1, `length` REAL NOT NULL DEFAULT 0, `width` REAL NOT NULL DEFAULT 0, `height` REAL NOT NULL DEFAULT 0, `radius` REAL NOT NULL DEFAULT 0, `created_by` INTEGER DEFAULT 0, `specimen_company` INTEGER DEFAULT 0)",
         "fields": [
           {
             "fieldPath": "id",
@@ -74,7 +86,8 @@
             "fieldPath": "mixRatioId",
             "columnName": "mix_ratio_id",
             "affinity": "INTEGER",
-            "notNull": true
+            "notNull": false,
+            "defaultValue": "0"
           },
           {
             "fieldPath": "mixingTemperature",
@@ -87,6 +100,12 @@
             "columnName": "mixing_speed",
             "affinity": "REAL",
             "notNull": true
+          },
+          {
+            "fieldPath": "mixingTime",
+            "columnName": "mixing_time",
+            "affinity": "INTEGER",
+            "notNull": false
           },
           {
             "fieldPath": "compactionMethod",
@@ -141,6 +160,20 @@
             "affinity": "REAL",
             "notNull": true,
             "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "INTEGER",
+            "notNull": false,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "specimenCompany",
+            "columnName": "specimen_company",
+            "affinity": "INTEGER",
+            "notNull": false,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -160,19 +193,7 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_specimens_mix_ratio_id` ON `${TABLE_NAME}` (`mix_ratio_id`)"
           }
         ],
-        "foreignKeys": [
-          {
-            "table": "mix_ratios",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "mix_ratio_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
+        "foreignKeys": []
       },
       {
         "tableName": "materials",
@@ -386,7 +407,7 @@
       },
       {
         "tableName": "experiment_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT NOT NULL, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT, `mixingMethodId` INTEGER, `mixRatioId` INTEGER, `materialIds` TEXT, `asphaltMaterial` TEXT, `rockMaterial` TEXT, `sandMaterial` TEXT, `mixingTemperature` REAL, `mixingSpeed` REAL, `mixingTime` INTEGER, `compactionMethod` TEXT, `rockGradation` TEXT, `sandGradation` TEXT, `synced` INTEGER NOT NULL, `syncStatus` TEXT, `clientId` INTEGER, `organizationId` TEXT, `assignedExperiments` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `taskId` TEXT NOT NULL, `taskAssignmentId` TEXT, `taskName` TEXT, `projectId` INTEGER NOT NULL, `projectName` TEXT, `companyId` TEXT, `experimenter` TEXT, `creationTime` INTEGER NOT NULL, `deadline` INTEGER NOT NULL, `preparation_time` INTEGER NOT NULL, `specimen_generation_time` INTEGER NOT NULL, `experiment_completion_time` INTEGER NOT NULL, `task_status` TEXT, `selectedMixRatios` TEXT, `experimentAssignments` TEXT, `moldingMethod` TEXT, `selectedMixingDevices` TEXT, `selectedFormingDevices` TEXT, `notes` TEXT, `experimentType` TEXT, `mixingMethodId` INTEGER, `mixRatioId` INTEGER, `materialIds` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -399,6 +420,12 @@
             "columnName": "taskId",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "taskAssignmentId",
+            "columnName": "taskAssignmentId",
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "taskName",
@@ -523,90 +550,6 @@
           {
             "fieldPath": "materialIds",
             "columnName": "materialIds",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "asphaltMaterial",
-            "columnName": "asphaltMaterial",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "rockMaterial",
-            "columnName": "rockMaterial",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "sandMaterial",
-            "columnName": "sandMaterial",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "mixingTemperature",
-            "columnName": "mixingTemperature",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "mixingSpeed",
-            "columnName": "mixingSpeed",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "mixingTime",
-            "columnName": "mixingTime",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "compactionMethod",
-            "columnName": "compactionMethod",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "rockGradation",
-            "columnName": "rockGradation",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "sandGradation",
-            "columnName": "sandGradation",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "synced",
-            "columnName": "synced",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "syncStatus",
-            "columnName": "syncStatus",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "clientId",
-            "columnName": "clientId",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "organizationId",
-            "columnName": "organizationId",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "assignedExperiments",
-            "columnName": "assignedExperiments",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -1029,36 +972,42 @@
         "foreignKeys": []
       },
       {
-        "tableName": "mixture_tasks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `experimentTaskId` INTEGER NOT NULL, `name` TEXT, `description` TEXT, `creationTime` INTEGER NOT NULL, `status` TEXT, `mixRatioId` INTEGER NOT NULL, `materialIds` TEXT, `asphaltContent` REAL NOT NULL, `aggregateContent` REAL NOT NULL, `additivesContent` REAL NOT NULL, `mixingTemperature` REAL NOT NULL, `mixingSpeed` REAL NOT NULL, `mixingTime` INTEGER NOT NULL, `mixingMethod` TEXT, `specimenCount` INTEGER NOT NULL, `specimenType` TEXT, `specimenDiameter` REAL NOT NULL, `specimenHeight` REAL NOT NULL, `operator` TEXT, `startTime` INTEGER NOT NULL, `endTime` INTEGER NOT NULL, `remarks` TEXT, `synced` INTEGER NOT NULL, `syncStatus` TEXT, `clientId` INTEGER, `organizationId` INTEGER, FOREIGN KEY(`experimentTaskId`) REFERENCES `experiment_tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "asphalt_task",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`asphalt_task_id` INTEGER NOT NULL, `asphalt_task_name` TEXT, `selected_asphalt_id` INTEGER NOT NULL, `asphalt_task_assignment` TEXT, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `status` TEXT, `task_status` TEXT, `asphalt_experiment_id` INTEGER NOT NULL, `asphalt_experiment_name` TEXT, `asphalt_experiment_type` TEXT, `company_id` TEXT, `due_date` INTEGER NOT NULL, `asphalt_task_assignment_id` TEXT, `accept_time` INTEGER NOT NULL, `acceptor` TEXT, `experiment_status` TEXT, `assigned_asphalt_equipment` TEXT, `assigned_asphalt_equipment_manufacturer` TEXT, PRIMARY KEY(`asphalt_task_id`))",
         "fields": [
           {
-            "fieldPath": "id",
-            "columnName": "id",
+            "fieldPath": "asphaltTaskId",
+            "columnName": "asphalt_task_id",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "experimentTaskId",
-            "columnName": "experimentTaskId",
+            "fieldPath": "asphaltTaskName",
+            "columnName": "asphalt_task_name",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "selectedAsphaltId",
+            "columnName": "selected_asphalt_id",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "name",
-            "columnName": "name",
+            "fieldPath": "asphaltTaskAssignment",
+            "columnName": "asphalt_task_assignment",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "description",
-            "columnName": "description",
-            "affinity": "TEXT",
-            "notNull": false
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
-            "fieldPath": "creationTime",
-            "columnName": "creationTime",
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -1069,186 +1018,92 @@
             "notNull": false
           },
           {
-            "fieldPath": "mixRatioId",
-            "columnName": "mixRatioId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "materialIds",
-            "columnName": "materialIds",
+            "fieldPath": "taskStatus",
+            "columnName": "task_status",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "asphaltContent",
-            "columnName": "asphaltContent",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "aggregateContent",
-            "columnName": "aggregateContent",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "additivesContent",
-            "columnName": "additivesContent",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "mixingTemperature",
-            "columnName": "mixingTemperature",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "mixingSpeed",
-            "columnName": "mixingSpeed",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "mixingTime",
-            "columnName": "mixingTime",
+            "fieldPath": "asphaltExperimentId",
+            "columnName": "asphalt_experiment_id",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "mixingMethod",
-            "columnName": "mixingMethod",
+            "fieldPath": "asphaltExperimentName",
+            "columnName": "asphalt_experiment_name",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "specimenCount",
-            "columnName": "specimenCount",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "specimenType",
-            "columnName": "specimenType",
+            "fieldPath": "asphaltExperimentType",
+            "columnName": "asphalt_experiment_type",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "specimenDiameter",
-            "columnName": "specimenDiameter",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "specimenHeight",
-            "columnName": "specimenHeight",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "operator",
-            "columnName": "operator",
+            "fieldPath": "companyId",
+            "columnName": "company_id",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "startTime",
-            "columnName": "startTime",
+            "fieldPath": "dueDate",
+            "columnName": "due_date",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "endTime",
-            "columnName": "endTime",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "remarks",
-            "columnName": "remarks",
+            "fieldPath": "asphaltTaskAssignmentId",
+            "columnName": "asphalt_task_assignment_id",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "synced",
-            "columnName": "synced",
+            "fieldPath": "acceptTime",
+            "columnName": "accept_time",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "syncStatus",
-            "columnName": "syncStatus",
+            "fieldPath": "acceptor",
+            "columnName": "acceptor",
             "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "clientId",
-            "columnName": "clientId",
-            "affinity": "INTEGER",
+            "fieldPath": "experimentStatus",
+            "columnName": "experiment_status",
+            "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "organizationId",
-            "columnName": "organizationId",
-            "affinity": "INTEGER",
+            "fieldPath": "assignedAsphaltEquipment",
+            "columnName": "assigned_asphalt_equipment",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "assignedAsphaltEquipmentManufacturer",
+            "columnName": "assigned_asphalt_equipment_manufacturer",
+            "affinity": "TEXT",
             "notNull": false
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
-            "id"
+            "asphalt_task_id"
           ]
         },
-        "indices": [
-          {
-            "name": "index_mixture_tasks_experimentTaskId",
-            "unique": false,
-            "columnNames": [
-              "experimentTaskId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_mixture_tasks_experimentTaskId` ON `${TABLE_NAME}` (`experimentTaskId`)"
-          },
-          {
-            "name": "index_mixture_tasks_mixRatioId",
-            "unique": false,
-            "columnNames": [
-              "mixRatioId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_mixture_tasks_mixRatioId` ON `${TABLE_NAME}` (`mixRatioId`)"
-          },
-          {
-            "name": "index_mixture_tasks_clientId",
-            "unique": false,
-            "columnNames": [
-              "clientId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_mixture_tasks_clientId` ON `${TABLE_NAME}` (`clientId`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "experiment_tasks",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "experimentTaskId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
+        "indices": [],
+        "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0313f88c8e827f08baf8cd501fc51e29')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9605aace3f316aa403bd2460084d876d')"
     ]
   }
 }

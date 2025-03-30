@@ -1405,22 +1405,26 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
 
     private void startAsphaltExperiment(ExperimentTask task) {
-        // 直接使用传入的任务信息启动实验数据记录活动
-        Intent intent = new Intent(requireContext(), RecordExperimentDataActivity.class);
+        // 启动沥青实验指派选择界面
+        Intent intent = new Intent(requireContext(), AsphaltExperimentSelectionActivity.class);
         
         // 首先检查任务是否有UUID格式的任务分配ID
+        String taskId;
         if (task.getTaskAssignmentId() != null && !task.getTaskAssignmentId().isEmpty()) {
             // 使用任务分配ID
-            Log.d(TAG, "使用UUID任务分配ID启动实验: " + task.getTaskAssignmentId());
-            intent.putExtra("taskId", task.getTaskAssignmentId());
+            Log.d(TAG, "使用UUID任务分配ID启动沥青实验选择: " + task.getTaskAssignmentId());
+            taskId = task.getTaskAssignmentId();
         } else {
-            // 回退到使用任务ID
+            // 回退到使用任务ID (使用String类型避免大数值问题)
             Log.w(TAG, "UUID任务分配ID缺失，回退使用任务ID: " + task.getTaskId());
-            intent.putExtra("taskId", task.getTaskId());
+            taskId = task.getTaskId();
         }
         
-        intent.putExtra("experiment_type", "ASPHALT");
-        recordExperimentLauncher.launch(intent);
+        // 传递任务ID和任务名称
+        intent.putExtra(AsphaltExperimentSelectionActivity.EXTRA_TASK_ID, taskId);
+        intent.putExtra(AsphaltExperimentSelectionActivity.EXTRA_TASK_NAME, task.getTaskName());
+        
+        startActivity(intent);
     }
     
     // 显示混合料实验信息

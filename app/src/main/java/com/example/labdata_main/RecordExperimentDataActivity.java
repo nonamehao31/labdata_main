@@ -69,6 +69,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
     private ExecutorService executor;
     private long taskId;
     private String experimentType;
+    private String selectedSpecificExperiment; // 用户从沥青实验选择界面选择的特定实验类型
     private int currentScanPosition = -1;
     private String taskIdString;
     private SharedPrefsManager sharedPrefsManager;
@@ -78,7 +79,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    String scannedContent = result.getData().getStringExtra("SCAN_RESULT");
+                    String scannedContent = result.getData().getStringExtra(ScanDeviceActivity.EXTRA_DEVICE_CODE);
                     if (scannedContent != null && currentScanPosition != -1) {
                         processScannedDevice(scannedContent);
                     }
@@ -96,8 +97,10 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         // 获取任务ID和实验类型
         taskIdString = getIntent().getStringExtra("taskId");
         experimentType = getIntent().getStringExtra("experiment_type");
+        selectedSpecificExperiment = getIntent().getStringExtra(AsphaltExperimentSelectionActivity.EXTRA_SELECTED_EXPERIMENT);
 
-        Log.d("RecordExperiment", "收到传入的任务ID参数: " + taskIdString + ", 实验类型: " + experimentType);
+        Log.d("RecordExperiment", "收到传入的任务ID参数: " + taskIdString + ", 实验类型: " + experimentType 
+              + (selectedSpecificExperiment != null ? ", 特定实验类型: " + selectedSpecificExperiment : ""));
 
         // 判断任务ID是否为UUID格式
         if (taskIdString != null && !taskIdString.isEmpty()) {
@@ -272,6 +275,14 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             return;
         }
 
+        // 如果用户选择了特定的实验类型，则只显示该实验类型
+        if (selectedSpecificExperiment != null && !selectedSpecificExperiment.isEmpty()) {
+            Log.d("SetupAsphalt", "用户选择了特定沥青实验类型: " + selectedSpecificExperiment);
+            Set<String> filteredExperiments = new HashSet<>();
+            filteredExperiments.add(selectedSpecificExperiment);
+            selectedExperiments = filteredExperiments;
+        }
+
         // 转换实验类型为标准格式
         Set<String> standardizedExperiments = new HashSet<>();
         for (String experimentType : selectedExperiments) {
@@ -338,6 +349,42 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                     throw new IllegalArgumentException("无效的设备编号");
                 }
 
+                // 尝试解析设备信息JSON
+                try {
+                    // 解析设备信息
+                    DeviceInfo deviceInfo = new Gson().fromJson(deviceCode, DeviceInfo.class);
+                    if (deviceInfo != null) {
+                        // 设置设备ID为当前位置
+                        if (deviceInfo.getDeviceId() == null || deviceInfo.getDeviceId().trim().isEmpty()) {
+                            deviceInfo.setDeviceId(String.valueOf(currentScanPosition + 1));
+                            Log.d("ProcessDevice", "设备ID为空，设置为: " + deviceInfo.getDeviceId());
+                        }
+
+                        // 在主线程中更新UI
+                        runOnUiThread(() -> {
+                            Log.d("DeviceInfo", "解析设备信息成功: " +
+                                "Name=" + deviceInfo.getName() +
+                                ", Manufacturer=" + deviceInfo.getManufacturer() +
+                                ", Model=" + deviceInfo.getModel());
+
+                            // 更新UI中的设备信息显示
+                            asphaltAdapter.updateDeviceInfo(currentScanPosition, deviceInfo);
+                            
+                            // 显示成功提示
+                            Toast.makeText(RecordExperimentDataActivity.this,
+                                "设备扫描成功：" + deviceInfo.getManufacturer() + " " + deviceInfo.getModel(),
+                                Toast.LENGTH_SHORT).show();
+                        });
+
+                        // 调用API更新数据库中的设备信息
+                        saveDeviceInfoToServer(deviceInfo);
+                        return;
+                    }
+                } catch (Exception e) {
+                    Log.e("ProcessDevice", "解析JSON失败，尝试从数据库查找设备", e);
+                    // JSON解析失败，继续执行下面的数据库查找逻辑
+                }
+
                 // 在数据库中查找设备
                 executor.execute(() -> {
                     try {
@@ -355,16 +402,19 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
 
                             // 在主线程中更新UI
                             runOnUiThread(() -> {
-                                Log.d("DeviceInfo", "Updating device info: " +
+                                Log.d("DeviceInfo", "从数据库获取设备信息: " +
                                     "Name=" + deviceInfo.getName() +
                                     ", Manufacturer=" + deviceInfo.getManufacturer() +
                                     ", Model=" + deviceInfo.getModel());
 
                                 asphaltAdapter.updateDeviceInfo(currentScanPosition, deviceInfo);
                                 Toast.makeText(RecordExperimentDataActivity.this,
-                                    "设备扫描成功：" + deviceInfo.getName(),
+                                    "设备扫描成功：" + deviceInfo.getManufacturer() + " " + deviceInfo.getModel(),
                                     Toast.LENGTH_SHORT).show();
                             });
+
+                            // 调用API更新数据库中的设备信息
+                            saveDeviceInfoToServer(deviceInfo);
                         } else {
                             runOnUiThread(() -> {
                                 Toast.makeText(RecordExperimentDataActivity.this,
@@ -386,6 +436,62 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                 Toast.makeText(this, "设备码格式错误：" + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    /**
+     * 将设备信息保存到服务器
+     * @param deviceInfo 设备信息
+     */
+    private void saveDeviceInfoToServer(DeviceInfo deviceInfo) {
+        if (deviceInfo == null || taskIdString == null || taskIdString.isEmpty()) {
+            Log.e("SaveDeviceInfo", "无法保存设备信息: deviceInfo或taskId为空");
+            return;
+        }
+
+        // 显示进度提示
+        runOnUiThread(() -> {
+            Toast.makeText(RecordExperimentDataActivity.this, 
+                "正在保存设备信息...", Toast.LENGTH_SHORT).show();
+        });
+
+        // 调用API更新asphalt_task表中的设备信息
+        asphaltTaskService.updateEquipmentInfo(
+            taskIdString, 
+            deviceInfo.getModel(), 
+            deviceInfo.getManufacturer()
+        ).enqueue(new Callback<ApiResponse<Boolean>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Log.d("SaveDeviceInfo", "设备信息保存成功: " + 
+                        "Model=" + deviceInfo.getModel() + 
+                        ", Manufacturer=" + deviceInfo.getManufacturer());
+                    
+                    runOnUiThread(() -> {
+                        Toast.makeText(RecordExperimentDataActivity.this, 
+                            "设备信息保存成功", Toast.LENGTH_SHORT).show();
+                    });
+                } else {
+                    String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
+                    Log.e("SaveDeviceInfo", "设备信息保存失败: " + errorMsg);
+                    
+                    runOnUiThread(() -> {
+                        Toast.makeText(RecordExperimentDataActivity.this, 
+                            "设备信息保存失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Boolean>> call, Throwable t) {
+                Log.e("SaveDeviceInfo", "设备信息保存请求失败", t);
+                
+                runOnUiThread(() -> {
+                    Toast.makeText(RecordExperimentDataActivity.this, 
+                        "设备信息保存请求失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void saveExperimentData() {
@@ -711,14 +817,14 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
      */
     private void saveSofteningPointExperimentData() {
         Log.d("SaveData", "开始保存软化点试验数据");
-
+        
         // 验证数据
         if (!validateExperimentData()) {
             return;
         }
-
+    
         Map<String, Map<String, String>> experimentData = asphaltAdapter.getExperimentData();
-
+        
         // 检查是否包含软化点试验数据
         if (!experimentData.containsKey(AsphaltExperimentData.TYPE_SOFTENING_POINT)) {
             Log.e("SaveData", "未找到软化点试验数据，实验类型键值 = " + AsphaltExperimentData.TYPE_SOFTENING_POINT);
@@ -726,14 +832,12 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             Toast.makeText(this, "未找到软化点试验数据", Toast.LENGTH_SHORT).show();
             return;
         }
-
+        
         Map<String, String> softeningPointData = experimentData.get(AsphaltExperimentData.TYPE_SOFTENING_POINT);
-
+        
         // 添加调试日志
         Log.d("SaveData", "软化点试验数据内容: " + softeningPointData.toString());
-        Log.d("SaveData", "温度字段键: " + AsphaltExperimentData.Fields.SofteningPoint.TEMPERATURE);
-        Log.d("SaveData", "软化温度字段键: " + AsphaltExperimentData.Fields.SofteningPoint.SOFTENING_TEMPERATURE);
-
+        
         // 验证必要的数据字段
         if (softeningPointData == null ||
             !softeningPointData.containsKey(AsphaltExperimentData.Fields.SofteningPoint.TEMPERATURE) ||
@@ -742,14 +846,14 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             Toast.makeText(this, "软化点试验初始温度不能为空", Toast.LENGTH_SHORT).show();
             return;
         }
-
+        
         if (!softeningPointData.containsKey(AsphaltExperimentData.Fields.SofteningPoint.SOFTENING_TEMPERATURE) ||
             TextUtils.isEmpty(softeningPointData.get(AsphaltExperimentData.Fields.SofteningPoint.SOFTENING_TEMPERATURE))) {
             Log.e("SaveData", "软化点试验软化温度不能为空");
             Toast.makeText(this, "软化点试验软化温度不能为空", Toast.LENGTH_SHORT).show();
             return;
         }
-
+        
         // 记录日志
         Log.d("SaveData", "软化点试验数据 - 初始温度: " +
               softeningPointData.get(AsphaltExperimentData.Fields.SofteningPoint.TEMPERATURE) +
@@ -805,7 +909,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                                 String errorMsg = (response.body() != null) ? response.body().getMessage() : "未知错误";
                                 Log.e("SaveData", "提交软化点试验数据到服务器失败: " + errorMsg);
                                 Log.e("SaveData", "HTTP状态码: " + response.code());
-
+                                
                                 runOnUiThread(() -> {
                                     Toast.makeText(RecordExperimentDataActivity.this,
                                         "提交软化点试验数据到服务器失败: " + errorMsg, Toast.LENGTH_SHORT).show();
@@ -830,7 +934,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                             "无法连接到服务器，请检查网络连接", Toast.LENGTH_SHORT).show();
                     });
                 }
-
+                
                 // 发送广播通知更新任务列表
                 Intent refreshIntent = new Intent("com.example.labdata_main.REFRESH_TASKS");
                 sendBroadcast(refreshIntent);
@@ -870,8 +974,6 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         
         // 添加调试日志
         Log.d("SaveData", "延度试验数据内容: " + ductilityData.toString());
-        Log.d("SaveData", "温度字段键: " + AsphaltExperimentData.Fields.TEMPERATURE);
-        Log.d("SaveData", "位移字段键: " + AsphaltExperimentData.Fields.Ductility.DISPLACEMENT);
         
         // 验证必要的数据字段
         if (ductilityData == null || 
@@ -898,7 +1000,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             try {
                 // 构建要提交的数据对象
                 DuctilityTestRequest request = new DuctilityTestRequest();
-                
+
                 // 使用原始字符串类型的taskIdString，避免大数值问题
                 Log.d("SaveData", "延度试验数据提交 - 任务ID字符串: " + taskIdString);
                 request.setTaskId(taskIdString);
@@ -1227,26 +1329,63 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
 
     // 标准化实验类型名称
     private String standardizeExperimentType(String experimentType) {
+        if (experimentType == null || experimentType.isEmpty()) {
+            return "undefined";  // 使用字符串而不是不存在的常量
+        }
+        
         // 去除空格和转换为小写，便于匹配
         String normalizedType = experimentType.trim().toLowerCase();
+        
+        // 记录原始类型用于调试
+        Log.d("SetupAsphalt", "开始标准化实验类型: " + experimentType + " (标准化后: " + normalizedType + ")");
+        
+        // 先处理英文格式的动态剪切流变仪名称
+        if (normalizedType.contains("dynamic_shear_rheometer") || 
+            normalizedType.contains("dynamic shear rheometer") ||
+            normalizedType.contains("dynamicshearrheometer")) {
+            Log.d("SetupAsphalt", "识别为动态剪切流变仪: " + experimentType);
+            return AsphaltExperimentData.TYPE_DSR;
+        }
+        
+        // 处理英文格式的弯曲梁流变仪名称
+        if (normalizedType.contains("bending_beam_rheometer") || 
+            normalizedType.contains("bending beam rheometer") ||
+            normalizedType.contains("bendingbeamrheometer")) {
+            Log.d("SetupAsphalt", "识别为弯曲梁流变仪: " + experimentType);
+            return AsphaltExperimentData.TYPE_BBR;
+        }
+        
+        // 处理英文格式的布鲁克菲尔德旋转粘度
+        if (normalizedType.contains("brookfield_viscosity") || 
+            normalizedType.contains("brookfield viscosity")) {
+            Log.d("SetupAsphalt", "识别为布鲁克菲尔德旋转粘度: " + experimentType);
+            return AsphaltExperimentData.TYPE_BROOKFIELD_VISCOSITY;
+        }
 
         // 根据名称匹配实验类型常量
-        if (normalizedType.contains("密度") || normalizedType.contains("相对密度")) {
+        if (normalizedType.contains("密度") || normalizedType.contains("相对密度") ||
+            normalizedType.contains("density")) {
             return AsphaltExperimentData.TYPE_DENSITY;
-        } else if (normalizedType.contains("针入度")) {
+        } else if (normalizedType.contains("针入度") || normalizedType.contains("penetration") ||
+                  normalizedType.equals("penetration_test")) {
             return AsphaltExperimentData.TYPE_PENETRATION;
-        } else if (normalizedType.contains("延度") && !normalizedType.contains("力延度")) {
+        } else if ((normalizedType.contains("延度") && !normalizedType.contains("力延度")) ||
+                  normalizedType.contains("ductility")) {
             return AsphaltExperimentData.TYPE_DUCTILITY;
-        } else if (normalizedType.contains("软化点")) {
+        } else if (normalizedType.contains("软化点") || normalizedType.contains("softening_point") ||
+                  normalizedType.contains("softeningpoint")) {
             return AsphaltExperimentData.TYPE_SOFTENING_POINT;
-        } else if (normalizedType.contains("薄膜烘箱") && !normalizedType.contains("旋转")) {
+        } else if ((normalizedType.contains("薄膜烘箱") && !normalizedType.contains("旋转")) ||
+                  normalizedType.contains("tfot")) {
             return AsphaltExperimentData.TYPE_TFOT;
         } else if (normalizedType.contains("旋转薄膜烘箱") || normalizedType.contains("rtfot")) {
             return AsphaltExperimentData.TYPE_RTFOT;
-        } else if (normalizedType.contains("闪点") || normalizedType.contains("燃点")) {
+        } else if (normalizedType.contains("闪点") || normalizedType.contains("燃点") ||
+                  normalizedType.contains("flash_point")) {
             return AsphaltExperimentData.TYPE_FLASH_POINT;
         } else if (normalizedType.contains("标准粘度") ||
-                  (normalizedType.contains("粘度") && !normalizedType.contains("布鲁克") && !normalizedType.contains("旋转粘度"))) {
+                  (normalizedType.contains("粘度") && !normalizedType.contains("布鲁克") && !normalizedType.contains("旋转粘度")) ||
+                  normalizedType.contains("viscosity")) {
             return AsphaltExperimentData.TYPE_VISCOSITY;
         } else if (normalizedType.contains("弯曲梁") || normalizedType.contains("bbr")) {
             return AsphaltExperimentData.TYPE_BBR;
@@ -1258,7 +1397,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
             return AsphaltExperimentData.TYPE_PAV;
         } else if (normalizedType.contains("多重应力") || normalizedType.contains("mscr")) {
             return AsphaltExperimentData.TYPE_MSCR;
-        } else if (normalizedType.contains("力延度")) {
+        } else if (normalizedType.contains("力延度") || normalizedType.contains("force_ductility")) {
             return AsphaltExperimentData.TYPE_FORCE_DUCTILITY;
         } else if (normalizedType.contains("布鲁克菲尔德") || normalizedType.contains("旋转粘度") ||
                   normalizedType.contains("brookfield")) {
@@ -1498,7 +1637,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                         public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Log.d("SaveData", "动态剪切流变仪实验数据已成功提交到服务器");
-                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_BBR);
+                                updateExperimentStatusToFinished(AsphaltExperimentData.TYPE_DSR);
 
                                 // 在主线程中显示成功消息并关闭页面
                                 runOnUiThread(() -> {
@@ -1593,6 +1732,7 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
                     @Override
                     public void onResponse(Call<ApiResponse<Boolean>> call, Response<ApiResponse<Boolean>> response) {
                         showLoading(false);
+
                         if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                             Log.d("UpdateStatus", "成功更新" + experimentTypeParam + "实验状态为已完成");
                             

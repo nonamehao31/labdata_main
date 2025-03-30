@@ -939,6 +939,8 @@ public class MixtureTaskService {
 
             result.put("methodsAndRatios", methodsAndRatios);
 
+
+
             // 4. 获取混合设备信息
             try {
                 List<Map<String, Object>> mixingEquipment = jdbcTemplate.queryForList(
@@ -971,6 +973,23 @@ public class MixtureTaskService {
             } catch (Exception e) {
                 logger.error("查询成型设备信息时出错: {}", e.getMessage());
                 result.put("formingEquipment", new ArrayList<>());
+            }
+
+            // 获取测试设备信息
+            try {
+                List<Map<String, Object>> testingEquipment = jdbcTemplate.queryForList(
+                        "SELECT DISTINCT assigned_testing_equipment as deviceId, " +
+                                "COALESCE(testing_equipment_manufacturer, '标准制造商') as manufacturer, " +
+                                "'testing' as deviceType, " +
+                                "assigned_testing_equipment as model " +
+                                "FROM mixture_task WHERE task_id LIKE ? OR task_id = ? AND assigned_testing_equipment IS NOT NULL",
+                        taskIdPrefix + "%", taskIdPrefix
+                );
+            
+                result.put("testingEquipment", testingEquipment);
+            } catch (Exception e) {
+                logger.error("查询测试设备信息时出错: {}", e.getMessage());
+                result.put("testingEquipment", new ArrayList<>());
             }
 
             // 6. 获取任务指派信息

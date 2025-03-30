@@ -42,6 +42,10 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
     private String asphaltExperimentId;
     private String asphaltExperimentType;
     
+    // 实验设备信息
+    private String assignedAsphaltEquipment;
+    private String assignedAsphaltEquipmentManufacturer;
+    
     // 无参构造函数
     public CompletedExperimentTask() {
     }
@@ -63,6 +67,8 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
         compactionMethod = in.readString();
         asphaltExperimentId = in.readString();
         asphaltExperimentType = in.readString();
+        assignedAsphaltEquipment = in.readString();
+        assignedAsphaltEquipmentManufacturer = in.readString();
     }
     
     // 实现 Parcelable.Creator
@@ -101,6 +107,8 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
         dest.writeString(compactionMethod);
         dest.writeString(asphaltExperimentId);
         dest.writeString(asphaltExperimentType);
+        dest.writeString(assignedAsphaltEquipment);
+        dest.writeString(assignedAsphaltEquipmentManufacturer);
     }
     
     // 工具方法 - 格式化时间
@@ -231,6 +239,36 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
     
     public void setAsphaltExperimentType(String asphaltExperimentType) {
         this.asphaltExperimentType = asphaltExperimentType;
+    }
+    
+    public String getAssignedAsphaltEquipment() {
+        return assignedAsphaltEquipment;
+    }
+    
+    public void setAssignedAsphaltEquipment(String assignedAsphaltEquipment) {
+        this.assignedAsphaltEquipment = assignedAsphaltEquipment;
+    }
+    
+    public String getAssignedAsphaltEquipmentManufacturer() {
+        return assignedAsphaltEquipmentManufacturer;
+    }
+    
+    public void setAssignedAsphaltEquipmentManufacturer(String assignedAsphaltEquipmentManufacturer) {
+        this.assignedAsphaltEquipmentManufacturer = assignedAsphaltEquipmentManufacturer;
+    }
+    
+    // 获取格式化的设备信息
+    public String getFormattedEquipmentInfo() {
+        if (assignedAsphaltEquipmentManufacturer != null && !assignedAsphaltEquipmentManufacturer.isEmpty() 
+            && assignedAsphaltEquipment != null && !assignedAsphaltEquipment.isEmpty()) {
+            return assignedAsphaltEquipmentManufacturer + " " + assignedAsphaltEquipment;
+        } else if (assignedAsphaltEquipment != null && !assignedAsphaltEquipment.isEmpty()) {
+            return assignedAsphaltEquipment;
+        } else if (assignedAsphaltEquipmentManufacturer != null && !assignedAsphaltEquipmentManufacturer.isEmpty()) {
+            return assignedAsphaltEquipmentManufacturer;
+        } else {
+            return "未知";
+        }
     }
     
     /**

@@ -39,11 +39,14 @@ public class AsphaltCompletedTaskService {
             "    created_at, " +
             "    updated_at, " +
             "    asphalt_task_assignment, " +
-            "    asphalt_experiment_type " +
+            "    asphalt_experiment_type, " +
+            "    experiment_status, " +
+            "    assigned_asphalt_equipment, " +
+            "    assigned_asphalt_equipment_manufacturer " +
             "FROM " +
             "    asphalt_task " +
             "WHERE " +
-            "    task_status = 'COMPLETED' " +
+            "    experiment_status = 'finished' " +
             "    AND company_id = ? " +
             "ORDER BY " +
             "    created_at DESC"

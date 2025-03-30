@@ -509,15 +509,29 @@ public class AsphaltExperimentAssignmentFragment extends Fragment {
                 for (ExperimentTask task : tasks) {
                     database.experimentTaskDao().insert(task);
                 }
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "任务已创建", Toast.LENGTH_SHORT).show();
-                    requireActivity().finish();
-                });
+                
+                // 检查Fragment是否仍然附加到Activity
+                if (isAdded() && getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        // 再次检查，确保在UI线程执行时Fragment仍然附加到Activity
+                        if (isAdded() && getContext() != null) {
+                            Toast.makeText(getContext(), "任务已创建", Toast.LENGTH_SHORT).show();
+                            getActivity().finish();
+                        }
+                    });
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(requireContext(), "创建任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                
+                // 检查Fragment是否仍然附加到Activity
+                if (isAdded() && getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        // 再次检查，确保在UI线程执行时Fragment仍然附加到Activity
+                        if (isAdded() && getContext() != null) {
+                            Toast.makeText(getContext(), "创建任务失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
             }
         });
     }

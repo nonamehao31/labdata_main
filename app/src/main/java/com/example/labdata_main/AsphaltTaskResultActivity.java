@@ -52,6 +52,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
     private TextView tvCompletionTime;
     private TextView tvResultTitle;
     private TextView tvNoResults;
+    private TextView tvEquipmentInfo;
     private RecyclerView rvExperimentResults;
     
     // 适配器
@@ -85,6 +86,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
         tvCompletionTime = findViewById(R.id.tvCompletionTime);
         tvResultTitle = findViewById(R.id.tvResultTitle);   
         tvNoResults = findViewById(R.id.tvNoResults);
+        tvEquipmentInfo = findViewById(R.id.tvEquipmentInfo);
         rvExperimentResults = findViewById(R.id.rvExperimentResults);
         
         // 初始化适配器
@@ -213,6 +215,14 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
         String completionTime = completionTimeValue > 0 ? 
                 CompletedExperimentTask.formatTime(completionTimeValue) : "未知";
         tvCompletionTime.setText("完成时间: " + completionTime);
+        
+        // 显示实验设备信息
+        String equipmentInfo = "未知";
+        if (task.getAssignedAsphaltEquipment() != null && !task.getAssignedAsphaltEquipment().isEmpty() ||
+            task.getAssignedAsphaltEquipmentManufacturer() != null && !task.getAssignedAsphaltEquipmentManufacturer().isEmpty()) {
+            equipmentInfo = task.getFormattedEquipmentInfo();
+        }
+        tvEquipmentInfo.setText("实验设备: " + equipmentInfo);
         
         Log.d(TAG, "显示沥青实验任务详情: " + taskId);
     }

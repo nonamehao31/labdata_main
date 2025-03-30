@@ -162,4 +162,18 @@ public interface AsphaltTaskService {
         @Query("taskId") String taskId,
         @Query("experimentType") String experimentType
     );
+
+    /**
+     * 更新沥青实验设备信息
+     * @param taskId 任务ID
+     * @param equipment 设备型号
+     * @param manufacturer 设备厂家
+     * @return API响应
+     */
+    @POST("api/asphalt/experiments/update-equipment-info")
+    Call<ApiResponse<Boolean>> updateEquipmentInfo(
+        @Query("taskId") String taskId,
+        @Query("equipment") String equipment,
+        @Query("manufacturer") String manufacturer
+    );
 }

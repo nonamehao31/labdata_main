@@ -55,6 +55,12 @@ public class AsphaltTask {
     @Column(name = "due_date")
     private LocalDate dueDate;
     
+    @Column(name = "assigned_asphalt_equipment")
+    private String assignedAsphaltEquipment;
+    
+    @Column(name = "assigned_asphalt_equipment_manufacturer")
+    private String assignedAsphaltEquipmentManufacturer;
+    
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
     
@@ -161,6 +167,22 @@ public class AsphaltTask {
     
     public void setCompanyId(String companyId) {
         this.companyId = companyId;
+    }
+
+    public String getAssignedAsphaltEquipment() {
+        return assignedAsphaltEquipment;
+    }
+
+    public void setAssignedAsphaltEquipment(String assignedAsphaltEquipment) {
+        this.assignedAsphaltEquipment = assignedAsphaltEquipment;
+    }
+
+    public String getAssignedAsphaltEquipmentManufacturer() {
+        return assignedAsphaltEquipmentManufacturer;
+    }
+
+    public void setAssignedAsphaltEquipmentManufacturer(String assignedAsphaltEquipmentManufacturer) {
+        this.assignedAsphaltEquipmentManufacturer = assignedAsphaltEquipmentManufacturer;
     }
 
     public LocalDate getDueDate() {

@@ -379,4 +379,40 @@ public class AsphaltTaskController {
             return ResponseEntity.ok(new ApiResponse<>(false, "更新实验任务状态失败: " + e.getMessage(), false));
         }
     }
+
+    /**
+     * 更新沥青实验设备信息
+     * @param taskId 任务ID（查询参数）
+     * @param equipment 设备型号（查询参数）
+     * @param manufacturer 设备厂家（查询参数）
+     * @param currentUser 当前用户
+     * @return 响应
+     */
+    @PostMapping("/update-equipment-info")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse<Boolean>> updateEquipmentInfo(
+            @RequestParam String taskId,
+            @RequestParam String equipment,
+            @RequestParam String manufacturer,
+            @CurrentUser UserPrincipal currentUser) {
+        logger.info("用户 {} 更新沥青实验设备信息, 任务ID: {}, 设备型号: {}, 设备厂家: {}", 
+            currentUser.getUsername(), taskId, equipment, manufacturer);
+        
+        try {
+            // 使用支持字符串ID的方法，避免Long类型转换错误
+            AsphaltTask updatedTask = asphaltTaskService.updateEquipmentInfo(taskId, equipment, manufacturer);
+            
+            if (updatedTask != null) {
+                logger.info("成功更新沥青实验设备信息: taskId={}, equipment={}, manufacturer={}", 
+                    taskId, equipment, manufacturer);
+                return ResponseEntity.ok(new ApiResponse<>(true, "沥青实验设备信息更新成功", true));
+            } else {
+                logger.warn("更新设备信息失败，未找到匹配的任务: {}", taskId);
+                return ResponseEntity.ok(new ApiResponse<>(false, "未找到匹配的实验任务", false));
+            }
+        } catch (Exception e) {
+            logger.error("更新沥青实验设备信息失败", e);
+            return ResponseEntity.ok(new ApiResponse<>(false, "更新沥青实验设备信息失败: " + e.getMessage(), false));
+        }
+    }
 }
