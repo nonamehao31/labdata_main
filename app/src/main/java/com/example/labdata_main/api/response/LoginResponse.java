@@ -34,13 +34,16 @@ public class LoginResponse {
     @SerializedName("allowAddMixratio")
     private boolean allowAddMixratio;
     
+    @SerializedName("admin")
+    private boolean admin;
+    
     // 默认构造函数
     public LoginResponse() {
     }
     
     // 带参数的构造函数
     public LoginResponse(String accessToken, String tokenType, long userId, String username, String name, String companyId,
-                         boolean allowAddMixture, boolean allowAddAsphalt, boolean allowAddMixratio) {
+                         boolean allowAddMixture, boolean allowAddAsphalt, boolean allowAddMixratio, boolean admin) {
         this.accessToken = accessToken;
         this.tokenType = tokenType;
         this.userId = userId;
@@ -50,6 +53,7 @@ public class LoginResponse {
         this.allowAddMixture = allowAddMixture;
         this.allowAddAsphalt = allowAddAsphalt;
         this.allowAddMixratio = allowAddMixratio;
+        this.admin = admin;
     }
     
     // Getters and Setters
@@ -123,5 +127,13 @@ public class LoginResponse {
     
     public void setAllowAddMixratio(boolean allowAddMixratio) {
         this.allowAddMixratio = allowAddMixratio;
+    }
+    
+    public boolean isAdmin() {
+        return admin;
+    }
+    
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
     }
 }

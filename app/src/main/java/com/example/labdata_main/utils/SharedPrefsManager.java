@@ -235,6 +235,18 @@ public class SharedPrefsManager {
     }
     
     /**
+     * 设置用户类型
+     * 
+     * @param userType 用户类型（0：实验员，1：管理员）
+     */
+    public void setUserType(int userType) {
+        android.util.Log.d("SharedPrefsManager", "Setting user type: " + userType);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(KEY_USER_TYPE, userType);
+        editor.apply();
+    }
+    
+    /**
      * 获取用户类型（字符串）
      * @return 用户类型字符串，"admin"或"user"
      */

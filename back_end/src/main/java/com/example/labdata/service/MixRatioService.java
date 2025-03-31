@@ -333,4 +333,17 @@ public class MixRatioService {
         
         return datePrefix + sequenceFormatted;
     }
+    
+    /**
+     * 根据公司ID获取该公司的所有配比
+     * 
+     * @param companyId 公司ID
+     * @return 该公司的配比列表，包含详细信息
+     */
+    public List<MixRatioResponse> getMixRatiosByCompany(Long companyId) {
+        List<MixRatio> mixRatios = mixRatioRepository.findByMixCompany(companyId);
+        return mixRatios.stream()
+                .map(this::convertToDetailedResponse)
+                .collect(Collectors.toList());
+    }
 }

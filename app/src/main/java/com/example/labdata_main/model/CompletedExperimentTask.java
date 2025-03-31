@@ -304,7 +304,30 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
         result.setMixtureTask(true);
         result.setTaskId(task.getTaskId());
         result.setTaskName(task.getTaskName());
-        result.setExperimenter(task.getAcceptor());
+        
+        // 修改：处理实验人员信息
+        if (task.getAcceptor() != null && !task.getAcceptor().isEmpty()) {
+            result.setExperimenter(task.getAcceptor());
+        } else {
+            // 如果acceptor为空，使用任务名称中可能包含的实验人员信息
+            String taskName = task.getTaskName();
+            if (taskName != null && taskName.contains("实验人:")) {
+                int index = taskName.indexOf("实验人:");
+                if (index >= 0 && index + 4 < taskName.length()) {
+                    String experimenterFromName = taskName.substring(index + 4).trim();
+                    if (!experimenterFromName.isEmpty()) {
+                        result.setExperimenter(experimenterFromName);
+                    } else {
+                        result.setExperimenter("未知");
+                    }
+                } else {
+                    result.setExperimenter("未知");
+                }
+            } else {
+                result.setExperimenter("未知");
+            }
+        }
+        
         result.setAcceptTime(task.getAcceptTime() != null ? parseTimeStringToLong(task.getAcceptTime()) : 0L);
         result.setCompletionTime(task.getCreationTime() != null ? parseTimeStringToLong(task.getCreationTime()) : 0L);
         
@@ -347,7 +370,30 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
         result.setMixtureTask(false);
         result.setTaskId(task.getTaskId());
         result.setTaskName(task.getTaskName());
-        result.setExperimenter(task.getAcceptor());
+        
+        // 修改：处理实验人员信息
+        if (task.getAcceptor() != null && !task.getAcceptor().isEmpty()) {
+            result.setExperimenter(task.getAcceptor());
+        } else {
+            // 如果acceptor为空，使用任务名称中可能包含的实验人员信息
+            String taskName = task.getTaskName();
+            if (taskName != null && taskName.contains("实验人:")) {
+                int index = taskName.indexOf("实验人:");
+                if (index >= 0 && index + 4 < taskName.length()) {
+                    String experimenterFromName = taskName.substring(index + 4).trim();
+                    if (!experimenterFromName.isEmpty()) {
+                        result.setExperimenter(experimenterFromName);
+                    } else {
+                        result.setExperimenter("未知");
+                    }
+                } else {
+                    result.setExperimenter("未知");
+                }
+            } else {
+                result.setExperimenter("未知");
+            }
+        }
+        
         result.setAcceptTime(task.getAcceptTime() != null ? parseTimeStringToLong(task.getAcceptTime()) : 0L);
         result.setCompletionTime(task.getUpdatedAt() != null ? parseTimeStringToLong(task.getUpdatedAt()) : 0L);
         

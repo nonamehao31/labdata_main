@@ -50,7 +50,14 @@ public class User extends DateAudit {
     private String phone;
     private String organization;
     private Long organizationId; 
+    
+    @Column(name = "admin", nullable = false, columnDefinition = "boolean default false")
     private boolean admin;
+
+    public boolean isAdmin() {
+        System.out.println("Getting admin value: " + this.admin + " for user: " + this.username);
+        return admin;
+    }
     
     @Column(name = "allow_add_mixture", nullable = false, columnDefinition = "boolean default false")
     private boolean allowAddMixture;
@@ -60,4 +67,7 @@ public class User extends DateAudit {
     
     @Column(name = "allow_add_mixratio", nullable = false, columnDefinition = "boolean default false")
     private boolean allowAddMixratio;
+    
+    @Column(name = "avatar_path")
+    private String avatarPath;
 }

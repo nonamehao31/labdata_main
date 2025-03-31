@@ -4,48 +4,54 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="?android:windowBackground">
+    android:background="#F2F2F7">
 
-    <!-- 头像部分 -->
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/ivAvatar"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="20dp"
-        android:padding="2dp"
-        android:scaleType="centerCrop"
-        app:strokeColor="#888888"
-        app:strokeWidth="1dp"
-        app:shapeAppearanceOverlay="@style/CircleImageView"
-        android:background="@drawable/circle_avatar_background" />
-
-    <!-- 用户信息部分 -->
+    <!-- 头像和用户信息部分 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:background="#FFFFFF"
+        android:paddingBottom="24dp">
 
+        <!-- 头像部分 -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="110dp"
+            android:layout_height="110dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="40dp"
+            android:padding="2dp"
+            android:scaleType="centerCrop"
+            app:strokeColor="#E0E0E0"
+            app:strokeWidth="0.5dp"
+            app:shapeAppearanceOverlay="@style/CircleImageView"
+            android:background="@drawable/circle_avatar_background" />
+
+        <!-- 用户名 -->
         <TextView
             android:id="@+id/tvName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="16dp"
-            android:textColor="?android:textColorPrimary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textColor="#000000"
+            android:textSize="22sp"
+            android:fontFamily="sans-serif-medium"
+            android:textStyle="normal" />
 
+        <!-- 邮箱 -->
         <TextView
             android:id="@+id/tvEmail"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            android:textColor="?android:textColorSecondary"
-            android:textSize="14sp" />
+            android:layout_marginTop="4dp"
+            android:textColor="#8E8E93"
+            android:fontFamily="sans-serif"
+            android:textSize="15sp" />
 
+        <!-- 职位 -->
         <TextView
             android:id="@+id/tvPosition"
             android:layout_width="wrap_content"
@@ -53,75 +59,121 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="4dp"
             android:text="实验员"
-            android:textColor="?android:textColorSecondary"
-            android:textSize="14sp" />
+            android:textColor="#8E8E93"
+            android:fontFamily="sans-serif"
+            android:textSize="15sp" />
+    </LinearLayout>
 
-        <!-- 用户详细信息卡片 -->
-        <androidx.cardview.widget.CardView
+    <!-- 间隔 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="10dp"
+        android:background="#F2F2F7" />
+
+    <!-- 信息卡片 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#FFFFFF">
+
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            app:cardBackgroundColor="?attr/colorSurface"
-            app:cardElevation="4dp">
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:gravity="center_vertical">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:text="单位"
+                android:textColor="#000000"
+                android:fontFamily="sans-serif"
+                android:textSize="17sp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="单位"
-                        android:textColor="?android:textColorSecondary"
-                        android:textSize="16sp" />
-                    <TextView
-                        android:id="@+id/tvCompany"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="end"
-                        android:textColor="?android:textColorPrimary"
-                        android:textSize="16sp" />
-                </LinearLayout>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+            <TextView
+                android:id="@+id/tvCompany"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:textColor="#8E8E93"
+                android:fontFamily="sans-serif"
+                android:textSize="17sp" />
+        </LinearLayout>
 
-        <!-- 按钮 -->
-        <Button
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginStart="20dp"
+            android:background="#E0E0E0" />
+    </LinearLayout>
+
+    <!-- 间隔 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        android:background="#F2F2F7" />
+
+    <!-- 按钮组 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <!-- 更改信息按钮 -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnModifyInfo"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_height="52dp"
             android:text="更改信息"
-            android:textColor="@color/white"
-            android:backgroundTint="@color/blue_theme" />
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:fontFamily="sans-serif-medium"
+            app:cornerRadius="12dp"
+            app:backgroundTint="#007AFF"
+            android:letterSpacing="0"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            app:elevation="0dp" />
 
-        <Button
+        <!-- 单位人员管理按钮 -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnUserManagement"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
             android:text="单位人员管理"
-            android:textColor="@color/white"
-            android:backgroundTint="@color/blue_theme"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:fontFamily="sans-serif-medium"
+            app:cornerRadius="12dp"
+            app:backgroundTint="#5856D6"
+            android:letterSpacing="0"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            app:elevation="0dp"
             android:visibility="gone" />
 
-        <Button
+        <!-- 注销按钮 -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogout"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
             android:text="注销"
-            android:textColor="@color/white"
-            android:backgroundTint="@color/blue_theme" />
-
-
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:fontFamily="sans-serif-medium"
+            app:cornerRadius="12dp"
+            app:backgroundTint="#FF3B30"
+            android:letterSpacing="0"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            app:elevation="0dp" />
     </LinearLayout>
 </LinearLayout>

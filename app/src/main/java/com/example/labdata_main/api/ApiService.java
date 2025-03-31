@@ -27,13 +27,16 @@ import com.example.labdata_main.model.User;
 import java.util.List;
 import java.util.Map;
 
+import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.Part;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 
@@ -333,8 +336,29 @@ public interface ApiService {
      * @param username 用户名
      * @return 用户信息响应
      */
-    @GET(ApiConfig.BASE_AUTH_URL + "/user/by-username/{username}")
+    @GET("auth/user/by-username/{username}")
     Call<ApiResponse<Map<String, Object>>> getUserInfoByUsername(@Path("username") String username);
+
+    /**
+     * 上传用户头像
+     * @param userId 用户ID
+     * @param file 头像文件
+     * @return 上传结果
+     */
+    @Multipart
+    @POST(ApiConfig.BASE_AUTH_URL + "/users/{userId}/avatar")
+    Call<ApiResponse<String>> uploadUserAvatar(
+            @Path("userId") long userId,
+            @Part MultipartBody.Part file
+    );
+
+    /**
+     * 获取用户头像
+     * @param userId 用户ID
+     * @return 头像图片URL
+     */
+    @GET(ApiConfig.BASE_AUTH_URL + "/users/{userId}/avatar")
+    Call<ResponseBody> getUserAvatar(@Path("userId") long userId);
 
     /**
      * 获取同一单位下的所有用户

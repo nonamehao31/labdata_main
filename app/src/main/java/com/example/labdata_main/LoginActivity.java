@@ -117,6 +117,11 @@ public class LoginActivity extends AppCompatActivity {
                     // 查询本地数据库获取用户类型和其他信息
                     User user = databaseHelper.getUserByEmail(email);
                     if (user != null) {
+                        // 根据后端返回的admin字段确定用户类型
+                        int userType = loginResponse.isAdmin() ? 1 : 0; // 如果admin为true，设置为管理员(1)，否则设置为实验员(0)
+                        
+                        Log.d(TAG, "从后端获取到admin状态: " + loginResponse.isAdmin() + ", 设置userType为: " + userType);
+                        
                         // 保存登录状态和用户信息
                         // 保存用户登录会话信息，包括用户ID、邮箱、用户名、公司ID、电话号码和用户类型
                         // 如果API返回的公司ID不为空且非空字符串，则优先使用API返回的公司ID，否则使用本地数据库中的公司ID
@@ -127,7 +132,7 @@ public class LoginActivity extends AppCompatActivity {
                             loginResponse.getCompanyId() != null && !loginResponse.getCompanyId().trim().isEmpty() ?
                                 loginResponse.getCompanyId() : user.getCompany(), // 优先使用API返回的公司ID
                             user.getPhone(),
-                            user.getUserType(),
+                            userType, // 使用根据后端admin字段确定的用户类型
                             loginResponse.getName() // 添加用户真实姓名
                         );
                         
@@ -189,7 +194,7 @@ public class LoginActivity extends AppCompatActivity {
                                 loginResponse.getCompanyId() != null && !loginResponse.getCompanyId().trim().isEmpty() ?
                                     loginResponse.getCompanyId() : "",
                                 "",
-                                0,
+                                loginResponse.isAdmin() ? 1 : 0, // 使用后端返回的admin字段
                                 loginResponse.getName() // 添加用户真实姓名
                             );
                             

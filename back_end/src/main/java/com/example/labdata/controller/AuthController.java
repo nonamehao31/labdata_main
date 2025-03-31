@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.ArrayList;
@@ -51,6 +52,9 @@ public class AuthController {
     @Autowired
     JwtTokenProvider tokenProvider;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
@@ -69,14 +73,18 @@ public class AuthController {
         User user = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new AppException("找不到用户信息"));
                 
-        // 返回带有用户真实姓名和公司信息的响应
+        // 返回带有用户真实姓名、公司信息和管理员状态的响应
         return ResponseEntity.ok(new JwtAuthenticationResponse(
             jwt, 
             userPrincipal.getId(), 
             userPrincipal.getUsername(),
             user.getName(), // 添加用户真实姓名
             user.getOrganization(),
-            user.getOrganizationId() != null ? user.getOrganizationId().toString() : null
+            user.getOrganizationId() != null ? user.getOrganizationId().toString() : null,
+            user.isAdmin(), // 添加管理员状态
+            user.isAllowAddMixture(), // 添加混合料实验权限
+            user.isAllowAddAsphalt(), // 添加沥青实验权限
+            user.isAllowAddMixratio() // 添加配合比权限
         ));
     }
 
@@ -188,19 +196,43 @@ public class AuthController {
     }
 
     /**
-     * 通过用户名获取用户信息
-     * @param username 用户名
+     * 通过用户名或邮箱获取用户信息
+     * @param username 用户名或邮箱
      * @return 包含用户信息的响应实体
      */
     @GetMapping("/user/by-username/{username}")
     public ResponseEntity<?> getUserInfoByUsername(@PathVariable(value = "username") String username) {
+        System.out.println("开始查询用户信息: username=" + username);
+        
+        // 先通过用户名查找
         Optional<User> userOptional = userRepository.findByUsername(username);
         
+        // 如果通过用户名找不到，尝试通过邮箱查找
         if (!userOptional.isPresent()) {
+            System.out.println("通过用户名找不到用户，尝试通过邮箱查找");
+            userOptional = userRepository.findByEmail(username);
+        }
+        
+        if (!userOptional.isPresent()) {
+            System.out.println("用户不存在: " + username);
             return ResponseEntity.notFound().build();
         }
         
         User user = userOptional.get();
+        
+        // 添加调试日志
+        System.out.println("用户信息: ID=" + user.getId() + ", 用户名=" + user.getUsername() + 
+                          ", 邮箱=" + user.getEmail() + ", 管理员状态=" + user.isAdmin());
+        
+        try {
+            // 直接从数据库再次查询该用户的管理员状态
+            String query = "SELECT admin FROM users WHERE id = " + user.getId();
+            Object result = entityManager.createNativeQuery(query).getSingleResult();
+            System.out.println("数据库中的admin原始值: " + result + " (类型: " + (result != null ? result.getClass().getName() : "null") + ")");
+        } catch (Exception e) {
+            System.out.println("查询admin字段时出错: " + e.getMessage());
+            e.printStackTrace();
+        }
         
         // 创建只返回必要信息的响应对象
         Map<String, Object> userInfo = new HashMap<>();
@@ -209,6 +241,9 @@ public class AuthController {
         userInfo.put("name", user.getName());
         userInfo.put("organization", user.getOrganization());
         userInfo.put("organizationId", user.getOrganizationId());
+        userInfo.put("admin", user.isAdmin()); // 添加管理员状态
+        
+        System.out.println("响应中的管理员状态: " + userInfo.get("admin"));
         
         return ResponseEntity.ok(new ApiResponse(true, "用户信息获取成功", userInfo));
     }

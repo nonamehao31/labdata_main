@@ -33,11 +33,21 @@ import com.example.labdata_main.api.ApiService;
 import com.example.labdata_main.api.response.ApiResponse;
 
 import java.io.File;
-import java.util.Map;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import java.util.Map;
 
 /**
  * "我的"界面Fragment
@@ -64,6 +74,9 @@ public class MyFragment extends Fragment {
     private ActivityResultLauncher<Intent> imagePickerLauncher;
     private ActivityResultLauncher<Intent> cropImageLauncher;
     private ActivityResultLauncher<String> requestPermissionLauncher;
+
+    // 存储当前用户ID
+    private long currentUserId = -1;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -102,6 +115,8 @@ public class MyFragment extends Fragment {
                     if (tempImageUri != null) {
                         Log.d("MyFragment", "裁剪完成，临时文件URI: " + tempImageUri);
                         saveAvatarUri(tempImageUri.toString());
+                        // 上传头像到服务器
+                        uploadAvatarToServer(tempImageUri);
                     } else {
                         Log.e("MyFragment", "裁剪完成但临时文件URI为空");
                     }
@@ -285,42 +300,236 @@ public class MyFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        
+        // 从SharedPreferences获取当前用户信息
+        String email = sharedPrefsManager.getUserEmail();
+        String username = sharedPrefsManager.getUserName();
+        
+        // 先显示本地信息
         displayUserInfo();
-        loadAvatar();
+        // 先加载本地缓存头像
+        loadLocalAvatar();
+        
+        // 每次Fragment恢复时都获取最新的用户信息和头像
+        if (username != null && !username.isEmpty()) {
+            fetchUserOrganizationByUsername(username);
+            Log.d("MyFragment", "onResume: 获取最新用户信息");
+        } else if (email != null && !email.isEmpty()) {
+            // 如果没有用户名但有邮箱，则使用邮箱查询
+            fetchUserOrganizationByUsername(email);
+            Log.d("MyFragment", "onResume: 使用邮箱获取最新用户信息");
+        }
     }
 
     private void loadAvatar() {
+        // 先从本地加载头像
+        loadLocalAvatar();
+        // 尝试从服务器获取头像
+        loadAvatarFromServer();
+    }
+    
+    /**
+     * 从本地加载头像
+     */
+    private void loadLocalAvatar() {
+        // 尝试从本地加载头像
         String avatarUri = sharedPrefsManager.getAvatarUri();
-        Log.d("MyFragment", "Loading avatar URI: " + avatarUri);
+        Log.d("MyFragment", "Loading avatar URI from local storage: " + avatarUri);
         
+        // 如果有本地缓存的头像，先显示它
         if (avatarUri != null && !avatarUri.isEmpty()) {
             try {
                 Uri uri = Uri.parse(avatarUri);
-                Log.d("MyFragment", "Loading avatar from URI: " + uri);
+                Log.d("MyFragment", "Loading avatar from local URI: " + uri);
                 
                 Glide.with(requireContext())
                         .load(uri)
                         .diskCacheStrategy(DiskCacheStrategy.NONE)
                         .skipMemoryCache(true)
                         .into(ivAvatar);
-                     
+                      
             } catch (Exception e) {
-                Log.e("MyFragment", "Error loading avatar: " + e.getMessage());
+                Log.e("MyFragment", "Error loading local avatar: " + e.getMessage());
                 e.printStackTrace();
                 ivAvatar.setImageResource(R.drawable.circle_avatar_background);
             }
         } else {
-            Log.d("MyFragment", "No avatar URI found, using default background");
+            Log.d("MyFragment", "No local avatar URI found, using default background");
             ivAvatar.setImageResource(R.drawable.circle_avatar_background);
         }
+    }
+    
+    /**
+     * 从服务器获取头像
+     */
+    private void loadAvatarFromServer() {
+        if (currentUserId == -1) {
+            Log.d("MyFragment", "当前用户ID无效，无法从服务器获取头像");
+            return;
+        }
+        
+        Log.d("MyFragment", "从服务器获取用户头像, 用户ID: " + currentUserId);
+        
+        apiService.getUserAvatar(currentUserId).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    Log.d("MyFragment", "成功从服务器获取头像");
+                    
+                    // 创建临时文件保存头像
+                    try {
+                        File outputDir = new File(requireContext().getCacheDir(), "avatars");
+                        if (!outputDir.exists()) {
+                            outputDir.mkdirs();
+                        }
+                        
+                        File avatarFile = new File(outputDir, "avatar_" + currentUserId + "_" + System.currentTimeMillis() + ".jpg");
+                        FileOutputStream fos = new FileOutputStream(avatarFile);
+                        fos.write(response.body().bytes());
+                        fos.close();
+                        
+                        Uri avatarUri = Uri.fromFile(avatarFile);
+                        
+                        // 保存到本地缓存
+                        saveAvatarUri(avatarUri.toString());
+                        
+                        // 使用Glide显示头像
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                Glide.with(requireContext())
+                                        .load(avatarUri)
+                                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                        .skipMemoryCache(true)
+                                        .into(ivAvatar);
+                            });
+                        }
+                    } catch (IOException e) {
+                        Log.e("MyFragment", "保存服务器头像到本地时出错: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    Log.d("MyFragment", "服务器上没有找到头像或请求失败: " + response.code());
+                    // 使用本地缓存的头像或默认头像
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("MyFragment", "获取服务器头像失败: " + t.getMessage());
+                t.printStackTrace();
+            }
+        });
     }
 
     private void saveAvatarUri(String uri) {
         Log.d("MyFragment", "Saving avatar URI: " + uri);
         sharedPrefsManager.saveAvatarUri(uri);
-        loadAvatar(); // 立即重新加载头像
+        // 无需立即重新加载头像，因为Glide已经加载了
+    }
+    
+    /**
+     * 上传头像到服务器
+     * @param imageUri 本地头像URI
+     */
+    private void uploadAvatarToServer(Uri imageUri) {
+        if (currentUserId == -1) {
+            Log.d("MyFragment", "当前用户ID无效，无法上传头像");
+            return;
+        }
+        
+        Log.d("MyFragment", "开始上传头像到服务器, 用户ID: " + currentUserId);
+        
+        try {
+            // 准备文件
+            File imageFile = getFileFromUri(imageUri);
+            if (imageFile == null) {
+                Log.e("MyFragment", "无法从URI创建文件: " + imageUri);
+                return;
+            }
+            
+            // 创建RequestBody
+            RequestBody requestFile = RequestBody.create(
+                    MediaType.parse("image/jpeg"),
+                    imageFile
+            );
+            
+            // 创建MultipartBody.Part
+            MultipartBody.Part filePart = MultipartBody.Part.createFormData(
+                    "file",
+                    imageFile.getName(),
+                    requestFile
+            );
+            
+            // 发送请求
+            apiService.uploadUserAvatar(currentUserId, filePart).enqueue(new Callback<ApiResponse<String>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        Log.d("MyFragment", "头像上传成功: " + response.body().getData());
+                        
+                        // 成功上传后重新从服务器获取头像
+                        loadAvatarFromServer();
+                        
+                        // 显示成功消息
+                        Toast.makeText(requireContext(), "头像上传成功", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Log.e("MyFragment", "头像上传失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                        Toast.makeText(requireContext(), "头像上传失败，请重试", Toast.LENGTH_SHORT).show();
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
+                    Log.e("MyFragment", "头像上传请求失败: " + t.getMessage());
+                    t.printStackTrace();
+                    Toast.makeText(requireContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
+                }
+            });
+            
+        } catch (Exception e) {
+            Log.e("MyFragment", "准备上传头像时出错: " + e.getMessage());
+            e.printStackTrace();
+            Toast.makeText(requireContext(), "上传头像失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 从Uri获取文件
+     */
+    private File getFileFromUri(Uri uri) {
+        try {
+            InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
+            if (inputStream == null) return null;
+            
+            File outputDir = new File(requireContext().getCacheDir(), "temp");
+            if (!outputDir.exists()) {
+                outputDir.mkdirs();
+            }
+            
+            File outputFile = new File(outputDir, "upload_" + System.currentTimeMillis() + ".jpg");
+            FileOutputStream fos = new FileOutputStream(outputFile);
+            
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                fos.write(buffer, 0, bytesRead);
+            }
+            
+            fos.close();
+            inputStream.close();
+            
+            return outputFile;
+        } catch (IOException e) {
+            Log.e("MyFragment", "从Uri创建文件时出错: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
+    /**
+     * 裁剪图片
+     * @param sourceUri 源图片URI
+     */
     private void cropImage(Uri sourceUri) {
         Log.d("MyFragment", "开始裁剪图片，源URI: " + sourceUri);
         
@@ -331,31 +540,23 @@ public class MyFragment extends Fragment {
                 outputDir.mkdirs();
             }
             File outputFile = new File(outputDir, "cropped_" + System.currentTimeMillis() + ".jpg");
-            tempImageUri = FileProvider.getUriForFile(
-                requireContext(),
-                requireContext().getPackageName() + ".fileprovider",
-                outputFile
-            );
+            tempImageUri = Uri.fromFile(outputFile);
 
-            Intent cropIntent = new Intent("com.android.camera.action.CROP");
-            cropIntent.setDataAndType(sourceUri, "image/*");
-            cropIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            cropIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            // 使用自定义裁剪实现，不依赖系统裁剪功能
+            Intent cropIntent = new Intent(requireContext(), CropImageActivity.class);
+            cropIntent.putExtra("inputUri", sourceUri.toString());
+            cropIntent.putExtra("outputUri", tempImageUri.toString());
+            cropIntent.putExtra("aspectRatioX", 1);
+            cropIntent.putExtra("aspectRatioY", 1);
+            cropIntent.putExtra("outputWidth", 300);
+            cropIntent.putExtra("outputHeight", 300);
             
-            cropIntent.putExtra("crop", "true");
-            cropIntent.putExtra("aspectX", 1);
-            cropIntent.putExtra("aspectY", 1);
-            cropIntent.putExtra("outputX", 300);
-            cropIntent.putExtra("outputY", 300);
-            cropIntent.putExtra("return-data", false);
-            cropIntent.putExtra(MediaStore.EXTRA_OUTPUT, tempImageUri);
-
             cropImageLauncher.launch(cropIntent);
             Log.d("MyFragment", "裁剪器已启动");
         } catch (Exception e) {
             Log.e("MyFragment", "裁剪图片时出错: " + e.getMessage());
             e.printStackTrace();
-            Toast.makeText(requireContext(), "图片裁剪失败", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "图片裁剪失败，请重试", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -387,17 +588,64 @@ public class MyFragment extends Fragment {
                         organization = (String) userData.get("organization");
                     }
                     
-                    Log.d("MyFragment", "成功获取用户组织信息: " + organization);
+                    // 提取admin状态
+                    boolean isAdmin = false;
+                    if (userData.containsKey("admin")) {
+                        Object adminValue = userData.get("admin");
+                        if (adminValue instanceof Boolean) {
+                            isAdmin = (Boolean) adminValue;
+                        } else if (adminValue != null) {
+                            // 处理可能的字符串或数字类型
+                            isAdmin = Boolean.parseBoolean(adminValue.toString());
+                        }
+                    }
+                    
+                    // 提取用户ID
+                    if (userData.containsKey("id")) {
+                        Object idValue = userData.get("id");
+                        if (idValue instanceof Number) {
+                            currentUserId = ((Number) idValue).longValue();
+                            Log.d("MyFragment", "获取到用户ID: " + currentUserId);
+                        } else if (idValue != null) {
+                            try {
+                                currentUserId = Long.parseLong(idValue.toString());
+                                Log.d("MyFragment", "解析用户ID: " + currentUserId);
+                            } catch (NumberFormatException e) {
+                                Log.e("MyFragment", "无法解析用户ID: " + e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    Log.d("MyFragment", "成功获取用户信息: 组织=" + organization + ", 管理员状态=" + isAdmin);
                     
                     // 更新UI显示
-                    if (organization != null && !organization.isEmpty()) {
-                        // 创建一个 final 的副本，以便在 lambda 表达式中使用
-                        final String finalOrganization = organization;
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(() -> {
+                    if (getActivity() != null) {
+                        // 创建final副本，以便在lambda表达式中使用
+                        final String finalOrganization = organization != null && !organization.isEmpty() ? organization : "";
+                        final boolean finalIsAdmin = isAdmin;
+                        
+                        getActivity().runOnUiThread(() -> {
+                            // 更新组织信息
+                            if (!finalOrganization.isEmpty()) {
                                 tvCompany.setText(finalOrganization);
-                            });
-                        }
+                            }
+                            
+                            // 更新用户类型和权限管理按钮可见性
+                            tvPosition.setText(finalIsAdmin ? "管理员" : "普通用户");
+                            btnUserManagement.setVisibility(finalIsAdmin ? View.VISIBLE : View.GONE);
+                            
+                            // 更新存储的用户类型
+                            if (getContext() != null) {
+                                sharedPrefsManager.setUserType(finalIsAdmin ? 1 : 0);
+                            }
+                            
+                            Log.d("MyFragment", "更新UI: 用户类型=" + (finalIsAdmin ? "管理员" : "普通用户"));
+
+                            // 用户信息获取成功后，加载服务器头像
+                            if (currentUserId != -1) {
+                                loadAvatarFromServer();
+                            }
+                        });
                     }
                 } else {
                     Log.e("MyFragment", "获取用户组织信息失败: " + (response.errorBody() != null ? response.errorBody().toString() : "未知错误"));

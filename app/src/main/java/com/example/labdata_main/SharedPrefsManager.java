@@ -97,10 +97,37 @@ public class SharedPrefsManager {
         return sharedPreferences.getInt(KEY_USER_TYPE, 0);  // 默认返回0（实验员）
     }
 
+    /**
+     * 设置用户类型
+     * 
+     * @param userType 用户类型（0：实验员，1：管理员）
+     */
+    public void setUserType(int userType) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(KEY_USER_TYPE, userType);
+        editor.apply();
+    }
+
     public static void saveString(Context context, String key, String value) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(key, value);
+        editor.apply();
+    }
+    
+    /**
+     * 保存Long值到SharedPreferences
+     * 
+     * @param context 上下文
+     * @param key 键名
+     * @param value Long值
+     */
+    public static void saveLong(Context context, String key, Long value) {
+        if (value == null) return;
+        
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putLong(key, value);
         editor.apply();
     }
 

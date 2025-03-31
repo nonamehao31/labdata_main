@@ -75,6 +75,9 @@ public class SecurityConfig {
                 .requestMatchers("/user/checkUsernameAvailability").permitAll()
                 .requestMatchers("/user/checkEmailAvailability").permitAll()
                 
+                // 头像API - 允许访问头像资源
+                .requestMatchers("/api/auth/users/*/avatar").permitAll()
+                
                 // 静态资源 - 允许所有用户访问
                 .requestMatchers("/favicon.ico").permitAll()
                 .requestMatchers("/images/**").permitAll()

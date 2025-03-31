@@ -37,4 +37,12 @@ public interface MixRatioRepository extends JpaRepository<MixRatio, Long> {
      */
     @Query("SELECT DISTINCT mt.mixratioId FROM UserMixtureTask mt WHERE mt.taskId LIKE CONCAT(:taskIdPrefix, '%')")
     List<Long> findDistinctMixratioIdsByTaskIdStartingWith(@Param("taskIdPrefix") String taskIdPrefix);
+    
+    /**
+     * 根据公司ID查询该公司的所有配比
+     * 
+     * @param mixCompany 公司ID
+     * @return 该公司的配比列表
+     */
+    List<MixRatio> findByMixCompany(Long mixCompany);
 }

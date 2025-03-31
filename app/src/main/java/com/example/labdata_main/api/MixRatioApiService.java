@@ -122,6 +122,9 @@ public class MixRatioApiService {
         
         @GET("mixratios/comprehensive")
         Call<ApiResponse<List<MixRatioResponse>>> getComprehensiveMixRatios();
+        
+        @GET("mixratios/by-company/{companyId}")
+        Call<ApiResponse<List<MixRatioResponse>>> getMixRatiosByCompany(@Path("companyId") Long companyId);
     }
 
     public MixRatioApiService(Context context) {
@@ -209,5 +212,10 @@ public class MixRatioApiService {
     public void getComprehensiveMixRatios(Callback<ApiResponse<List<MixRatioResponse>>> callback) {
         Log.d(TAG, "调用getComprehensiveMixRatios API");
         api.getComprehensiveMixRatios().enqueue(callback);
+    }
+    
+    public void getMixRatiosByCompany(Long companyId, Callback<ApiResponse<List<MixRatioResponse>>> callback) {
+        Log.d(TAG, "调用getMixRatiosByCompany API, companyId: " + companyId);
+        api.getMixRatiosByCompany(companyId).enqueue(callback);
     }
 }

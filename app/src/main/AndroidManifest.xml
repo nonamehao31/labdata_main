@@ -159,6 +159,18 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".CropImageActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <activity
             android:name=".UserManagementActivity"
             android:exported="false"
             android:screenOrientation="portrait"
@@ -264,11 +276,7 @@
             android:windowSoftInputMode="stateAlwaysHidden" />
 
         <activity
-            android:name="com.yalantis.ucrop.UCropActivity"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
-
-        <activity android:name=".ScanActivity"
+            android:name=".ScanActivity"
             android:theme="@style/Theme.MaterialComponents.Light.NoActionBar"
             android:screenOrientation="portrait" />
 

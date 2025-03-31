@@ -97,4 +97,21 @@ public class MixRatioController {
                     .body(new ApiResponse<>(false, "获取综合配合比数据失败: " + e.getMessage(), null));
         }
     }
+    
+    /**
+     * 根据公司ID获取该公司的配合比
+     * 
+     * @param companyId 公司ID
+     * @return 该公司的所有配合比
+     */
+    @GetMapping("/by-company/{companyId}")
+    public ResponseEntity<ApiResponse<List<MixRatioResponse>>> getMixRatiosByCompany(@PathVariable Long companyId) {
+        try {
+            List<MixRatioResponse> mixRatios = mixRatioService.getMixRatiosByCompany(companyId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取公司配合比数据成功", mixRatios));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "获取公司配合比数据失败: " + e.getMessage(), null));
+        }
+    }
 }

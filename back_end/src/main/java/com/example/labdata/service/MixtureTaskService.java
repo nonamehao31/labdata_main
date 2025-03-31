@@ -837,7 +837,7 @@ public class MixtureTaskService {
                             "mixing_speed, " +
                             "mixing_time, " +
                             "COALESCE(compaction_method, '标准压实') as compaction_method " +
-                            "FROM specimens WHERE id = ?";
+                            "FROM specimens WHERE id = ? AND compaction_method IS NOT NULL";
                     List<Map<String, Object>> specimens = jdbcTemplate.queryForList(sql, specimenId);
 
                     if (specimens.isEmpty()) {
@@ -1286,7 +1286,7 @@ public class MixtureTaskService {
             try {
                 // 将字符串类型的ID转换为整数
                 Integer mixRatioIdInt = Integer.parseInt(mixRatioId);
-                String sql = "SELECT mix_name FROM mixratio WHERE id = ?";
+                String sql = "SELECT mix_name FROM mixratio WHERE id = ?"; // 使用显式类型转换
                 Map<String, Object> mixRatio = jdbcTemplate.queryForMap(sql, mixRatioIdInt);
                 if (mixRatio != null && mixRatio.containsKey("mix_name")) {
                     String mixRatioName = (String) mixRatio.get("mix_name");
@@ -2407,7 +2407,7 @@ public class MixtureTaskService {
 
             // 根据mixratio_id查询mixratio表获取mix_name
             if (mixratioIdStr != null) {
-                String mixratioSql = "SELECT mix_name FROM mixratio WHERE id = ?";
+                String mixratioSql = "SELECT mix_name FROM mixratio WHERE id::text = ?::text"; // 使用显式类型转换
                 List<Map<String, Object>> mixratioResults = jdbcTemplate.queryForList(mixratioSql, mixratioIdStr);
 
                 if (!mixratioResults.isEmpty() && mixratioResults.get(0).get("mix_name") != null) {
@@ -2418,7 +2418,7 @@ public class MixtureTaskService {
 
             // 根据specimen_id查询specimens表获取compaction_method
             if (specimenIdStr != null) {
-                String specimenSql = "SELECT compaction_method FROM specimens WHERE id = ?";
+                String specimenSql = "SELECT compaction_method FROM specimens WHERE id::text = ?::text"; // 使用显式类型转换
                 List<Map<String, Object>> specimenResults = jdbcTemplate.queryForList(specimenSql, specimenIdStr);
 
                 if (!specimenResults.isEmpty() && specimenResults.get(0).get("compaction_method") != null) {

@@ -43,6 +43,17 @@ public class MixtureCompletedTaskController {
             
             // 确保所有返回数据中的空值都被处理为空字符串，以避免前端解析问题
             for (Map<String, Object> task : tasks) {
+                // 处理acceptor为空的情况，设置默认值以避免前端显示空白
+                if (task.get("acceptor") == null || task.get("acceptor").toString().isEmpty()) {
+                    // 尝试使用username作为备用
+                    if (task.get("username") != null && !task.get("username").toString().isEmpty()) {
+                        task.put("acceptor", task.get("username"));
+                    } else {
+                        task.put("acceptor", "未知");
+                    }
+                }
+                
+                // 处理其他可能的空值
                 for (String key : task.keySet()) {
                     if (task.get(key) == null) {
                         task.put(key, "");

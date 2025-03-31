@@ -11,6 +11,10 @@ public class JwtAuthenticationResponse {
     private String name;
     private String organization;
     private String companyId;
+    private boolean admin;
+    private boolean allowAddMixture;
+    private boolean allowAddAsphalt;
+    private boolean allowAddMixratio;
 
     public JwtAuthenticationResponse(String accessToken, Long userId, String username) {
         this.accessToken = accessToken;
@@ -33,5 +37,20 @@ public class JwtAuthenticationResponse {
         this.name = name;
         this.organization = organization;
         this.companyId = companyId;
+    }
+    
+    public JwtAuthenticationResponse(String accessToken, Long userId, String username, String name, 
+                                    String organization, String companyId, boolean admin,
+                                    boolean allowAddMixture, boolean allowAddAsphalt, boolean allowAddMixratio) {
+        this.accessToken = accessToken;
+        this.userId = userId;
+        this.username = username;
+        this.name = name;
+        this.organization = organization;
+        this.companyId = companyId;
+        this.admin = admin;
+        this.allowAddMixture = allowAddMixture;
+        this.allowAddAsphalt = allowAddAsphalt;
+        this.allowAddMixratio = allowAddMixratio;
     }
 }
