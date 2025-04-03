@@ -47,7 +47,20 @@ public class MixtureBendingAdapter extends RecyclerView.Adapter<MixtureBendingAd
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         MixtureBendingTestResponse test = mixtureBendingTests.get(position);
-        Log.d(TAG, "绑定沥青混合料弯曲试验数据: 位置=" + position + 
+        
+        // 添加详细的数据绑定日志
+        Log.d(TAG, "绑定沥青混合料弯曲试验数据到视图 [position=" + position + "]:" +
+              "\n  ID: " + test.getId() +
+              "\n  taskId: " + test.getTaskId() +
+              "\n  mixRatioId: " + test.getMixRatioId() +
+              "\n  spanLength: " + test.getSpanLength() + 
+              "\n  specimenCount: " + test.getSpecimenCount() + 
+              "\n  averageFlexuralStrength: " + test.getAverageFlexuralStrength() + 
+              "\n  averageMaxStrain: " + test.getAverageMaxStrain() + 
+              "\n  averageStiffnessModulus: " + test.getAverageStiffnessModulus());
+        
+        Log.d(TAG, "绑定数据到ViewHolder: position=" + position + 
+                  ", 配比ID=" + test.getMixRatioId() + 
                   ", 抗弯拉强度=" + test.getAverageFlexuralStrength() + 
                   ", 最大弯拉应变=" + test.getAverageMaxStrain() + 
                   ", 弯曲劲度模量=" + test.getAverageStiffnessModulus());
@@ -92,6 +105,23 @@ public class MixtureBendingAdapter extends RecyclerView.Adapter<MixtureBendingAd
             this.mixtureBendingTests.clear();
             this.mixtureBendingTests.addAll(newTests);
             Log.d(TAG, "沥青混合料弯曲试验数据已更新: " + newTests.size() + " 条");
+            
+            // 添加详细日志
+            for (int i = 0; i < newTests.size(); i++) {
+                MixtureBendingTestResponse test = newTests.get(i);
+                Log.d(TAG, "更新后的数据项 #" + i + ":" +
+                      "\n  ID: " + test.getId() +
+                      "\n  taskId: " + test.getTaskId() +
+                      "\n  mixRatioId: " + test.getMixRatioId() +
+                      "\n  spanLength: " + test.getSpanLength() + 
+                      "\n  specimenCount: " + test.getSpecimenCount() + 
+                      "\n  averageFlexuralStrength: " + test.getAverageFlexuralStrength() + 
+                      "\n  averageMaxStrain: " + test.getAverageMaxStrain() + 
+                      "\n  averageStiffnessModulus: " + test.getAverageStiffnessModulus() +
+                      "\n  specimens: " + (test.getSpecimens() != null ? 
+                                         test.getSpecimens().substring(0, Math.min(50, test.getSpecimens().length())) + "..." : "null"));
+            }
+            
             notifyDataSetChanged();
         }
     }

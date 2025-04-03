@@ -40,6 +40,7 @@ import com.example.labdata_main.model.MixRatio;
 import com.google.android.material.button.MaterialButton;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.JsonObject;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -87,8 +88,9 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     private String selectedAssignment; // 用户在上一个界面选择的实验指派
     private String currentTaskId; // 当前任务ID
     private Map<String, Map<String, String>> savedExperimentData; // 保存实验数据的状态
+    private boolean returnFromScanning = false; // 标记是否从扫描设备返回
 
-    private  Gson gson = new Gson();
+    private Gson gson = new Gson();
 
     /**
      * API回调接口
@@ -166,9 +168,17 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         swipeRefreshLayout.setOnRefreshListener(() -> {
             // 使用保存的currentTaskId，而不是每次从Intent获取
             if (currentTaskId != null && !currentTaskId.isEmpty()) {
-                Log.d(TAG, "下拉刷新，使用当前任务ID: " + currentTaskId);
-                // 刷新数据
-                fetchSpecimenData(currentTaskId);
+                Log.d(TAG, "用户手动下拉刷新，使用当前任务ID: " + currentTaskId);
+                // 刷新数据 - 保存当前设备信息，以便稍后恢复
+                Map<String, DeviceInfo> savedDeviceInfo = null;
+                if (adapter != null) {
+                    savedDeviceInfo = new HashMap<>(adapter.getDeviceData());
+                    Log.d(TAG, "保存当前设备信息以便刷新后恢复: " + savedDeviceInfo.size() + " 个设备");
+                }
+                
+                // 执行刷新，并在完成后恢复设备信息
+                final Map<String, DeviceInfo> finalSavedDeviceInfo = savedDeviceInfo;
+                fetchSpecimenData(currentTaskId, finalSavedDeviceInfo);
             } else {
                 swipeRefreshLayout.setRefreshing(false);
                 Toast.makeText(this, "任务ID无效，无法刷新数据", Toast.LENGTH_SHORT).show();
@@ -191,8 +201,19 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
      * @param refreshUI 是否刷新UI界面（在屏幕旋转后恢复时应为false）
      */
     private void loadTaskData(String taskId, boolean refreshUI) {
+        Log.d(TAG, "加载任务数据: " + taskId + ", refreshUI=" + refreshUI);
+        
+        // 保存当前设备信息，以便在刷新UI后恢复
+        final Map<String, DeviceInfo> savedDeviceInfo = (adapter != null) ? 
+            new HashMap<>(adapter.getDeviceData()) : 
+            new HashMap<>();
+            
+        if (!savedDeviceInfo.isEmpty()) {
+            Log.d(TAG, "加载任务数据前保存了 " + savedDeviceInfo.size() + " 个设备信息");
+        }
+        
         if (refreshUI) {
-            showLoading(true, "加载任务信息...");
+            showLoading(true, "加载任务数据...");
         }
 
         MixtureTaskService taskService = ServiceCreator.createMixtureTaskService();
@@ -207,7 +228,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
 
                     // 获取试件制备数据（第二步）
                     if (refreshUI) {
-                        fetchSpecimenData(taskId);
+                        fetchSpecimenData(taskId, savedDeviceInfo);
                     }
                 } else {
                     // 隐藏加载指示器
@@ -562,7 +583,17 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
      * 获取试件制备数据
      */
     private void fetchSpecimenData(String taskId) {
-        Log.d(TAG, "获取试件制备数据: " + taskId);
+        // 调用重载的方法，不恢复设备信息
+        fetchSpecimenData(taskId, null);
+    }
+
+    /**
+     * 获取试件制备数据（带设备信息恢复功能）
+     * @param taskId 任务ID
+     * @param deviceInfoToRestore 需要恢复的设备信息，如为null则不恢复
+     */
+    private void fetchSpecimenData(String taskId, Map<String, DeviceInfo> deviceInfoToRestore) {
+        Log.d(TAG, "获取试件制备数据: " + taskId + (deviceInfoToRestore != null ? ", 需恢复 " + deviceInfoToRestore.size() + " 个设备信息" : ""));
 
         // 如果是通过下拉刷新调用的，不显示额外的加载指示器
         if (!swipeRefreshLayout.isRefreshing()) {
@@ -1125,6 +1156,9 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             Log.d(TAG, "扫描前保存实验数据状态: " + new Gson().toJson(savedExperimentData));
         }
         
+        // 设置标记，表示我们正在进行扫描
+        returnFromScanning = true;
+        
         // 创建自定义的扫描配置，确保不会重建活动
         IntentIntegrator integrator = new IntentIntegrator(this);
         integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
@@ -1149,6 +1183,9 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                     Log.d(TAG, "扫描后恢复实验数据状态");
                 }
                 
+                // 确保我们标记了从扫描返回
+                returnFromScanning = true;
+                
                 // 处理扫描结果
                 IntentResult scanResult = IntentIntegrator.parseActivityResult(
                         result.getResultCode(), result.getData());
@@ -1172,6 +1209,40 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         deviceInfo.setDeviceId(String.valueOf(currentScanPosition + 1));
                         Log.d(TAG, "设备ID为空，设置为: " + deviceInfo.getDeviceId());
                     }
+
+                    // 获取当前配比ID - 在更新UI之前获取
+                    Map<String, Object> mixRatio = adapter.getMixRatios().get(currentScanPosition);
+                    Object idObj = mixRatio.get("id");
+                    String mixRatioIdStr = null;
+                    Long mixRatioId = null;
+
+                    try {
+                        if (idObj instanceof Number) {
+                            mixRatioId = ((Number) idObj).longValue();
+                            mixRatioIdStr = String.valueOf(mixRatioId);
+                        } else if (idObj instanceof String) {
+                            mixRatioIdStr = (String) idObj;
+                            try {
+                                if (mixRatioIdStr.contains(".")) {
+                                    mixRatioId = (long) Double.parseDouble(mixRatioIdStr);
+                                } else {
+                                    mixRatioId = Long.parseLong(mixRatioIdStr);
+                                }
+                                Log.d(TAG, "获取到配比ID: " + mixRatioId);
+                            } catch (NumberFormatException nfe) {
+                                Log.w(TAG, "无法将ID转换为Long类型，使用字符串ID: " + mixRatioIdStr, nfe);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "转换配比ID时出错", e);
+                    }
+
+                    // 确保在任何刷新后都能恢复设备信息 - 将设备信息也保存在Activity级别
+                    final String finalMixRatioIdStr = mixRatioIdStr;
+                    
+                    // 更新适配器中的设备信息
+                    adapter.setDeviceInfo(currentScanPosition, deviceInfo);
+                    Log.d(TAG, "已更新适配器中的设备信息: " + deviceInfo.getManufacturer() + " " + deviceInfo.getModel());
 
                     // 直接更新UI显示设备信息
                     runOnUiThread(() -> {
@@ -1198,44 +1269,8 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         }
                     });
 
-                    // 更新适配器中的设备信息
-                    adapter.setDeviceInfo(currentScanPosition, deviceInfo);
-                    Log.d(TAG, "已更新适配器中的设备信息: " + deviceInfo.getManufacturer() + " " + deviceInfo.getModel());
-
-                    // 获取当前配比ID
-                    Map<String, Object> mixRatio = adapter.getMixRatios().get(currentScanPosition);
-                    Object idObj = mixRatio.get("id");
-                    Long mixRatioId = null;
-
-                    try {
-                        if (idObj instanceof Number) {
-                            mixRatioId = ((Number) idObj).longValue();
-                        } else if (idObj instanceof String) {
-                            String idStr = (String) idObj;
-                            try {
-                                if (idStr.contains(".")) {
-                                    mixRatioId = (long) Double.parseDouble(idStr);
-                                } else {
-                                    mixRatioId = Long.parseLong(idStr);
-                                }
-                                Log.d(TAG, "获取到配比ID: " + mixRatioId);
-                            } catch (NumberFormatException nfe) {
-                                Log.w(TAG, "无法将ID转换为Long类型，使用字符串ID: " + idStr, nfe);
-                                // 对于无法解析为数字的ID，使用字符串方式处理
-                                DeviceInfo finalDeviceInfo = deviceInfo;
-                                new Handler(Looper.getMainLooper()).post(() -> {
-                                    saveDeviceInfo(idStr, finalDeviceInfo);
-                                    Log.d(TAG, "使用字符串ID保存设备信息: " + idStr);
-                                });
-                                return; // 提前返回，避免尝试使用null的mixRatioId
-                            }
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "转换配比ID时出错", e);
-                    }
-
+                    // 保存设备信息到后端，确保UI先更新
                     if (mixRatioId != null) {
-                        // 保存设备信息到后端
                         DeviceInfo finalDeviceInfo = deviceInfo; // 创建final副本用于lambda表达式
                         Long finalMixRatioId = mixRatioId;
                         
@@ -1243,6 +1278,13 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         new Handler(Looper.getMainLooper()).post(() -> {
                             saveDeviceInfo(finalMixRatioId, finalDeviceInfo);
                             Log.d(TAG, "正在保存配比ID " + finalMixRatioId + " 的设备信息到后端");
+                        });
+                    } else if (mixRatioIdStr != null) {
+                        // 使用字符串ID进行保存
+                        DeviceInfo finalDeviceInfo = deviceInfo;
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            saveDeviceInfo(finalMixRatioIdStr, finalDeviceInfo);
+                            Log.d(TAG, "使用字符串ID保存设备信息: " + finalMixRatioIdStr);
                         });
                     } else {
                         Log.w(TAG, "无法保存设备信息到后端: 配比ID为null");
@@ -1377,8 +1419,11 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         }
     
                         // 如果有动态模量试验数据
-                        if (hasDynamicModulusData && isExperimentSelected("动态模量试验", selectedAssignment)) {
+                        if (hasDynamicModulusData && isExperimentSelected("动态模量试验", selectedAssignment) && 
+                            !processedDynamicModulusTests.containsKey(mixRatioId)) {
                             saveDynamicModulusTestData(mixRatioId, experiments);
+                            processedDynamicModulusTests.put(mixRatioId, true);
+                            Log.d(TAG, "动态模量试验数据已保存，配比ID: " + mixRatioId);
                         }
     
                         // 检查是否有马歇尔稳定度试验数据需要保存
@@ -1406,15 +1451,6 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                             // 提取并保存沥青混合料弯曲试验数据
                             saveMixtureBendingTestData(mixRatioId, experiments);
                             processedBendingTests.put(mixRatioId, true);
-                        }
-    
-                        // 检查是否有动态模量试验数据需要保存
-                        if (assignedExperiments.contains("动态模量试验") && 
-                            !processedDynamicModulusTests.containsKey(mixRatioId) && 
-                            isExperimentSelected("动态模量试验", selectedAssignment)) {
-                            // 提取并保存动态模量试验数据
-                            saveDynamicModulusTestData(mixRatioId, experiments);
-                            processedDynamicModulusTests.put(mixRatioId, true);
                         }
     
                         // 检查是否有沥青混合料四点弯曲疲劳寿命试验数据需要保存
@@ -1704,7 +1740,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         // 计算试件数量
         int specimenCount = 0;
         for (String key : experiments.keySet()) {
-            if (key.matches(experimentName + "_width_\\d+")) {
+            if (key.matches(experimentName + "_") && key.contains("_diameter_")) {
                 specimenCount++;
             }
         }
@@ -2567,7 +2603,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         try {
                             Pattern pattern = Pattern.compile(patternStr);
                             Matcher matcher = pattern.matcher(key);
-                            if (matcher.find()) {
+                            if (matcher.matches()) {
                                 int pId = Integer.parseInt(matcher.group(1));
                                 Float pValue = parseFloatSafely(experiments.get(key));
                                 if (pValue != null) {
@@ -2868,14 +2904,10 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             } else if (experimentType.contains("弯曲试验")) {
                 experimentSpecificTaskId = getIntent().getStringExtra("mixtureBendingTestTaskId");
 
-                // 如果Intent中没有，尝试按照命名规则构造
+                // 如果Intent中没有，直接使用当前任务的完整ID，不添加或移除后缀
                 if (experimentSpecificTaskId == null && currentTaskId != null) {
-                    // 获取基础ID（移除可能的后缀）
-                    String baseId = currentTaskId;
-                    if (baseId.contains("-")) {
-                        baseId = baseId.substring(0, baseId.lastIndexOf("-"));
-                    }
-                    experimentSpecificTaskId = baseId + "-2"; // 根据日志分析，弯曲试验使用-2后缀
+                    experimentSpecificTaskId = currentTaskId;
+                    Log.d(TAG, "沥青混合料弯曲试验使用完整任务ID: " + experimentSpecificTaskId);
                 }
             }
 
@@ -2897,18 +2929,79 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
-        // 每次页面恢复时重新检查任务状态
-        if (currentTaskId != null && !currentTaskId.isEmpty()) {
-            Log.d(TAG, "onResume: 使用保存的currentTaskId检查任务状态: " + currentTaskId);
-            //checkTaskStatus(currentTaskId);
-            loadTaskData(currentTaskId, true);
+        Log.d(TAG, "onResume: 返回界面，returnFromScanning=" + returnFromScanning + 
+              ", currentScanPosition=" + currentScanPosition + 
+              ", 设备数据不为空=" + (adapter != null && adapter.getDeviceData() != null && !adapter.getDeviceData().isEmpty()));
+        
+        if (returnFromScanning) {
+            // 从设备扫描返回，不触发刷新逻辑
+            Log.d(TAG, "onResume: 检测到从扫描设备返回，跳过自动刷新，保留设备信息");
+            // 重置标志，但不刷新界面
+            returnFromScanning = false;
+        } else if (currentTaskId != null && !currentTaskId.isEmpty()) {
+            // 正常的返回界面，加载任务数据
+            loadTaskData(currentTaskId, false);
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        saveTemporaryData();
+        // 保存临时数据，但如果是扫描操作则不保存
+        if (!returnFromScanning && adapter != null) {
+            savedExperimentData = adapter.getExperimentData();
+            Log.d(TAG, "onPause: 暂存实验数据: " + new Gson().toJson(savedExperimentData));
+        }
+    }
+
+    /**
+     * 处理配置变化，如屏幕旋转
+     */
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        Log.d(TAG, "配置已更改，但Activity未重新创建");
+        // 因为在AndroidManifest.xml中添加了配置变更处理，所以无需额外操作
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        
+        // 保存当前实验数据状态
+        if (adapter != null) {
+            savedExperimentData = adapter.getExperimentData();
+            outState.putSerializable("saved_experiment_data", new HashMap<>(savedExperimentData));
+            Log.d(TAG, "保存活动状态: 已保存实验数据");
+        }
+        
+        // 保存当前扫描位置
+        outState.putInt("current_scan_position", currentScanPosition);
+        Log.d(TAG, "保存活动状态: 当前扫描位置=" + currentScanPosition);
+    }
+    
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        
+        // 恢复扫描位置
+        if (savedInstanceState.containsKey("current_scan_position")) {
+            currentScanPosition = savedInstanceState.getInt("current_scan_position");
+            Log.d(TAG, "恢复活动状态: 当前扫描位置=" + currentScanPosition);
+        }
+        
+        // 恢复实验数据
+        if (savedInstanceState.containsKey("saved_experiment_data") && adapter != null) {
+            try {
+                HashMap<String, Map<String, String>> data = 
+                    (HashMap<String, Map<String, String>>) savedInstanceState.getSerializable("saved_experiment_data");
+                savedExperimentData = data;
+                adapter.restoreExperimentData(data);
+                Log.d(TAG, "恢复活动状态: 已恢复实验数据");
+            } catch (Exception e) {
+                Log.e(TAG, "恢复实验数据失败", e);
+            }
+        }
     }
 
     /**
@@ -3002,140 +3095,82 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
     }
 
     /**
-     * 处理配置变化，如屏幕旋转
-     */
-    @Override
-    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        Log.d(TAG, "配置已更改，但Activity未重新创建");
-        // 因为在AndroidManifest.xml中添加了配置变更处理，所以无需额外操作
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        
-        // 保存当前实验数据状态
-        if (adapter != null) {
-            savedExperimentData = adapter.getExperimentData();
-            outState.putSerializable("saved_experiment_data", new HashMap<>(savedExperimentData));
-            Log.d(TAG, "保存活动状态: 已保存实验数据");
-        }
-        
-        // 保存当前扫描位置
-        outState.putInt("current_scan_position", currentScanPosition);
-        Log.d(TAG, "保存活动状态: 当前扫描位置=" + currentScanPosition);
-    }
-    
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        
-        // 恢复扫描位置
-        if (savedInstanceState.containsKey("current_scan_position")) {
-            currentScanPosition = savedInstanceState.getInt("current_scan_position");
-            Log.d(TAG, "恢复活动状态: 当前扫描位置=" + currentScanPosition);
-        }
-        
-        // 恢复实验数据
-        if (savedInstanceState.containsKey("saved_experiment_data") && adapter != null) {
-            try {
-                HashMap<String, Map<String, String>> data = 
-                    (HashMap<String, Map<String, String>>) savedInstanceState.getSerializable("saved_experiment_data");
-                savedExperimentData = data;
-                adapter.restoreExperimentData(data);
-                Log.d(TAG, "恢复活动状态: 已恢复实验数据");
-            } catch (Exception e) {
-                Log.e(TAG, "恢复实验数据失败", e);
-            }
-        }
-    }
-
-    /**
      * 保存设备信息到后端
-     *
      * @param mixRatioId 配比ID
      * @param deviceInfo 设备信息
      */
-    private void saveDeviceInfo(long mixRatioId, DeviceInfo deviceInfo) {
-        if (deviceInfo == null || currentTask == null) {
-            Log.e(TAG, "保存设备信息失败: deviceInfo或currentTask为空");
+    private void saveDeviceInfo(Long mixRatioId, DeviceInfo deviceInfo) {
+        if (mixtureTaskService == null || mixRatioId == null || deviceInfo == null) {
+            Log.w(TAG, "无法保存设备信息: 服务或参数为null");
             return;
         }
 
-        try {
-            Log.d(TAG, "开始保存设备信息: mixRatioId=" + mixRatioId + ", type=" + deviceInfo.getType()
-                    + ", model=" + deviceInfo.getModel() + ", manufacturer=" + deviceInfo.getManufacturer());
-
-            // 使用更新的saveDeviceInfo方法，直接调用后端正确的endpoint
-            mixtureTaskService.saveDeviceInfo(
-                    currentTask.getTaskId(),
-                    deviceInfo.getType(),
-                    deviceInfo.getModel(),
-                    deviceInfo.getManufacturer()
-            ).enqueue(new Callback<ApiResponse<Map<String, String>>>() {
-                @Override
-                public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        Log.d(TAG, "设备信息保存成功: " + response.body().getData());
-                    } else {
-                        Log.e(TAG, "设备信息保存失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
-                        Toast.makeText(RecordMixtureExperimentDataActivity.this, "设备信息保存失败", Toast.LENGTH_SHORT).show();
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
-                    Log.e(TAG, "设备信息保存请求失败", t);
-                    Toast.makeText(RecordMixtureExperimentDataActivity.this, "设备信息保存请求失败: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "保存设备信息时出错", e);
-            Toast.makeText(this, "保存设备信息时出错: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        // 直接使用参数调用API接口
+        String taskId = currentTaskId;
+        if (taskId == null || taskId.isEmpty()) {
+            Log.w(TAG, "无法保存设备信息: 当前任务ID为空");
+            return;
         }
+
+        mixtureTaskService.saveDeviceInfo(
+                taskId,
+                deviceInfo.getDeviceType(),
+                deviceInfo.getModel(),
+                deviceInfo.getManufacturer()
+        ).enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "设备信息保存成功");
+                } else {
+                    Log.e(TAG, "设备信息保存失败: " + response.code() + " " + response.message());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                Log.e(TAG, "设备信息保存请求失败", t);
+            }
+        });
     }
 
     /**
-     * 保存设备信息到后端（String版本）
-     *
-     * @param mixRatioId 配比ID（字符串格式）
+     * 保存设备信息到后端（使用字符串ID）
+     * @param mixRatioId 配比ID字符串
      * @param deviceInfo 设备信息
      */
     private void saveDeviceInfo(String mixRatioId, DeviceInfo deviceInfo) {
-        if (deviceInfo == null || currentTask == null) {
-            Log.e(TAG, "保存设备信息失败: deviceInfo或currentTask为空");
+        if (mixtureTaskService == null || mixRatioId == null || deviceInfo == null) {
+            Log.w(TAG, "无法保存设备信息: 服务或参数为null");
             return;
         }
 
-        try {
-            Log.d(TAG, "开始保存设备信息(String版本): mixRatioId=" + mixRatioId + ", type=" + deviceInfo.getType()
-                    + ", model=" + deviceInfo.getModel() + ", manufacturer=" + deviceInfo.getManufacturer());
-
-            // 使用更新的saveDeviceInfo方法，直接调用后端正确的endpoint
-            mixtureTaskService.saveDeviceInfo(
-                    currentTask.getTaskId(),
-                    deviceInfo.getType(),
-                    deviceInfo.getModel(),
-                    deviceInfo.getManufacturer()
-            ).enqueue(new Callback<ApiResponse<Map<String, String>>>() {
-                @Override
-                public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        Log.d(TAG, "设备信息保存成功: " + response.body().getMessage());
-                    } else {
-                        String errorMsg = response.body() != null ? response.body().getMessage() : "未知错误";
-                        Log.e(TAG, "设备信息保存失败: " + errorMsg);
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
-                    Log.e(TAG, "设备信息保存请求失败", t);
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "保存设备信息时出现异常", e);
+        // 直接使用参数调用API接口
+        String taskId = currentTaskId;
+        if (taskId == null || taskId.isEmpty()) {
+            Log.w(TAG, "无法保存设备信息: 当前任务ID为空");
+            return;
         }
+
+        mixtureTaskService.saveDeviceInfo(
+                taskId,
+                deviceInfo.getDeviceType(),
+                deviceInfo.getModel(),
+                deviceInfo.getManufacturer()
+        ).enqueue(new Callback<ApiResponse<Map<String, String>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "设备信息保存成功");
+                } else {
+                    Log.e(TAG, "设备信息保存失败: " + response.code() + " " + response.message());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
+                Log.e(TAG, "设备信息保存请求失败", t);
+            }
+        });
     }
 }

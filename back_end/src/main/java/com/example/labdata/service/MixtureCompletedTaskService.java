@@ -83,7 +83,13 @@ public class MixtureCompletedTaskService {
             "    mt.accept_time, " +
             "    mt.creation_time, " +
             "    mt.task_assignment, " +
-            "    mt.task_company " +
+            "    mt.task_company, " +
+            "    mt.assigned_mixing_equipment, " +
+            "    mt.mixing_equipment_manufacturer, " +
+            "    mt.assigned_forming_equipment, " +
+            "    mt.forming_equipment_manufacturer, " +
+            "    mt.assigned_testing_equipment, " +
+            "    mt.testing_equipment_manufacturer " +
             "FROM " +
             "    mixture_task mt " +
             "LEFT JOIN users u ON mt.acceptor = u.username " +  

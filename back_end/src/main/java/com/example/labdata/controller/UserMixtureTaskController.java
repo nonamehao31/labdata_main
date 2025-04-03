@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/mixture-tasks")
@@ -275,12 +276,14 @@ public class UserMixtureTaskController {
     /**
      * 获取单位的混合料任务
      * @param currentUser 当前用户
+     * @param username 用户名(可选)，如提供则只返回未进行的任务和该用户接受的任务
      * @return 单位任务列表
      */
     @GetMapping("/company")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<ApiResponse<List<UserMixtureTask>>> getCompanyMixtureTasks(
-            @CurrentUser UserPrincipal currentUser) {
+            @CurrentUser UserPrincipal currentUser,
+            @RequestParam(required = false) String username) {
         
         try {
             Optional<User> userOpt = userRepository.findById(currentUser.getId());
@@ -289,9 +292,24 @@ public class UserMixtureTaskController {
             }
             
             User user = userOpt.get();
-            logger.info("查询组织ID: {} 的混合料任务", user.getOrganizationId());
-            List<UserMixtureTask> tasks = userMixtureTaskRepository.findByTaskCompany(String.valueOf(user.getOrganizationId()));
-            return ResponseEntity.ok(new ApiResponse<>(true, "获取任务成功", tasks));
+            logger.info("查询组织ID: {} 的混合料任务，过滤用户名: {}", user.getOrganizationId(), username);
+            
+            // 获取该公司的所有任务
+            List<UserMixtureTask> allTasks = userMixtureTaskRepository.findByTaskCompany(String.valueOf(user.getOrganizationId()));
+            
+            // 如果提供了用户名，过滤出未进行的任务和该用户接受的任务
+            if (username != null && !username.isEmpty()) {
+                logger.info("按用户名 {} 过滤任务", username);
+                List<UserMixtureTask> filteredTasks = allTasks.stream()
+                    .filter(task -> !task.getStatus().equals("ONGOING") || 
+                           (task.getAcceptor() != null && task.getAcceptor().equals(username)))
+                    .collect(Collectors.toList());
+                
+                logger.info("过滤前: {} 个任务，过滤后: {} 个任务", allTasks.size(), filteredTasks.size());
+                return ResponseEntity.ok(new ApiResponse<>(true, "获取任务成功", filteredTasks));
+            }
+            
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取任务成功", allTasks));
         } catch (Exception e) {
             logger.error("获取单位混合料任务失败", e);
             return ResponseEntity.ok(new ApiResponse<>(false, "获取任务失败: " + e.getMessage(), null));

@@ -477,9 +477,27 @@ public class MixtureTaskController {
     @GetMapping("/mixtureTask/getTaskAssignment/{taskId}")
     public ResponseEntity<TaskAssignmentResponse> getTaskAssignment(@PathVariable String taskId) {
         try {
-            String taskAssignment = mixtureTaskService.getTaskAssignment(taskId);
-            if (taskAssignment != null) {
-                return ResponseEntity.ok(new TaskAssignmentResponse(taskAssignment));
+            // 获取任务指派信息和设备信息
+            Map<String, String> taskInfo = mixtureTaskService.getTaskAssignmentAndEquipment(taskId);
+            
+            if (taskInfo != null && !taskInfo.isEmpty()) {
+                String taskAssignment = taskInfo.get("taskAssignment");
+                String assignedMixingEquipment = taskInfo.get("assignedMixingEquipment");
+                String mixingEquipmentManufacturer = taskInfo.get("mixingEquipmentManufacturer");
+                String assignedFormingEquipment = taskInfo.get("assignedFormingEquipment");
+                String formingEquipmentManufacturer = taskInfo.get("formingEquipmentManufacturer");
+                String assignedTestingEquipment = taskInfo.get("assignedTestingEquipment");
+                String testingEquipmentManufacturer = taskInfo.get("testingEquipmentManufacturer");
+                
+                return ResponseEntity.ok(new TaskAssignmentResponse(
+                    taskAssignment, 
+                    assignedMixingEquipment, 
+                    mixingEquipmentManufacturer,
+                    assignedFormingEquipment, 
+                    formingEquipmentManufacturer,
+                    assignedTestingEquipment, 
+                    testingEquipmentManufacturer
+                ));
             } else {
                 return ResponseEntity.ok(new TaskAssignmentResponse(404, "未找到任务指派信息"));
             }

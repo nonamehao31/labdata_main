@@ -80,6 +80,11 @@ public class PrinterInfo {
         return bluetoothDevice;
     }
     
+    // Setters
+    public void setPort(int port) {
+        this.port = port;
+    }
+    
     @Override
     public String toString() {
         return name + " (" + (type == TYPE_BLUETOOTH ? "蓝牙" : "WiFi") + ")";

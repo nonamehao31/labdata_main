@@ -157,7 +157,7 @@ public class MixRatioDetailAdapter extends RecyclerView.Adapter<MixRatioDetailAd
                     Chip chip = new Chip(itemView.getContext());
                     chip.setText(experiment);
                     chip.setClickable(false);
-                    chip.setChipBackgroundColorResource(R.color.gray_light);
+                    chip.setChipBackgroundColorResource(R.color.colorPrimary);
                     chip.setTextColor(Color.WHITE);
                     chip.setTextSize(12);
                     chip.setChipStrokeWidth(0);

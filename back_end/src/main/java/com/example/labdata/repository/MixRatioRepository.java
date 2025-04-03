@@ -44,5 +44,14 @@ public interface MixRatioRepository extends JpaRepository<MixRatio, Long> {
      * @param mixCompany 公司ID
      * @return 该公司的配比列表
      */
-    List<MixRatio> findByMixCompany(Long mixCompany);
+    List<MixRatio> findByMixCompany(String mixCompany);
+    
+    /**
+     * 根据字符串类型的公司ID查询该公司的所有配比
+     * 
+     * @param mixCompany 字符串类型的公司ID
+     * @return 该公司的配比列表
+     */
+    @Query("SELECT m FROM MixRatio m WHERE m.mixCompany = :mixCompany")
+    List<MixRatio> findByMixCompanyString(@Param("mixCompany") String mixCompany);
 }

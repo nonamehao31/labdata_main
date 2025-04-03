@@ -139,6 +139,9 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         ExperimentTaskPagerAdapter adapter = new ExperimentTaskPagerAdapter(this);
         viewPager.setAdapter(adapter);
         viewPager.setUserInputEnabled(true); // 启用滑动切换
+        
+        // 设置ViewPager2的预加载页面数，确保相邻页面提前加载
+        viewPager.setOffscreenPageLimit(3);
 
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
@@ -156,7 +159,19 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
                         if (mixRatioFragment != null && assignmentFragment != null) {
                             assignmentFragment.setSelectedMixRatios(mixRatioFragment.getSelectedMixRatios());
                         }
+                    } else if (position == 2) {
+                        // 确保制件方法页面正确加载
+                        SelectMoldingMethodFragment moldingMethodFragment = pagerAdapter.getMoldingMethodFragment();
+                        SelectMixRatioFragment mixRatioFragment = pagerAdapter.getMixRatioFragment();
+                        if (moldingMethodFragment != null && mixRatioFragment != null) {
+                            // 确保制件方法页面有最新的配比数据
+                            moldingMethodFragment.updateMixRatios(mixRatioFragment.getSelectedMixRatios());
+                            
+                            // 强制更新制件方法列表
+                            moldingMethodFragment.refreshUI();
+                        }
                     }
+                    
                     // 延迟更新按钮状态，确保 Fragment 已完全初始化
                     viewPager.post(() -> updateNextButton());
                 }

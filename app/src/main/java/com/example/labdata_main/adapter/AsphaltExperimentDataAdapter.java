@@ -401,6 +401,61 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
             inputFields.put(key, editText);
         }
 
+        private void addTextInputField(String key, String label) {
+            TextInputLayout textInputLayout = new TextInputLayout(itemView.getContext(), null, 
+                com.google.android.material.R.style.Widget_MaterialComponents_TextInputLayout_OutlinedBox);
+            textInputLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            textInputLayout.setHint(label);
+            
+            EditText editText = new EditText(itemView.getContext());
+            editText.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            editText.setInputType(InputType.TYPE_CLASS_TEXT); // 设置为文本输入
+            
+            // 获取已有的值
+            String experimentType = experimentTypes.get(getAdapterPosition());
+            Map<String, String> values = experimentDataMap.get(experimentType);
+            if (values != null && values.containsKey(key)) {
+                editText.setText(values.get(key));
+            }
+            
+            // 添加文本变化监听器
+            android.text.TextWatcher textWatcher = new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void afterTextChanged(android.text.Editable s) {
+                    String experimentType = experimentTypes.get(getAdapterPosition());
+                    Map<String, String> values = experimentDataMap.get(experimentType);
+                    if (values != null) {
+                        values.put(key, s.toString());
+                    }
+                    
+                    // 验证实验数据完整性
+                    validateExperimentData();
+                }
+            };
+            editText.addTextChangedListener(textWatcher);
+            editText.setTag(R.id.tag_text_watcher, textWatcher); // 保存监听器到标签中，以便后续可以移除
+
+            textInputLayout.addView(editText);
+            layoutDataInputs.addView(textInputLayout);
+            
+            // 添加间距
+            LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) textInputLayout.getLayoutParams();
+            layoutParams.bottomMargin = (int) (16 * itemView.getContext().getResources().getDisplayMetrics().density);
+            textInputLayout.setLayoutParams(layoutParams);
+            
+            inputFields.put(key, editText);
+        }
+
         private void addInputFieldsForExperiment(String experimentType) {
             Log.d("AsphaltAdapter", "开始添加实验输入字段，实验类型: " + experimentType);
             // 检查实验类型是否有效
@@ -585,7 +640,7 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
                     // 添加试验板参数
                     addInputField(AsphaltExperimentData.Fields.DSR.PLATE_RADIUS, "试验板半径(R) (mm)", "0.1");
                     addInputField(AsphaltExperimentData.Fields.DSR.PLATE_GAP, "试验平板间距(h) (mm)", "0.01");
-                    addInputField(AsphaltExperimentData.Fields.DSR.CONTROL_MODE, "控制方式", "");
+                    addTextInputField(AsphaltExperimentData.Fields.DSR.CONTROL_MODE, "控制方式");
                     
                     // 动态温度点数据部分
                     TextView dsrDataTitle = new TextView(itemView.getContext());

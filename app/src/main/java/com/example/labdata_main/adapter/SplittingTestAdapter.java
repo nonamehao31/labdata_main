@@ -62,10 +62,8 @@ public class SplittingTestAdapter extends RecyclerView.Adapter<SplittingTestAdap
                 holder.tableSpecimens.removeViews(1, holder.tableSpecimens.getChildCount() - 1);
             }
             
-            // 清除之前的计算结果行
-            if (holder.tableCalculation.getChildCount() > 1) {
-                holder.tableCalculation.removeViews(1, holder.tableCalculation.getChildCount() - 1);
-            }
+            // 隐藏计算结果表格
+            holder.tableCalculation.setVisibility(View.GONE);
             
             // 清除之前的荷载数据行
             if (holder.tableLoadData.getChildCount() > 1) {
@@ -83,7 +81,8 @@ public class SplittingTestAdapter extends RecyclerView.Adapter<SplittingTestAdap
                     addSpecimenRow(holder, specimen);
                     addLoadDataRow(holder, specimen);
                     addDeformationDataRow(holder, specimen);
-                    addCalculationRow(holder, specimen);
+                    // 不再添加计算结果行
+                    // addCalculationRow(holder, specimen);
                 }
                 Log.d(TAG, "已添加 " + testData.getSpecimens().size() + " 行试件数据");
             } else {
@@ -112,6 +111,8 @@ public class SplittingTestAdapter extends RecyclerView.Adapter<SplittingTestAdap
                 deformRow.addView(deformTv);
                 holder.tableDeformationData.addView(deformRow);
                 
+                // 不再添加计算结果部分
+                /*
                 // 添加一个无计算结果提示行
                 TableRow calcRow = new TableRow(context);
                 TextView calcTv = new TextView(context);
@@ -119,6 +120,7 @@ public class SplittingTestAdapter extends RecyclerView.Adapter<SplittingTestAdap
                 calcTv.setLayoutParams(new TableRow.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 4));
                 calcRow.addView(calcTv);
                 holder.tableCalculation.addView(calcRow);
+                */
             }
             
         } catch (Exception e) {
@@ -236,9 +238,14 @@ public class SplittingTestAdapter extends RecyclerView.Adapter<SplittingTestAdap
         tvX3.setLayoutParams(new TableRow.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         row.addView(tvX3);
         
-        // X平均值
+        // X平均值 - 手动计算平均值，而不使用getXAverage()方法
         TextView tvXAvg = new TextView(context);
-        tvXAvg.setText(specimen.getXAverage() != null ? String.format(Locale.getDefault(), "%.2f", specimen.getXAverage()) : "-");
+        if (specimen.getX1Value() != null && specimen.getX2Value() != null && specimen.getX3Value() != null) {
+            double xAvg = (specimen.getX1Value() + specimen.getX2Value() + specimen.getX3Value()) / 3.0;
+            tvXAvg.setText(String.format(Locale.getDefault(), "%.2f", xAvg));
+        } else {
+            tvXAvg.setText("-");
+        }
         tvXAvg.setLayoutParams(new TableRow.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         row.addView(tvXAvg);
         

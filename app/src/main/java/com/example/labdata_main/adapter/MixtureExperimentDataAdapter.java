@@ -3725,4 +3725,81 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
 
         Log.d("MixtureAdapter", "实验数据已恢复，实验数据数量: " + experimentData.size());
     }
+
+    /**
+     * 恢复保存的设备信息
+     * @param deviceKey 设备键（通常是配比ID）
+     * @param deviceInfo 设备信息对象
+     */
+    public void restoreDeviceInfo(String deviceKey, DeviceInfo deviceInfo) {
+        if (deviceKey != null && deviceInfo != null) {
+            deviceData.put(deviceKey, deviceInfo);
+            Log.d("MixtureAdapter", "恢复设备信息: " + deviceKey + " => " + 
+                  deviceInfo.getManufacturer() + " " + deviceInfo.getModel());
+            
+            // 查找ViewHolder并更新UI
+            for (ViewHolder holder : viewHolders) {
+                int position = holder.getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && position < mixRatioExperimentPairs.size()) {
+                    Map<String, Object> pair = mixRatioExperimentPairs.get(position);
+                    Map<String, Object> mixRatio = (Map<String, Object>) pair.get("mixRatio");
+                    if (mixRatio != null && deviceKey.equals(String.valueOf(mixRatio.get("id")))) {
+                        // 在主线程中更新UI
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            String deviceText = String.format("%s %s", 
+                                deviceInfo.getManufacturer(), 
+                                deviceInfo.getModel());
+                            holder.tvDeviceInfo.setText(deviceText);
+                            Log.d("MixtureAdapter", "已更新ViewHolder的设备信息显示: " + deviceText);
+                        });
+                        break;
+                    }
+                }
+            }
+            
+            // 通知适配器数据变化
+            notifyDataSetChanged();
+        }
+    }
+    
+    /**
+     * 更新实验映射
+     * @param newMapping 新的实验映射
+     */
+    public void updateExperimentMapping(Map<String, List<String>> newMapping) {
+        if (newMapping != null) {
+            this.experimentAssignments.clear();
+            this.experimentAssignments.putAll(newMapping);
+            Log.d("MixtureAdapter", "更新了实验映射: " + newMapping.size() + " 条映射");
+            
+            // 重新初始化实验-配比对
+            initMixRatioExperimentPairs();
+        }
+    }
+    
+    /**
+     * 更新选择的实验类型
+     * @param experimentType 新的实验类型
+     */
+    public void updateSelectedExperimentType(String experimentType) {
+        this.selectedExperimentType = experimentType;
+        Log.d("MixtureAdapter", "更新选择的实验类型: " + experimentType);
+        
+        // 重新初始化实验-配比对
+        initMixRatioExperimentPairs();
+    }
+    
+    @Override
+    public void onViewAttachedToWindow(@NonNull ViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        // 添加到ViewHolder集合
+        viewHolders.add(holder);
+    }
+    
+    @Override
+    public void onViewDetachedFromWindow(@NonNull ViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        // 从ViewHolder集合移除
+        viewHolders.remove(holder);
+    }
 }

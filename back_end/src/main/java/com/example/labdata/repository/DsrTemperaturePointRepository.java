@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface DsrTemperaturePointRepository extends JpaRepository<DsrTemperaturePoint, Long> {
     List<DsrTemperaturePoint> findByTestId(Long testId);
+    
+    // 添加基于taskId的查询方法
+    List<DsrTemperaturePoint> findByTaskId(String taskId);
 }

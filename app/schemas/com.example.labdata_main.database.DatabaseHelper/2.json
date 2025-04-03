@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "ac77a7fc7cfda32a0efd2833ac37c7ca",
+    "identityHash": "2816f7edccba4adb2cf0c09950dc4c90",
     "entities": [
       {
         "tableName": "projects",
@@ -56,7 +56,7 @@
       },
       {
         "tableName": "mix_ratios",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` TEXT, `materials` TEXT, `total_amount` TEXT, `aggregate_percentage` REAL NOT NULL, `asphalt_percentage` REAL NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `description` TEXT, `creation_time` INTEGER NOT NULL, `project_id` TEXT, `materials` TEXT, `total_amount` TEXT, `aggregate_percentage` REAL NOT NULL, `asphalt_percentage` REAL NOT NULL, `company_id` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -111,6 +111,12 @@
             "columnName": "asphalt_percentage",
             "affinity": "REAL",
             "notNull": true
+          },
+          {
+            "fieldPath": "companyId",
+            "columnName": "company_id",
+            "affinity": "INTEGER",
+            "notNull": false
           }
         ],
         "primaryKey": {
@@ -452,7 +458,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ac77a7fc7cfda32a0efd2833ac37c7ca')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2816f7edccba4adb2cf0c09950dc4c90')"
     ]
   }
 }

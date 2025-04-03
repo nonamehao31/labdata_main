@@ -105,7 +105,7 @@ public class MixRatioController {
      * @return 该公司的所有配合比
      */
     @GetMapping("/by-company/{companyId}")
-    public ResponseEntity<ApiResponse<List<MixRatioResponse>>> getMixRatiosByCompany(@PathVariable Long companyId) {
+    public ResponseEntity<ApiResponse<List<MixRatioResponse>>> getMixRatiosByCompany(@PathVariable String companyId) {
         try {
             List<MixRatioResponse> mixRatios = mixRatioService.getMixRatiosByCompany(companyId);
             return ResponseEntity.ok(new ApiResponse<>(true, "获取公司配合比数据成功", mixRatios));

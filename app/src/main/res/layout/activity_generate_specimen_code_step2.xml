@@ -237,6 +237,17 @@
             android:padding="12dp" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveQRCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="2dp"
+            android:text="保存并分享试件码"
+            android:textColor="@android:color/white"
+            app:cornerRadius="24dp"
+            app:backgroundTint="#00897B"
+            android:padding="12dp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnComplete"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

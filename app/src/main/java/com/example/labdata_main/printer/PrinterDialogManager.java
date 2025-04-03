@@ -1,13 +1,18 @@
 package com.example.labdata_main.printer;
 
+import android.Manifest;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.NetworkCapabilities;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
@@ -16,6 +21,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -23,12 +29,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.labdata_main.R;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -136,60 +147,49 @@ public class PrinterDialogManager {
      */
     private boolean isConnectedToPrinterNetwork() {
         try {
-            ConnectivityManager connectivityManager = (ConnectivityManager) 
-                    context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            
-            if (connectivityManager != null) {
-                NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-                if (networkInfo != null && networkInfo.isConnected() && 
-                        networkInfo.getType() == ConnectivityManager.TYPE_WIFI) {
+            WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager != null) {
+                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                if (wifiInfo != null) {
+                    String ssid = wifiInfo.getSSID();
+                    // 去除SSID两端的引号
+                    ssid = ssid.replace("\"", "");
                     
-                    WifiManager wifiManager = (WifiManager) 
-                            context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                    
-                    if (wifiManager != null) {
-                        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-                        String ssid = wifiInfo.getSSID().replace("\"", "");
-                        
-                        // 检查SSID是否包含打印机相关名称（启发式方法）
-                        String[] printerKeywords = {"print", "打印", "printer", "HP", "Canon", "Epson", 
-                                "Brother", "Zebra", "TSC", "Honeywell"};
-                        
-                        for (String keyword : printerKeywords) {
-                            if (ssid.toLowerCase().contains(keyword.toLowerCase())) {
-                                Log.d(TAG, "检测到可能的打印机网络: " + ssid);
-                                return true;
-                            }
-                        }
+                    if (isPrinterHotspotSSID(ssid)) {
+                        Log.d(TAG, "已连接到打印机热点: " + ssid);
+                        return true;
                     }
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "检查打印机网络时出错", e);
+            Log.e(TAG, "检测打印机网络时出错", e);
         }
-        
         return false;
     }
     
     /**
-     * 获取上次选择的打印机信息
-     * @return 上次选择的打印机信息
+     * 检查SSID是否可能是打印机热点
      */
-    private PrinterInfo getLastSelectedPrinter() {
-        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        int lastType = prefs.getInt(PREF_LAST_PRINTER_TYPE, PrinterInfo.TYPE_BLUETOOTH);
-        String lastAddress = prefs.getString(PREF_LAST_PRINTER_ADDRESS, "");
-        String lastName = prefs.getString(PREF_LAST_PRINTER_NAME, "");
-        
-        if (lastType == PrinterInfo.TYPE_BLUETOOTH) {
-            return PrinterInfo.fromBluetooth(lastName, lastAddress);
-        } else if (lastType == PrinterInfo.TYPE_WIFI) {
-            // WiFi打印机需要端口号
-            int port = prefs.getInt(PREF_LAST_PRINTER_PORT, 9100);
-            return PrinterInfo.fromWiFi(lastName, lastAddress, port);
+    private boolean isPrinterHotspotSSID(String ssid) {
+        if (ssid == null || ssid.isEmpty()) {
+            return false;
         }
         
-        return null;
+        // 转为小写进行比较
+        String lowerSsid = ssid.toLowerCase();
+        
+        // 检查SSID是否包含打印机相关关键词
+        return lowerSsid.contains("printer") || 
+               lowerSsid.contains("print") ||
+               lowerSsid.contains("hp") ||
+               lowerSsid.contains("epson") ||
+               lowerSsid.contains("canon") ||
+               lowerSsid.contains("brother") ||
+               lowerSsid.contains("zebra") ||
+               lowerSsid.contains("thermal") ||
+               lowerSsid.contains("receipt") ||
+               lowerSsid.contains("pos") ||
+               lowerSsid.contains("wifi-direct");
     }
     
     /**
@@ -263,50 +263,104 @@ public class PrinterDialogManager {
      */
     private void showWiFiPrinterSelectionDialog(WiFiPrinterManager wifiPrinterManager, 
                                                 PrinterSelectionCallback callback) {
-        // 创建对话框
-        AlertDialog.Builder builder = new MaterialAlertDialogBuilder(context);
-        builder.setTitle("选择WiFi打印机");
+        // 首先检查WiFi权限
+        if (!checkWifiPermission()) {
+            // 如果没有权限，显示提示并返回
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+            builder.setTitle("权限缺失")
+                   .setMessage("搜索WiFi打印机需要WiFi访问权限，请在应用设置中授予权限。")
+                   .setPositiveButton("确定", (dialog, which) -> {
+                       if (callback != null) {
+                           callback.onCancelled();
+                       }
+                   })
+                   .show();
+            return;
+        }
         
-        // 获取保存的打印机列表
+        // 获取保存的WiFi打印机
         final List<PrinterInfo> printers = new ArrayList<>(getSavedWiFiPrinters());
         
-        // 创建视图
-        View view = LayoutInflater.from(context).inflate(R.layout.dialog_wifi_printer_selection, null);
-        RecyclerView recyclerView = view.findViewById(R.id.rvPrinters);
-        ProgressBar progressBar = view.findViewById(R.id.progressDiscovery);
-        TextView tvStatus = view.findViewById(R.id.tvDiscoveryStatus);
-        Button btnManualAdd = view.findViewById(R.id.btnAddManually);
-        
-        // 设置适配器
+        // 创建适配器
         PrinterListAdapter adapter = new PrinterListAdapter(printers);
-        recyclerView.setLayoutManager(new LinearLayoutManager(context));
-        recyclerView.setAdapter(adapter);
         
         // 创建对话框
-        AlertDialog dialog = builder.setView(view)
-                .setNegativeButton("取消", (d, which) -> d.dismiss())
-                .create();
+        final AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("选择WiFi打印机");
         
-        // 添加主线程处理器
-        Handler mainHandler = new Handler(Looper.getMainLooper());
+        View printerDialogView = LayoutInflater.from(context).inflate(R.layout.dialog_printer_selection, null);
+        RecyclerView printerListView = printerDialogView.findViewById(R.id.printer_list);
+        printerListView.setLayoutManager(new LinearLayoutManager(context));
+        printerListView.setAdapter(adapter);
         
-        // 自动发现打印机
-        tvStatus.setText("正在搜索网络打印机...");
+        // 添加进度指示器
+        ProgressBar progressBar = printerDialogView.findViewById(R.id.progress_bar);
         progressBar.setVisibility(View.VISIBLE);
         
+        // 添加状态文本
+        TextView statusTextView = printerDialogView.findViewById(R.id.status_text);
+        statusTextView.setText("正在搜索打印机...");
+        statusTextView.setVisibility(View.VISIBLE);
+        
+        // 检查是否连接到打印机热点，显示提示信息
+        boolean isPrinterHotspot = isConnectedToPrinterNetwork();
+        if (isPrinterHotspot) {
+            // 添加热点提示信息
+            TextView hotspotTipView = new TextView(context);
+            hotspotTipView.setText("已检测到打印机WiFi热点连接，系统将自动尝试连接打印机");
+            hotspotTipView.setTextSize(12);
+            hotspotTipView.setTextColor(Color.BLUE);
+            hotspotTipView.setTypeface(null, Typeface.ITALIC);
+            hotspotTipView.setPadding(16, 8, 16, 8);
+            
+            // 将提示添加到对话框
+            LinearLayout container = (LinearLayout) printerDialogView;
+            container.addView(hotspotTipView, 1);
+            
+            // 更新状态文本
+            statusTextView.setText("检测到打印机WiFi热点，正在尝试连接...");
+        }
+        
+        builder.setView(printerDialogView);
+        
+        // 创建并显示对话框
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+        
+        // 设置适配器的点击监听器
+        adapter.setOnItemClickListener(position -> {
+            PrinterInfo selectedPrinter = printers.get(position);
+            
+            // 保存选择的打印机以便下次使用
+            saveWiFiPrinter(selectedPrinter);
+            
+            // 通过回调返回选择的打印机
+            dialog.dismiss();
+            if (callback != null) {
+                callback.onPrinterSelected(selectedPrinter);
+            }
+        });
+        
+        // 开始搜索打印机
         wifiPrinterManager.discoverPrinters(new PrinterDiscoveryManager.PrinterDiscoveryListener() {
             @Override
             public void onPrinterDiscoveryStarted() {
-                mainHandler.post(() -> {
-                    tvStatus.setText("正在搜索网络打印机...");
-                    progressBar.setVisibility(View.VISIBLE);
-                });
+                Log.d("PrinterDialog", "打印机搜索开始");
             }
             
             @Override
             public void onPrinterFound(PrinterInfo printer) {
-                mainHandler.post(() -> {
-                    // 避免重复添加
+                Log.d("PrinterDialog", "找到打印机: " + printer.getName());
+                
+                // 更新UI线程中的适配器
+                if (!dialog.isShowing()) {
+                    Log.d("PrinterDialog", "对话框已关闭，忽略新找到的打印机");
+                    return;
+                }
+                
+                // 在主线程更新UI
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    // 检查打印机是否已存在
                     boolean exists = false;
                     for (PrinterInfo p : printers) {
                         if (p.getAddress().equals(printer.getAddress()) && p.getPort() == printer.getPort()) {
@@ -319,56 +373,97 @@ public class PrinterDialogManager {
                         printers.add(printer);
                         adapter.notifyDataSetChanged();
                         
-                        // 保存到SharedPreferences
-                        saveWiFiPrinter(printer);
+                        // 找到打印机后，隐藏进度条
+                        if (progressBar != null && progressBar.getVisibility() == View.VISIBLE) {
+                            progressBar.setVisibility(View.GONE);
+                        }
+                        
+                        // 更新状态文本
+                        if (statusTextView != null) {
+                            statusTextView.setText("找到 " + printers.size() + " 台打印机");
+                        }
                     }
-                    
-                    tvStatus.setText("找到 " + printers.size() + " 台打印机");
                 });
             }
             
             @Override
             public void onPrinterDiscoveryFinished(List<PrinterInfo> discoveredPrinters) {
-                mainHandler.post(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    if (printers.isEmpty()) {
-                        tvStatus.setText("未找到打印机，请尝试手动添加或确认打印机已开启");
-                    } else {
-                        tvStatus.setText("找到 " + printers.size() + " 台打印机");
+                Log.d("PrinterDialog", "打印机搜索完成，找到 " + discoveredPrinters.size() + " 台打印机");
+                
+                if (!dialog.isShowing()) {
+                    Log.d("PrinterDialog", "对话框已关闭，忽略搜索完成回调");
+                    return;
+                }
+                
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    // 无论找到多少打印机，都确保隐藏进度条
+                    if (progressBar != null) {
+                        progressBar.setVisibility(View.GONE);
                     }
+                    
+                    // 根据找到的打印机数量更新状态文本
+                    if (statusTextView != null) {
+                        if (printers.isEmpty()) {
+                            statusTextView.setText("未找到打印机，请确认打印机已连接到同一网络");
+                        } else {
+                            statusTextView.setText("找到 " + printers.size() + " 台打印机");
+                        }
+                    }
+                    
+                    // 如果找到了新的打印机，更新列表
+                    for (PrinterInfo printer : discoveredPrinters) {
+                        boolean exists = false;
+                        for (PrinterInfo p : printers) {
+                            if (p.getAddress().equals(printer.getAddress()) && p.getPort() == printer.getPort()) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!exists) {
+                            printers.add(printer);
+                        }
+                    }
+                    
+                    adapter.notifyDataSetChanged();
                 });
             }
             
             @Override
             public void onDiscoveryError(String errorMessage) {
-                mainHandler.post(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    tvStatus.setText("搜索出错: " + errorMessage);
+                Log.e("PrinterDialog", "打印机搜索出错: " + errorMessage);
+                
+                if (!dialog.isShowing()) {
+                    return;
+                }
+                
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    // 隐藏进度条
+                    if (progressBar != null) {
+                        progressBar.setVisibility(View.GONE);
+                    }
+                    
+                    // 更新状态文本
+                    if (statusTextView != null) {
+                        statusTextView.setText("搜索出错: " + errorMessage);
+                    }
                 });
             }
         });
         
-        // 设置手动添加按钮
-        btnManualAdd.setOnClickListener(v -> {
-            dialog.dismiss();
+        // 添加手动输入按钮
+        builder.setPositiveButton("手动输入", (d, which) -> {
             showAddWiFiPrinterDialog(callback);
         });
         
-        // 设置列表项点击事件
-        adapter.setOnItemClickListener(position -> {
-            PrinterInfo selectedPrinter = printers.get(position);
-            dialog.dismiss();
+        // 添加取消按钮
+        builder.setNegativeButton("取消", (d, which) -> {
+            d.dismiss();
             wifiPrinterManager.stopDiscovery();
-            
-            // 保存选择的打印机
-            saveSelectedPrinter(selectedPrinter);
-            
-            // 回调选择结果
-            callback.onPrinterSelected(selectedPrinter);
         });
         
+        // 对话框关闭时停止搜索
         dialog.setOnDismissListener(d -> wifiPrinterManager.stopDiscovery());
-        dialog.show();
     }
     
     /**
@@ -479,5 +574,58 @@ public class PrinterDialogManager {
         }
         
         editor.apply();
+    }
+    
+    /**
+     * 获取上次选择的打印机信息
+     * @return 上次选择的打印机信息
+     */
+    private PrinterInfo getLastSelectedPrinter() {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        int lastType = prefs.getInt(PREF_LAST_PRINTER_TYPE, PrinterInfo.TYPE_BLUETOOTH);
+        String lastAddress = prefs.getString(PREF_LAST_PRINTER_ADDRESS, "");
+        String lastName = prefs.getString(PREF_LAST_PRINTER_NAME, "");
+        
+        if (lastType == PrinterInfo.TYPE_BLUETOOTH) {
+            return PrinterInfo.fromBluetooth(lastName, lastAddress);
+        } else if (lastType == PrinterInfo.TYPE_WIFI) {
+            // WiFi打印机需要端口号
+            int port = prefs.getInt(PREF_LAST_PRINTER_PORT, 9100);
+            return PrinterInfo.fromWiFi(lastName, lastAddress, port);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 检查是否有WiFi访问权限
+     * @return 是否有权限
+     */
+    private boolean checkWifiPermission() {
+        Log.d(TAG, "检查WiFi访问权限");
+        // 检查基本WiFi权限
+        boolean hasWifiPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_WIFI_STATE) 
+                == PackageManager.PERMISSION_GRANTED;
+                
+        if (!hasWifiPermission) {
+            Log.e(TAG, "缺少ACCESS_WIFI_STATE权限");
+            Toast.makeText(context, "缺少WiFi访问权限，无法搜索WiFi打印机", Toast.LENGTH_LONG).show();
+            return false;
+        }
+        
+        // 为获取SSID信息，在Android 10+上检查位置权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            boolean hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
+                    == PackageManager.PERMISSION_GRANTED;
+            
+            if (!hasFineLocation) {
+                Log.e(TAG, "Android 10及以上系统获取WiFi SSID需要位置权限，但未获得");
+                Toast.makeText(context, "获取WiFi信息需要位置权限，请在应用设置中授予权限", Toast.LENGTH_LONG).show();
+                return false;
+            }
+        }
+        
+        Log.d(TAG, "已获取所需WiFi权限");
+        return true;
     }
 }

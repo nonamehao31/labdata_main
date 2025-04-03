@@ -49,7 +49,7 @@ public interface AsphaltTaskService {
      * 但后端实际返回的是AsphaltExperimentResponse，可能导致字段不匹配
      */
     @GET("api/asphalt/experiments/byCompany")
-    Call<ApiResponse<List<AsphaltTaskResponse>>> getUserAsphaltTasks(@Query("companyId") String companyId);
+    Call<ApiResponse<List<AsphaltTaskResponse>>> getUserAsphaltTasks(@Query("companyId") String companyId, @Query("username") String username);
 
     /**
      * 获取沥青任务详情信息，包括沥青信息和实验指派信息

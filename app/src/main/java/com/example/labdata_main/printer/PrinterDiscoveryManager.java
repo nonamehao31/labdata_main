@@ -24,6 +24,8 @@ public class PrinterDiscoveryManager {
     
     // 添加超时时间常量，10秒
     private static final long DISCOVERY_TIMEOUT = 10000; // 毫秒
+    // 添加搜索下一种服务类型的延迟
+    private static final long SERVICE_TYPE_SEARCH_DELAY = 2000; // 毫秒
     
     private final Context context;
     private final NsdManager nsdManager;
@@ -33,6 +35,10 @@ public class PrinterDiscoveryManager {
     private android.os.Handler timeoutHandler;
     private Runnable timeoutRunnable;
     private boolean isDiscoveryActive = false;
+    // 添加跟踪当前搜索的服务类型
+    private String currentSearchServiceType = null;
+    // 添加跟踪已搜索的服务类型计数
+    private int searchedServiceTypeCount = 0;
     
     /**
      * 打印机发现回调接口
@@ -75,6 +81,7 @@ public class PrinterDiscoveryManager {
         
         isDiscoveryActive = true;
         discoveredPrinters.clear();
+        searchedServiceTypeCount = 0;
         
         if (listener != null) {
             listener.onPrinterDiscoveryStarted();
@@ -89,12 +96,12 @@ public class PrinterDiscoveryManager {
         timeoutRunnable = () -> {
             Log.d(TAG, "打印机搜索超时，停止搜索");
             if (isDiscoveryActive) {
-                Log.d(TAG, "执行超时停止搜索");
+                Log.d(TAG, "执行超时停止搜索，当前搜索的服务类型: " + currentSearchServiceType);
                 stopDiscovery();
                 
                 // 通知搜索完成
                 if (listener != null) {
-                    Log.d(TAG, "通知UI搜索已完成（超时）");
+                    Log.d(TAG, "通知UI搜索已完成（超时），总共发现打印机数量: " + discoveredPrinters.size());
                     listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
                 }
             }
@@ -103,6 +110,92 @@ public class PrinterDiscoveryManager {
         // 设置超时
         timeoutHandler.postDelayed(timeoutRunnable, DISCOVERY_TIMEOUT);
         
+        // 开始搜索IPP协议打印机
+        startSearchForServiceType(SERVICE_TYPE_IPP);
+    }
+    
+    /**
+     * 开始搜索特定服务类型的打印机
+     * @param serviceType 服务类型
+     */
+    private void startSearchForServiceType(String serviceType) {
+        Log.d(TAG, "开始搜索服务类型: " + serviceType + ", 这是第 " + (searchedServiceTypeCount + 1) + " 种尝试的服务类型");
+        
+        currentSearchServiceType = serviceType;
+        searchedServiceTypeCount++;
+        
+        // 创建发现监听器
+        createDiscoveryListener();
+        
+        try {
+            nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
+            Log.d(TAG, "已启动对 " + serviceType + " 服务类型的搜索");
+        } catch (Exception e) {
+            Log.e(TAG, "搜索 " + serviceType + " 服务类型时发生异常", e);
+            
+            // 如果某种服务类型搜索失败，尝试搜索下一种类型
+            scheduleNextServiceTypeSearch();
+            
+            // 如果所有类型都已尝试，通知错误
+            if (searchedServiceTypeCount >= 3) {
+                if (listener != null && isDiscoveryActive) {
+                    Log.e(TAG, "所有服务类型搜索均失败");
+                    listener.onDiscoveryError("所有打印机服务类型搜索均失败: " + e.getMessage());
+                    stopDiscovery();
+                }
+            }
+        }
+    }
+    
+    /**
+     * 安排搜索下一种服务类型
+     */
+    private void scheduleNextServiceTypeSearch() {
+        if (!isDiscoveryActive) {
+            Log.d(TAG, "搜索已停止，不再安排下一种服务类型搜索");
+            return;
+        }
+        
+        // 确定下一种要搜索的服务类型
+        String nextServiceType = null;
+        if (SERVICE_TYPE_IPP.equals(currentSearchServiceType)) {
+            nextServiceType = SERVICE_TYPE_PDL;
+        } else if (SERVICE_TYPE_PDL.equals(currentSearchServiceType)) {
+            nextServiceType = SERVICE_TYPE_PRINTER;
+        }
+        
+        if (nextServiceType != null) {
+            final String serviceType = nextServiceType;
+            Log.d(TAG, "安排 " + SERVICE_TYPE_SEARCH_DELAY + "ms 后搜索下一种服务类型: " + serviceType);
+            
+            timeoutHandler.postDelayed(() -> {
+                if (isDiscoveryActive) {
+                    // 先停止当前搜索
+                    try {
+                        if (discoveryListener != null) {
+                            Log.d(TAG, "停止当前搜索以开始下一种服务类型搜索");
+                            nsdManager.stopServiceDiscovery(discoveryListener);
+                            discoveryListener = null;
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "停止当前搜索时出错", e);
+                    }
+                    
+                    // 开始下一种类型搜索
+                    startSearchForServiceType(serviceType);
+                } else {
+                    Log.d(TAG, "搜索已停止，取消搜索下一种服务类型");
+                }
+            }, SERVICE_TYPE_SEARCH_DELAY);
+        } else {
+            Log.d(TAG, "已尝试所有服务类型，不再安排新的搜索");
+        }
+    }
+    
+    /**
+     * 创建服务发现监听器
+     */
+    private void createDiscoveryListener() {
         discoveryListener = new NsdManager.DiscoveryListener() {
             @Override
             public void onDiscoveryStarted(String serviceType) {
@@ -111,13 +204,13 @@ public class PrinterDiscoveryManager {
             
             @Override
             public void onServiceFound(NsdServiceInfo serviceInfo) {
-                Log.d(TAG, "发现服务: " + serviceInfo.getServiceName());
+                Log.d(TAG, "发现服务: " + serviceInfo.getServiceName() + ", 服务类型: " + serviceInfo.getServiceType());
                 
                 // 解析服务信息
                 nsdManager.resolveService(serviceInfo, new NsdManager.ResolveListener() {
                     @Override
                     public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {
-                        Log.e(TAG, "解析服务失败: " + errorCode);
+                        Log.e(TAG, "解析服务失败: " + serviceInfo.getServiceName() + ", 错误码: " + errorCode);
                     }
                     
                     @Override
@@ -133,6 +226,8 @@ public class PrinterDiscoveryManager {
                         int port = serviceInfo.getPort();
                         String name = serviceInfo.getServiceName();
                         
+                        Log.d(TAG, "找到打印机: 名称=" + name + ", 地址=" + host.getHostAddress() + ", 端口=" + port);
+                        
                         // 创建打印机信息对象
                         PrinterInfo printerInfo = PrinterInfo.fromWiFi(
                                 name,
@@ -143,6 +238,7 @@ public class PrinterDiscoveryManager {
                         // 存储发现的打印机
                         String key = host.getHostAddress() + ":" + port;
                         if (!discoveredPrinters.containsKey(key)) {
+                            Log.d(TAG, "添加新发现的打印机到列表中: " + key);
                             discoveredPrinters.put(key, printerInfo);
                             
                             // 通知发现了新的打印机
@@ -151,10 +247,13 @@ public class PrinterDiscoveryManager {
                                 
                                 // 如果找到至少一台打印机，并且搜索仍在进行，立即通知UI可以显示结果
                                 if (discoveredPrinters.size() == 1 && isDiscoveryActive) {
+                                    Log.d(TAG, "已找到第一台打印机，通知UI可以停止显示加载状态");
                                     // 注意这里不停止搜索，但通知UI可以停止显示加载状态
                                     listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
                                 }
                             }
+                        } else {
+                            Log.d(TAG, "打印机已在列表中，忽略: " + key);
                         }
                     }
                 });
@@ -174,10 +273,15 @@ public class PrinterDiscoveryManager {
                 if (discoveryListener != null) {
                     discoveryListener = null;
                     
-                    // 通知搜索完成
-                    if (listener != null && isDiscoveryActive) {
-                        isDiscoveryActive = false;
-                        listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
+                    // 如果还有其他服务类型需要搜索，开始下一个搜索
+                    if (isDiscoveryActive) {
+                        scheduleNextServiceTypeSearch();
+                    } else {
+                        // 通知搜索完成
+                        if (listener != null) {
+                            Log.d(TAG, "搜索全部完成，通知UI，找到 " + discoveredPrinters.size() + " 台打印机");
+                            listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
+                        }
                     }
                 }
             }
@@ -190,8 +294,10 @@ public class PrinterDiscoveryManager {
                     listener.onDiscoveryError("启动服务发现失败: " + errorCode);
                 }
                 
+                // 尝试搜索下一种类型
+                scheduleNextServiceTypeSearch();
+                
                 // 重置状态
-                isDiscoveryActive = false;
                 discoveryListener = null;
             }
             
@@ -204,28 +310,21 @@ public class PrinterDiscoveryManager {
                 }
                 
                 // 重置状态
-                isDiscoveryActive = false;
                 discoveryListener = null;
+                
+                // 尝试搜索下一种类型
+                scheduleNextServiceTypeSearch();
             }
         };
-        
-        try {
-            nsdManager.discoverServices(SERVICE_TYPE_IPP, NsdManager.PROTOCOL_DNS_SD, discoveryListener);
-        } catch (Exception e) {
-            Log.e(TAG, "启动服务发现异常", e);
-            if (listener != null) {
-                listener.onDiscoveryError("启动服务发现异常: " + e.getMessage());
-            }
-            isDiscoveryActive = false;
-            discoveryListener = null;
-        }
     }
     
     /**
      * 停止发现打印机
      */
     public void stopDiscovery() {
-        Log.d(TAG, "停止搜索打印机");
+        Log.d(TAG, "停止搜索打印机，当前状态: isDiscoveryActive=" + isDiscoveryActive + 
+                  ", discoveryListener=" + (discoveryListener != null) + 
+                  ", 当前服务类型=" + currentSearchServiceType);
         
         // 取消超时任务
         if (timeoutHandler != null && timeoutRunnable != null) {
@@ -233,6 +332,15 @@ public class PrinterDiscoveryManager {
             timeoutHandler.removeCallbacks(timeoutRunnable);
             timeoutRunnable = null;
         }
+        
+        // 移除所有延迟执行的任务
+        if (timeoutHandler != null) {
+            Log.d(TAG, "移除所有延迟任务");
+            timeoutHandler.removeCallbacksAndMessages(null);
+        }
+        
+        boolean wasActive = isDiscoveryActive;
+        isDiscoveryActive = false;
         
         if (discoveryListener != null) {
             Log.d(TAG, "停止NSD服务发现");
@@ -242,13 +350,17 @@ public class PrinterDiscoveryManager {
                 Log.e(TAG, "停止服务发现时发生错误", e);
             }
             
-            // 即使stopServiceDiscovery失败，也需要重置状态
-            // 因为onDiscoveryStopped回调可能不会被调用
             discoveryListener = null;
         }
         
-        // 无论如何，设置标志位为false
-        isDiscoveryActive = false;
+        // 无论如何，确保通知UI搜索已结束
+        if (wasActive && listener != null) {
+            Log.d(TAG, "确认通知UI搜索已结束，找到 " + discoveredPrinters.size() + " 台打印机");
+            listener.onPrinterDiscoveryFinished(new ArrayList<>(discoveredPrinters.values()));
+        }
+        
+        // 清除当前状态
+        currentSearchServiceType = null;
     }
     
     /**

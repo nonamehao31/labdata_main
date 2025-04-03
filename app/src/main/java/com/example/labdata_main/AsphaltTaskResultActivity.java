@@ -23,6 +23,7 @@ import com.example.labdata_main.api.AsphaltTaskApi;
 import com.example.labdata_main.api.MixtureTaskApi;
 import com.example.labdata_main.model.ApiResponse;
 import com.example.labdata_main.model.AsphaltDetailResponse;
+import com.example.labdata_main.model.AsphaltTaskAssignmentResponse;
 import com.example.labdata_main.model.BbrTestResponse;
 import com.example.labdata_main.model.BrookfieldViscosityResponse;
 import com.example.labdata_main.model.CompletedExperimentTask;
@@ -66,6 +67,17 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
     private DynamicModulusAdapter dynamicModulusAdapter;
     private DirectStretchingFatigueAdapter directStretchingFatigueAdapter;
     private FourPointBendingFatigueAdapter fourPointBendingFatigueAdapter;
+    
+    // 添加标志变量，用于防止重复获取实验结果
+    private boolean penetrationResultFetched = false;
+    private boolean softeningPointResultFetched = false;
+    private boolean ductilityResultFetched = false;
+    private boolean brookfieldViscosityResultFetched = false;
+    private boolean bbrResultFetched = false;
+    private boolean dsrResultFetched = false;
+    private boolean dynamicModulusResultFetched = false;
+    private boolean directStretchingFatigueResultFetched = false;
+    private boolean fourPointBendingFatigueResultFetched = false;
     
     private CompletedExperimentTask task;
     private AsphaltTaskApi asphaltTaskApi;
@@ -119,6 +131,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                 Log.d(TAG, "通过独立参数创建任务对象: " + taskId);
                 displayTaskDetails();
                 fetchAsphaltTaskDetails();
+                fetchTaskAssignment(); // 添加获取任务指派信息
                 
                 // 根据任务指派类型加载相应的实验数据
                 if (taskAssignment != null) {
@@ -139,6 +152,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                 if (task != null) {
                     displayTaskDetails();
                     fetchAsphaltTaskDetails();
+                    fetchTaskAssignment(); // 添加获取任务指派信息
                     
                     // 根据任务指派类型加载相应的实验数据
                     String taskAssignment = task.getTaskAssignment();
@@ -348,6 +362,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取针入度实验结果数据
      */
     private void fetchPenetrationTestResult() {
+        if (penetrationResultFetched) {
+            Log.d(TAG, "针入度实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取针入度实验数据");
             return;
@@ -374,6 +393,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                penetrationResultFetched = true;
             }
             
             @Override
@@ -383,6 +403,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                 if (task.getTaskAssignment() != null && task.getTaskAssignment().contains("针入度")) {
                     showNoResultsMessage();
                 }
+                penetrationResultFetched = true;
             }
         });
     }
@@ -391,6 +412,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取软化点实验结果数据
      */
     private void fetchSofteningPointResult() {
+        if (softeningPointResultFetched) {
+            Log.d(TAG, "软化点实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取软化点实验数据");
             return;
@@ -417,6 +443,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                softeningPointResultFetched = true;
             }
             
             @Override
@@ -426,6 +453,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                 if (task.getTaskAssignment() != null && task.getTaskAssignment().contains("软化点")) {
                     showNoResultsMessage();
                 }
+                softeningPointResultFetched = true;
             }
         });
     }
@@ -434,6 +462,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取延度实验结果数据
      */
     private void fetchDuctilityTestResult() {
+        if (ductilityResultFetched) {
+            Log.d(TAG, "延度实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取延度实验数据");
             return;
@@ -460,6 +493,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                ductilityResultFetched = true;
             }
             
             @Override
@@ -469,6 +503,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                 if (task.getTaskAssignment() != null && task.getTaskAssignment().contains("延度")) {
                     showNoResultsMessage();
                 }
+                ductilityResultFetched = true;
             }
         });
     }
@@ -477,6 +512,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取布鲁克菲尔德旋转黏度实验结果数据
      */
     private void fetchBrookfieldViscosityResult() {
+        if (brookfieldViscosityResultFetched) {
+            Log.d(TAG, "旋转黏度实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取旋转黏度实验数据");
             return;
@@ -501,6 +541,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                brookfieldViscosityResultFetched = true;
             }
             
             @Override
@@ -511,6 +552,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                     (task.getTaskAssignment().contains("旋转黏度") || task.getTaskAssignment().contains("布鲁克菲尔德"))) {
                     showNoResultsMessage();
                 }
+                brookfieldViscosityResultFetched = true;
             }
         });
     }
@@ -519,6 +561,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取弯曲梁流变仪(BBR)实验结果数据
      */
     private void fetchBbrTestResult() {
+        if (bbrResultFetched) {
+            Log.d(TAG, "弯曲梁流变仪实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取弯曲梁流变仪实验数据");
             return;
@@ -543,6 +590,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                bbrResultFetched = true;
             }
             
             @Override
@@ -553,6 +601,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                     (task.getTaskAssignment().contains("弯曲梁") || task.getTaskAssignment().contains("BBR") || task.getTaskAssignment().contains("流变仪"))) {
                     showNoResultsMessage();
                 }
+                bbrResultFetched = true;
             }
         });
     }
@@ -561,6 +610,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取动态剪切流变仪(DSR)实验结果数据
      */
     private void fetchDsrTestResult() {
+        if (dsrResultFetched) {
+            Log.d(TAG, "动态剪切流变仪实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取动态剪切流变仪实验数据");
             return;
@@ -585,6 +639,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                dsrResultFetched = true;
             }
             
             @Override
@@ -595,6 +650,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                     (task.getTaskAssignment().contains("动态剪切") || task.getTaskAssignment().contains("DSR"))) {
                     showNoResultsMessage();
                 }
+                dsrResultFetched = true;
             }
         });
     }
@@ -603,6 +659,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取动态模量实验结果数据
      */
     private void fetchDynamicModulusResult() {
+        if (dynamicModulusResultFetched) {
+            Log.d(TAG, "动态模量实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取动态模量实验数据");
             return;
@@ -626,6 +687,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                dynamicModulusResultFetched = true;
             }
             
             @Override
@@ -635,6 +697,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                 if (task.getTaskAssignment() != null && task.getTaskAssignment().contains("动态模量")) {
                     showNoResultsMessage();
                 }
+                dynamicModulusResultFetched = true;
             }
         });
     }
@@ -643,6 +706,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据
      */
     private void fetchDirectStretchingFatigueResult() {
+        if (directStretchingFatigueResultFetched) {
+            Log.d(TAG, "沥青混合料直接拉伸循环疲劳测黏弹损伤实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取沥青混合料直接拉伸循环疲劳测黏弹损伤实验数据");
             return;
@@ -667,6 +735,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                directStretchingFatigueResultFetched = true;
             }
             
             @Override
@@ -677,6 +746,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                     (task.getTaskAssignment().contains("沥青混合料直接拉伸循环疲劳") || task.getTaskAssignment().contains("黏弹损伤"))) {
                     showNoResultsMessage();
                 }
+                directStretchingFatigueResultFetched = true;
             }
         });
     }
@@ -685,6 +755,11 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
      * 获取沥青混合料四点弯曲疲劳寿命实验结果数据
      */
     private void fetchFourPointBendingFatigueResult() {
+        if (fourPointBendingFatigueResultFetched) {
+            Log.d(TAG, "沥青混合料四点弯曲疲劳寿命实验结果已经获取，避免重复获取");
+            return;
+        }
+        
         if (task == null || task.getTaskId() == null) {
             Log.e(TAG, "任务对象或任务ID为空，无法获取四点弯曲疲劳寿命实验数据");
             return;
@@ -717,6 +792,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                         showNoResultsMessage();
                     }
                 }
+                fourPointBendingFatigueResultFetched = true;
             }
             
             @Override
@@ -728,6 +804,7 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
                     task.getTaskAssignment().contains("沥青混合料四点弯曲疲劳寿命")) {
                     showNoResultsMessage();
                 }
+                fourPointBendingFatigueResultFetched = true;
             }
         });
     }
@@ -961,5 +1038,66 @@ public class AsphaltTaskResultActivity extends AppCompatActivity {
         rvExperimentResults.setVisibility(View.GONE);
         tvNoResults.setVisibility(View.VISIBLE);
         Log.d(TAG, "显示无实验结果提示");
+    }
+    
+    /**
+     * 获取任务指派和设备信息
+     */
+    private void fetchTaskAssignment() {
+        if (task == null) {
+            Log.e(TAG, "无法获取任务指派信息: task为空");
+            return;
+        }
+        
+        // 使用沥青实验ID而非任务ID
+        String asphaltExperimentId = task.getAsphaltExperimentId();
+        if (asphaltExperimentId == null || asphaltExperimentId.isEmpty()) {
+            Log.e(TAG, "无法获取任务指派信息: asphaltExperimentId为空");
+            return;
+        }
+
+        Log.d(TAG, "开始获取任务指派信息，asphaltExperimentId: " + asphaltExperimentId);
+        asphaltTaskApi.getTaskAssignment(asphaltExperimentId).enqueue(new Callback<ApiResponse<AsphaltTaskAssignmentResponse>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<AsphaltTaskAssignmentResponse>> call, Response<ApiResponse<AsphaltTaskAssignmentResponse>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    AsphaltTaskAssignmentResponse taskAssignment = response.body().getData();
+                    if (taskAssignment != null) {
+                        updateEquipmentInfoUI(taskAssignment);
+                    } else {
+                        Log.w(TAG, "获取到的任务指派信息为空");
+                    }
+                } else {
+                    Log.e(TAG, "获取任务指派信息失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<AsphaltTaskAssignmentResponse>> call, Throwable t) {
+                Log.e(TAG, "获取任务指派信息网络请求失败", t);
+            }
+        });
+    }
+
+    /**
+     * 更新设备信息UI
+     */
+    private void updateEquipmentInfoUI(AsphaltTaskAssignmentResponse taskAssignment) {
+        if (tvEquipmentInfo != null) {
+            StringBuilder equipmentInfo = new StringBuilder();
+            
+            if (taskAssignment.getAssignedAsphaltEquipment() != null && !taskAssignment.getAssignedAsphaltEquipment().isEmpty()) {
+                equipmentInfo.append("实验设备: ").append(taskAssignment.getAssignedAsphaltEquipment());
+                
+                if (taskAssignment.getAsphaltEquipmentManufacturer() != null && !taskAssignment.getAsphaltEquipmentManufacturer().isEmpty()) {
+                    equipmentInfo.append(" (").append(taskAssignment.getAsphaltEquipmentManufacturer()).append(")");
+                }
+            } else {
+                equipmentInfo.append("实验设备: 未指定");
+            }
+            
+            tvEquipmentInfo.setText(equipmentInfo.toString());
+            tvEquipmentInfo.setVisibility(View.VISIBLE);
+        }
     }
 }

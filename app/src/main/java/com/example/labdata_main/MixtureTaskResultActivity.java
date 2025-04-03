@@ -57,6 +57,14 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
     private RecyclerView rvExperimentResults;
     private TextView tvNoResults;
     
+    // 设备指派信息显示控件
+    private TextView tvMixingEquipment;
+    private TextView tvMixingManufacturer;
+    private TextView tvFormingEquipment;
+    private TextView tvFormingManufacturer;
+    private TextView tvTestingEquipment;
+    private TextView tvTestingManufacturer;
+    
     private MixtureTaskApi mixtureTaskApi;
     private MarshallAdapter marshallAdapter;
     private HamburgRuttingAdapter hamburgRuttingAdapter;
@@ -83,6 +91,14 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         tvCompletionTime = findViewById(R.id.tvCompletionTime);
         rvExperimentResults = findViewById(R.id.rvExperimentResults);
         tvNoResults = findViewById(R.id.tvNoResults);
+        
+        // 设备指派信息控件初始化
+        tvMixingEquipment = findViewById(R.id.tvMixingEquipment);
+        tvMixingManufacturer = findViewById(R.id.tvMixingManufacturer);
+        tvFormingEquipment = findViewById(R.id.tvFormingEquipment);
+        tvFormingManufacturer = findViewById(R.id.tvFormingManufacturer);
+        tvTestingEquipment = findViewById(R.id.tvTestingEquipment);
+        tvTestingManufacturer = findViewById(R.id.tvTestingManufacturer);
         
         // 初始化RecyclerView
         rvExperimentResults.setLayoutManager(new LinearLayoutManager(this));
@@ -314,6 +330,27 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     TaskAssignmentResponse result = response.body();
                     String taskAssignment = result.getTaskAssignment();
                     
+                    // 获取设备指派信息
+                    String assignedMixingEquipment = result.getAssignedMixingEquipment();
+                    String mixingEquipmentManufacturer = result.getMixingEquipmentManufacturer();
+                    String assignedFormingEquipment = result.getAssignedFormingEquipment();
+                    String formingEquipmentManufacturer = result.getFormingEquipmentManufacturer();
+                    String assignedTestingEquipment = result.getAssignedTestingEquipment();
+                    String testingEquipmentManufacturer = result.getTestingEquipmentManufacturer();
+                    
+                    // 更新CompletedExperimentTask对象
+                    if (task != null) {
+                        task.setAssignedMixingEquipment(assignedMixingEquipment);
+                        task.setMixingEquipmentManufacturer(mixingEquipmentManufacturer);
+                        task.setAssignedFormingEquipment(assignedFormingEquipment);
+                        task.setFormingEquipmentManufacturer(formingEquipmentManufacturer);
+                        task.setAssignedTestingEquipment(assignedTestingEquipment);
+                        task.setTestingEquipmentManufacturer(testingEquipmentManufacturer);
+                    }
+                    
+                    // 更新UI显示设备指派信息
+                    updateEquipmentInfoUI();
+                    
                     // 更新UI显示任务指派信息
                     if (taskAssignment != null && !taskAssignment.isEmpty()) {
                         tvExperimentName.setText("任务指派: " + taskAssignment);
@@ -322,6 +359,8 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                         // 检查任务指派是否包含"马歇尔"、"汉堡车辙"或"弯曲"关键词
                         if (containsKeyword(taskAssignment, "马歇尔", "Marshall", "稳定度")) {
                             fetchMarshallTestData();
+                        } else if (containsKeyword(taskAssignment, "沥青混合料四点弯曲疲劳寿命试验", "四点弯曲")) {
+                            fetchFourPointBendingFatigueTestData();
                         } else if (containsKeyword(taskAssignment, "汉堡车辙", "Hamburg", "车辙")) {
                             fetchHamburgRuttingTestData();
                         } else if (containsKeyword(taskAssignment, "沥青混合料弯曲实验", "弯曲")) {
@@ -330,8 +369,6 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                             fetchDynamicModulusTestData();
                         } else if (containsKeyword(taskAssignment, "直接拉伸循环疲劳", "疲劳", "黏弹损伤")) {
                             fetchDirectStretchingFatigueTestData();
-                        } else if (containsKeyword(taskAssignment, "沥青混合料四点弯曲疲劳寿命试验", "四点弯曲")) {
-                            fetchFourPointBendingFatigueTestData();
                         } else if (containsKeyword(taskAssignment, "沥青混合料单轴压缩试验", "单轴压缩")) {
                             fetchUniaxialCompressionTestData();
                         } else if (containsKeyword(taskAssignment, "劈裂", "劈裂试验")) {
@@ -358,6 +395,55 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * 更新设备指派信息UI显示
+     */
+    private void updateEquipmentInfoUI() {
+        // 设置拌合设备信息
+        if (task.getAssignedMixingEquipment() != null && !task.getAssignedMixingEquipment().isEmpty()) {
+            tvMixingEquipment.setText("拌合设备: " + task.getAssignedMixingEquipment());
+        } else {
+            tvMixingEquipment.setText("拌合设备: 未知");
+        }
+        
+        // 设置拌合设备厂家信息
+        if (task.getMixingEquipmentManufacturer() != null && !task.getMixingEquipmentManufacturer().isEmpty()) {
+            tvMixingManufacturer.setText("拌合设备厂家: " + task.getMixingEquipmentManufacturer());
+        } else {
+            tvMixingManufacturer.setText("拌合设备厂家: 未知");
+        }
+        
+        // 设置压实设备信息
+        if (task.getAssignedFormingEquipment() != null && !task.getAssignedFormingEquipment().isEmpty()) {
+            tvFormingEquipment.setText("压实设备: " + task.getAssignedFormingEquipment());
+        } else {
+            tvFormingEquipment.setText("压实设备: 未知");
+        }
+        
+        // 设置压实设备厂家信息
+        if (task.getFormingEquipmentManufacturer() != null && !task.getFormingEquipmentManufacturer().isEmpty()) {
+            tvFormingManufacturer.setText("压实设备厂家: " + task.getFormingEquipmentManufacturer());
+        } else {
+            tvFormingManufacturer.setText("压实设备厂家: 未知");
+        }
+        
+        // 设置实验设备信息
+        if (task.getAssignedTestingEquipment() != null && !task.getAssignedTestingEquipment().isEmpty()) {
+            tvTestingEquipment.setText("实验设备: " + task.getAssignedTestingEquipment());
+        } else {
+            tvTestingEquipment.setText("实验设备: 未知");
+        }
+        
+        // 设置实验设备厂家信息
+        if (task.getTestingEquipmentManufacturer() != null && !task.getTestingEquipmentManufacturer().isEmpty()) {
+            tvTestingManufacturer.setText("实验设备厂家: " + task.getTestingEquipmentManufacturer());
+        } else {
+            tvTestingManufacturer.setText("实验设备厂家: 未知");
+        }
+        
+        Log.d(TAG, "更新设备指派信息UI完成");
+    }
+    
     /**
      * 获取配比名称和压实方法信息
      */
@@ -753,24 +839,42 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
             return;
         }
         
+        // 增加日志以便跟踪调试
+        Log.d(TAG, "正在请求获取沥青混合料弯曲试验数据，使用原始任务ID: " + taskId);
+        
         // 隐藏无结果提示，准备显示数据
         tvNoResults.setVisibility(View.GONE);
         
-        // 调用API获取混合料弯曲试验数据
-        Call<List<MixtureBendingTestResponse>> call = mixtureTaskApi.getMixtureBendingTestByTaskId(taskId);
-        call.enqueue(new Callback<List<MixtureBendingTestResponse>>() {
+        // 调用API获取混合料弯曲试验数据，使用原始任务ID（可能包含后缀）
+        Call<ApiResponse<List<MixtureBendingTestResponse>>> call = mixtureTaskApi.getMixtureBendingTestByTaskId(taskId);
+        call.enqueue(new Callback<ApiResponse<List<MixtureBendingTestResponse>>>() {
             @Override
-            public void onResponse(Call<List<MixtureBendingTestResponse>> call, Response<List<MixtureBendingTestResponse>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    List<MixtureBendingTestResponse> mixtureBendingTests = response.body();
+            public void onResponse(Call<ApiResponse<List<MixtureBendingTestResponse>>> call, Response<ApiResponse<List<MixtureBendingTestResponse>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    List<MixtureBendingTestResponse> mixtureBendingTests = response.body().getData();
                     
-                    if (mixtureBendingTests.isEmpty()) {
+                    if (mixtureBendingTests == null || mixtureBendingTests.isEmpty()) {
                         Log.w(TAG, "未找到混合料弯曲试验数据");
                         showNoResultsMessage("未找到混合料弯曲试验数据");
                         return;
                     }
                     
                     Log.d(TAG, "成功获取混合料弯曲试验数据: " + mixtureBendingTests.size() + " 条");
+                    
+                    // 添加详细日志
+                    for (int i = 0; i < mixtureBendingTests.size(); i++) {
+                        MixtureBendingTestResponse test = mixtureBendingTests.get(i);
+                        Log.d(TAG, "数据项 #" + i 
+                            + "\n  ID: " + test.getId()
+                            + "\n  taskId: " + test.getTaskId()
+                            + "\n  mixRatioId: " + test.getMixRatioId()
+                            + "\n  spanLength: " + test.getSpanLength()
+                            + "\n  specimenCount: " + test.getSpecimenCount()
+                            + "\n  averageFlexuralStrength: " + test.getAverageFlexuralStrength()
+                            + "\n  averageMaxStrain: " + test.getAverageMaxStrain()
+                            + "\n  averageStiffnessModulus: " + test.getAverageStiffnessModulus()
+                            + "\n  specimens: " + (test.getSpecimens() != null ? test.getSpecimens().substring(0, Math.min(100, test.getSpecimens().length())) + "..." : "null"));
+                    }
                     
                     // 初始化或更新适配器
                     if (mixtureBendingAdapter == null) {
@@ -783,15 +887,16 @@ public class MixtureTaskResultActivity extends AppCompatActivity {
                     // 显示RecyclerView
                     rvExperimentResults.setVisibility(View.VISIBLE);
                 } else {
-                    Log.e(TAG, "获取混合料弯曲试验数据失败: " + response.code());
-                    showNoResultsMessage("获取混合料弯曲试验数据失败: " + response.code());
+                    String errorMsg = response.body() != null ? response.body().getMessage() : "服务器响应错误: " + response.code();
+                    Log.e(TAG, "获取混合料弯曲试验数据失败: " + errorMsg);
+                    showNoResultsMessage("获取混合料弯曲试验数据失败: " + errorMsg);
                 }
             }
             
             @Override
-            public void onFailure(Call<List<MixtureBendingTestResponse>> call, Throwable t) {
+            public void onFailure(Call<ApiResponse<List<MixtureBendingTestResponse>>> call, Throwable t) {
                 Log.e(TAG, "获取混合料弯曲试验数据请求失败", t);
-                showNoResultsMessage("获取混合料弯曲试验数据失败: 网络错误");
+                showNoResultsMessage("获取混合料弯曲试验数据失败: " + t.getMessage());
             }
         });
     }

@@ -414,11 +414,57 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
         }).start();
     }
 
-    public void updateMixRatios(ArrayList<MixRatio> mixRatios) {
-        selectedMixRatios.clear();
-        selectedMixRatios.addAll(mixRatios);
+    /**
+     * 更新可用的配比列表
+     * @param mixRatios 配比列表
+     */
+    public void updateMixRatios(List<MixRatio> mixRatios) {
+        if (mixRatios == null) {
+            return;
+        }
+        
+        this.selectedMixRatios.clear();
+        this.selectedMixRatios.addAll(mixRatios);
+        
+        // 如果适配器已初始化，更新配比列表
         if (moldingMethodAdapter != null) {
             moldingMethodAdapter.setAvailableMixRatios(selectedMixRatios);
+            moldingMethodAdapter.notifyDataSetChanged();
+        }
+        
+        Log.d("SelectMoldingMethodFragment", "Updated mix ratios: " + selectedMixRatios.size());
+        
+        // 刷新制件方法加载
+        if (isAdded() && isVisible()) {
+            loadMoldingMethods();
+        }
+    }
+    
+    /**
+     * 强制刷新UI，确保列表和视图正确显示
+     */
+    public void refreshUI() {
+        if (isAdded()) {
+            // 确保卡片和列表可见
+            if (cardAddMoldingMethod != null) {
+                cardAddMoldingMethod.setVisibility(View.VISIBLE);
+            }
+            
+            // 刷新制件方法列表
+            if (moldingMethodAdapter != null) {
+                moldingMethodAdapter.notifyDataSetChanged();
+            }
+            
+            // 更新空视图状态
+            updateEmptyView();
+            
+            // 如果列表为空，尝试重新加载
+            if (moldingMethods.isEmpty()) {
+                loadMoldingMethods();
+            }
+            
+            Log.d("SelectMoldingMethodFragment", "UI 已刷新，当前制件方法数: " + 
+                  (moldingMethods != null ? moldingMethods.size() : 0));
         }
     }
 

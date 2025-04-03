@@ -20,6 +20,8 @@ public class DsrTemperaturePoint {
     private Long id;
 
     private Long testId;
+    
+    private String taskId;
 
     private Integer pointNumber;
 

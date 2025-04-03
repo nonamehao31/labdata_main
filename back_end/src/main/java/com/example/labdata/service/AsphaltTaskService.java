@@ -10,6 +10,7 @@ import com.example.labdata.repository.TestAsphaltMaterialRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +42,9 @@ public class AsphaltTaskService {
 
     @Autowired
     private TestAsphaltMaterialRepository testAsphaltMaterialRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     /**
      * 创建单个沥青实验任务
@@ -218,6 +222,7 @@ public class AsphaltTaskService {
     public AsphaltDetailResponse getAsphaltDetailByTaskId(String taskId) {
         logger.info("获取任务ID为{}的沥青任务详情", taskId);
 
+        // 使用正确的方法查询：findByAsphaltTaskAssignmentId
         List<AsphaltTask> asphaltTasks = asphaltTaskRepository.findByAsphaltTaskAssignmentId(taskId);
         if (asphaltTasks.isEmpty()) {
             logger.warn("未找到任务ID为{}的沥青任务", taskId);
@@ -358,7 +363,7 @@ public class AsphaltTaskService {
     }
 
     /**
-     * 根据任务ID获取实验状态
+     * 根据ID获取实验状态
      *
      * @param taskId 任务ID
      * @return 实验状态
@@ -512,9 +517,9 @@ public class AsphaltTaskService {
     }
 
     /**
-     * 根据任务ID（字符串）获取实验状态
+     * 根据ID获取实验状态
      *
-     * @param taskId 任务ID（字符串）
+     * @param taskId 任务ID
      * @return 实验状态
      */
     public String getExperimentStatusByStringId(String taskId) {
@@ -666,6 +671,59 @@ public class AsphaltTaskService {
         }
         
         return updatedTask;
+    }
+
+    /**
+     * 获取任务指派信息和设备信息
+     * 
+     * @param asphaltExperimentId 沥青实验ID
+     * @return 包含任务指派信息和设备信息的Map
+     */
+    public Map<String, String> getTaskAssignmentAndEquipment(String asphaltExperimentId) {
+        if (asphaltExperimentId == null || asphaltExperimentId.isEmpty()) {
+            logger.error("沥青实验ID为空，无法获取任务指派信息和设备信息");
+            return null;
+        }
+
+        try {
+            // 使用JDBC参数化查询获取任务指派信息和设备信息
+            String sql = "SELECT asphalt_task_assignment, " +
+                    "assigned_asphalt_equipment, assigned_asphalt_equipment_manufacturer " +
+                    "FROM asphalt_task WHERE asphalt_experiment_id = ?";
+            
+            Object[] params = new Object[]{asphaltExperimentId};
+            int[] types = new int[]{java.sql.Types.VARCHAR}; // 明确指定参数类型为VARCHAR
+
+            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, params, types);
+
+            if (!results.isEmpty()) {
+                Map<String, String> taskInfo = new HashMap<>();
+                
+                // 提取任务指派信息
+                Object taskAssignment = results.get(0).get("asphalt_task_assignment");
+                if (taskAssignment != null) {
+                    taskInfo.put("taskAssignment", taskAssignment.toString());
+                }
+                
+                // 提取设备信息
+                Object assignedAsphaltEquipment = results.get(0).get("assigned_asphalt_equipment");
+                if (assignedAsphaltEquipment != null) {
+                    taskInfo.put("assignedAsphaltEquipment", assignedAsphaltEquipment.toString());
+                }
+                
+                Object asphaltEquipmentManufacturer = results.get(0).get("assigned_asphalt_equipment_manufacturer");
+                if (asphaltEquipmentManufacturer != null) {
+                    taskInfo.put("asphaltEquipmentManufacturer", asphaltEquipmentManufacturer.toString());
+                }
+                
+                return taskInfo;
+            }
+            
+            return null;
+        } catch (Exception e) {
+            logger.error("获取任务指派信息和设备信息时发生错误: {}", e.getMessage(), e);
+            return null;
+        }
     }
 
     /**

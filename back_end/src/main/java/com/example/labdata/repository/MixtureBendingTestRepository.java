@@ -29,4 +29,13 @@ public interface MixtureBendingTestRepository extends JpaRepository<MixtureBendi
      * @return 指定任务和配比的弯曲试验数据，如果不存在则返回空
      */
     Optional<MixtureBendingTest> findByTaskIdAndMixRatioId(String taskId, Long mixRatioId);
+    
+    /**
+     * 根据任务ID前缀查找所有弯曲试验数据
+     * 使用LIKE操作符进行模糊匹配
+     * 
+     * @param taskIdPrefix 任务ID前缀
+     * @return 匹配前缀的所有弯曲试验数据列表
+     */
+    List<MixtureBendingTest> findByTaskIdStartingWith(String taskIdPrefix);
 }

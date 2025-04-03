@@ -156,6 +156,10 @@ public class MixRatio implements Parcelable {
     @ColumnInfo(name = "asphalt_percentage")
     private double asphaltPercentage;
     
+    // 公司ID
+    @ColumnInfo(name = "company_id")
+    private Long companyId;
+    
     public double getAggregatePercentage() {
         return aggregatePercentage;
     }
@@ -170,5 +174,13 @@ public class MixRatio implements Parcelable {
     
     public void setAsphaltPercentage(double asphaltPercentage) {
         this.asphaltPercentage = asphaltPercentage;
+    }
+    
+    public Long getCompanyId() {
+        return companyId;
+    }
+    
+    public void setCompanyId(Long companyId) {
+        this.companyId = companyId;
     }
 }

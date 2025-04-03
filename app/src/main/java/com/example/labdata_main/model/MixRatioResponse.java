@@ -7,6 +7,7 @@ public class MixRatioResponse {
     private String mixName;
     private String mixId;
     private String createdAt;
+    private String mixCompany;  // 对应数据库中的mix_company字段
     private List<AsphaltComponentResponse> asphaltComponents;
     private List<SandComponentResponse> sandComponents;
     private List<StoneComponentResponse> stoneComponents;
@@ -41,6 +42,14 @@ public class MixRatioResponse {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getMixCompany() {
+        return mixCompany;
+    }
+
+    public void setMixCompany(String mixCompany) {
+        this.mixCompany = mixCompany;
     }
 
     public List<AsphaltComponentResponse> getAsphaltComponents() {

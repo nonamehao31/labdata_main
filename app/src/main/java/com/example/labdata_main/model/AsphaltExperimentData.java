@@ -186,7 +186,7 @@ public class AsphaltExperimentData {
             public static final String FREQUENCY = "frequency"; // 试验频率
             public static final String COMPLEX_MODULUS = "complex_modulus"; // 复合模量G*
             public static final String PHASE_ANGLE = "phase_angle"; // 相位角
-            public static final String PLATE_RADIUS = "plate_radius"; // 试验板半径(R)
+            public static final String PLATE_RADIUS = "test_radius"; // 试验板半径(R)
             public static final String PLATE_GAP = "plate_gap"; // 试验平板间距(h)
             public static final String MAX_SHEAR_STRESS = "max_shear_stress"; // 最大剪切应力(τmax)
             public static final String MAX_SHEAR_STRAIN = "max_shear_strain"; // 最大剪切应变(γmax)

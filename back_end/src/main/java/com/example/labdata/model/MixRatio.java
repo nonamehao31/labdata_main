@@ -30,7 +30,7 @@ public class MixRatio {
     private LocalDateTime createdAt;
     
     @Column(name = "mix_company")
-    private Long mixCompany;
+    private String mixCompany;
     
     @Column(name = "created_by")
     private Long createdBy;

@@ -21,6 +21,8 @@ public class DsrMeasurement {
 
     private Long temperaturePointId;
 
+    private String taskId;
+
     private Double loadFrequency;
 
     private Double maxShearStress;

@@ -95,6 +95,7 @@ public class DynamicShearRheometerTestService {
                     // 创建温度点记录
                     DsrTemperaturePoint temperaturePoint = new DsrTemperaturePoint();
                     temperaturePoint.setTestId(savedTest.getId());
+                    temperaturePoint.setTaskId(request.getTaskId()); // 设置任务ID
                     temperaturePoint.setPointNumber(index);
 
                     String tempKey = "temperature_" + index;
@@ -112,6 +113,7 @@ public class DynamicShearRheometerTestService {
                     // 3. 创建该温度点对应的测量值记录
                     DsrMeasurement measurement = new DsrMeasurement();
                     measurement.setTemperaturePointId(savedTempPoint.getId());
+                    measurement.setTaskId(request.getTaskId()); // 设置任务ID
 
                     // 解析并设置该温度点的测量值
                     String freqKey = "frequency_" + index;

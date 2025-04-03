@@ -2,10 +2,15 @@ package com.example.labdata_main;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -16,6 +21,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
@@ -45,9 +51,16 @@ import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
@@ -209,11 +222,33 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
         tvQRCodeContent = findViewById(R.id.tvQRCodeContent);
         btnGenerateQRCode = findViewById(R.id.btnGenerateQRCode);
         btnComplete = findViewById(R.id.btnComplete);
+        
+        // 添加保存二维码按钮
+        MaterialButton btnSaveQRCode = findViewById(R.id.btnSaveQRCode);
+        if (btnSaveQRCode != null) {
+            btnSaveQRCode.setOnClickListener(v -> saveAndShareCurrentQRCode());
+        } else {
+            Log.w(TAG, "btnSaveQRCode未找到，可能需要添加到布局中");
+        }
     }
     
     private void setupListeners() {
         btnGenerateQRCode.setText("打印试件码");
-        btnGenerateQRCode.setOnClickListener(v -> checkPermissionsAndPrint());
+        btnGenerateQRCode.setOnClickListener(v -> {
+            // 显示选项对话框
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("选择操作")
+                   .setItems(new CharSequence[]{"打印二维码", "保存并分享二维码"}, (dialog, which) -> {
+                       if (which == 0) {
+                           // 选择了打印
+                           checkPermissionsAndPrint();
+                       } else {
+                           // 选择了保存并分享
+                           saveAndShareCurrentQRCode();
+                       }
+                   })
+                   .show();
+        });
 
         btnComplete.setOnClickListener(v -> completeSpecimenGeneration());
     }
@@ -1391,5 +1426,94 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
             bluetoothPrinterManager.disconnect();
         }
         executor.shutdown();
+    }
+
+    /**
+     * 保存并分享当前二维码
+     */
+    private void saveAndShareCurrentQRCode() {
+        int currentPosition = viewPagerQRCodes.getCurrentItem();
+        if (currentPosition < qrCodePagerAdapter.getItemCount()) {
+            Bitmap qrCode = qrCodePagerAdapter.getQRCode(currentPosition);
+            if (qrCode != null) {
+                saveAndShareQRCodeImage(qrCode, "试件码_" + (currentPosition + 1));
+            } else {
+                Toast.makeText(this, "获取二维码图像失败", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * 保存二维码图像到文件并分享
+     * @param bitmap 二维码位图
+     * @param fileName 文件名前缀
+     */
+    private void saveAndShareQRCodeImage(Bitmap bitmap, String fileName) {
+        try {
+            // 生成文件名，添加日期时间戳
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String imageFileName = fileName + "_" + timeStamp + ".png";
+            
+            Uri imageUri;
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+使用MediaStore API
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, imageFileName);
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/LabData");
+                
+                imageUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                if (imageUri != null) {
+                    try (OutputStream outputStream = getContentResolver().openOutputStream(imageUri)) {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+                    }
+                }
+            } else {
+                // Android 9及以下使用传统文件存储
+                File storageDir = new File(Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_PICTURES), "LabData");
+                if (!storageDir.exists()) {
+                    storageDir.mkdirs();
+                }
+                
+                File imageFile = new File(storageDir, imageFileName);
+                try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                }
+                
+                // 通知媒体扫描器更新
+                Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                imageUri = Uri.fromFile(imageFile);
+                mediaScanIntent.setData(imageUri);
+                sendBroadcast(mediaScanIntent);
+                
+                // 对于Android 7+，需要使用FileProvider
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    imageUri = FileProvider.getUriForFile(this,
+                            getApplicationContext().getPackageName() + ".provider",
+                            imageFile);
+                }
+            }
+            
+            // 显示成功消息
+            Toast.makeText(this, "二维码已保存", Toast.LENGTH_SHORT).show();
+            
+            // 创建分享Intent
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("image/png");
+            shareIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            
+            // 启动分享选择器
+            startActivity(Intent.createChooser(shareIntent, "分享试件码"));
+            
+        } catch (IOException e) {
+            Log.e(TAG, "保存二维码图像失败", e);
+            Toast.makeText(this, "保存二维码失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Log.e(TAG, "处理二维码图像时出错", e);
+            Toast.makeText(this, "处理二维码时出错: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 }

@@ -69,8 +69,8 @@ public interface MixtureTaskApi {
      * @param taskId 任务ID
      * @return 沥青混合料弯曲实验数据响应
      */
-    @GET("api/mixtureTask/getMixtureBendingTest/{taskId}")
-    Call<List<MixtureBendingTestResponse>> getMixtureBendingTestByTaskId(@Path("taskId") String taskId);
+    @GET("api/mixture-bending-test/task/{taskId}")
+    Call<ApiResponse<List<MixtureBendingTestResponse>>> getMixtureBendingTestByTaskId(@Path("taskId") String taskId);
     
     /**
      * 获取动态模量实验数据

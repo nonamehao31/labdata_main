@@ -100,7 +100,7 @@ public class SelectRatioActivity extends AppCompatActivity {
             
             Log.d(TAG, "开始获取公司配比数据，公司ID: " + companyId);
             
-            mixRatioApiService.getMixRatiosByCompany(companyId, new Callback<ApiResponse<List<MixRatioResponse>>>() {
+            mixRatioApiService.getMixRatiosByCompany(String.valueOf(companyId), new Callback<ApiResponse<List<MixRatioResponse>>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<List<MixRatioResponse>>> call, Response<ApiResponse<List<MixRatioResponse>>> response) {
                     progressBar.setVisibility(View.GONE);

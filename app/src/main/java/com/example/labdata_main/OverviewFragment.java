@@ -285,6 +285,17 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
 
     private void registerTaskRefreshReceiver() {
+        // 先解注册旧的接收器以避免重复
+        if (taskRefreshReceiver != null) {
+            try {
+                requireActivity().unregisterReceiver(taskRefreshReceiver);
+            } catch (IllegalArgumentException e) {
+                // 接收器可能未注册，忽略错误
+                Log.d(TAG, "接收器未注册: " + e.getMessage());
+            }
+        }
+        
+        // 重新创建并注册接收器
         IntentFilter filter = new IntentFilter("com.example.labdata_main.TASK_UPDATED");
         taskRefreshReceiver = new BroadcastReceiver() {
             @Override
@@ -293,10 +304,16 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
                 refreshData();
             }
         };
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            requireActivity().registerReceiver(taskRefreshReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            requireActivity().registerReceiver(taskRefreshReceiver, filter);
+        
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                requireActivity().registerReceiver(taskRefreshReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                requireActivity().registerReceiver(taskRefreshReceiver, filter);
+            }
+            Log.d(TAG, "任务更新广播接收器注册成功");
+        } catch (Exception e) {
+            Log.e(TAG, "注册广播接收器出错: " + e.getMessage());
         }
     }
 
@@ -317,19 +334,8 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         sharedPrefsManager = new SharedPrefsManager(requireContext());
 
         // 注册广播接收器
-        IntentFilter filter = new IntentFilter("com.example.labdata_main.TASK_UPDATED");
-        taskRefreshReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                refreshData();
-            }
-        };
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(taskRefreshReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            requireContext().registerReceiver(taskRefreshReceiver, filter);
-        }
-
+        registerTaskRefreshReceiver();
+        
         // 设置Spinner
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(requireContext(),
                 R.array.experiment_types, android.R.layout.simple_spinner_item);
@@ -390,7 +396,10 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     private void fetchMixtureTasks() {
         Log.d(TAG, "开始获取混合料任务");
         String companyId = sharedPrefsManager.getUserCompany();
-        Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> call = mixtureTaskService.getUserMixtureTasks(companyId);
+        String username = sharedPrefsManager.getUserName(); // 获取当前用户名
+        Log.d(TAG, "当前用户: " + username + ", 公司ID: " + companyId);
+        
+        Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> call = mixtureTaskService.getUserMixtureTasks(companyId, username);
         
         // 打印请求详情
         Request request = call.request();
@@ -451,7 +460,11 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     
     private void fetchAsphaltTasks() {
         Log.d(TAG, "开始获取沥青任务");
-        Call<com.example.labdata_main.api.model.ApiResponse<List<AsphaltTaskResponse>>> call = asphaltTaskService.getUserAsphaltTasks(sharedPrefsManager.getUserCompany());
+        String companyId = sharedPrefsManager.getUserCompany();
+        String username = sharedPrefsManager.getUserName(); // 获取当前用户名
+        Log.d(TAG, "当前用户: " + username + ", 公司ID: " + companyId);
+        
+        Call<com.example.labdata_main.api.model.ApiResponse<List<AsphaltTaskResponse>>> call = asphaltTaskService.getUserAsphaltTasks(companyId, username);
         
         // 打印请求详情
         Request request = call.request();
@@ -1473,7 +1486,8 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         
         // 使用混合料实验API端点测试认证，避免使用可能有问题的沥青API
         String companyId = sharedPrefsManager.getUserCompany();
-        Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> testCall = mixtureService.getUserMixtureTasks(companyId);
+        String username = sharedPrefsManager.getUserName(); // 获取当前用户名
+        Call<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>> testCall = mixtureService.getUserMixtureTasks(companyId, username);
         
         testCall.enqueue(new Callback<com.example.labdata_main.api.model.ApiResponse<List<MixtureTaskResponse>>>() {
             @Override

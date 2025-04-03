@@ -3117,4 +3117,81 @@ public class MixtureTaskService {
             return result;
         }
     }
+
+    /**
+     * 获取任务指派信息和设备信息
+     * 
+     * @param taskId 任务ID
+     * @return 包含任务指派信息和设备信息的Map
+     */
+    public Map<String, String> getTaskAssignmentAndEquipment(String taskId) {
+        if (taskId == null || taskId.isEmpty()) {
+            logger.error("任务ID为空，无法获取任务指派信息和设备信息");
+            return null;
+        }
+
+        try {
+            // 使用JDBC参数化查询获取任务指派信息和设备信息
+            String sql = "SELECT task_assignment, " +
+                    "assigned_mixing_equipment, mixing_equipment_manufacturer, " +
+                    "assigned_forming_equipment, forming_equipment_manufacturer, " +
+                    "assigned_testing_equipment, testing_equipment_manufacturer " +
+                    "FROM mixture_task WHERE task_id = ?";
+            
+            Object[] params = new Object[]{taskId};
+            int[] types = new int[]{java.sql.Types.VARCHAR}; // 明确指定参数类型为VARCHAR
+
+            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, params, types);
+
+            if (!results.isEmpty()) {
+                Map<String, String> taskInfo = new HashMap<>();
+                
+                // 提取任务指派信息
+                Object taskAssignment = results.get(0).get("task_assignment");
+                if (taskAssignment != null) {
+                    taskInfo.put("taskAssignment", taskAssignment.toString());
+                }
+                
+                // 提取拌合设备信息
+                Object assignedMixingEquipment = results.get(0).get("assigned_mixing_equipment");
+                if (assignedMixingEquipment != null) {
+                    taskInfo.put("assignedMixingEquipment", assignedMixingEquipment.toString());
+                }
+                
+                Object mixingEquipmentManufacturer = results.get(0).get("mixing_equipment_manufacturer");
+                if (mixingEquipmentManufacturer != null) {
+                    taskInfo.put("mixingEquipmentManufacturer", mixingEquipmentManufacturer.toString());
+                }
+                
+                // 提取压实设备信息
+                Object assignedFormingEquipment = results.get(0).get("assigned_forming_equipment");
+                if (assignedFormingEquipment != null) {
+                    taskInfo.put("assignedFormingEquipment", assignedFormingEquipment.toString());
+                }
+                
+                Object formingEquipmentManufacturer = results.get(0).get("forming_equipment_manufacturer");
+                if (formingEquipmentManufacturer != null) {
+                    taskInfo.put("formingEquipmentManufacturer", formingEquipmentManufacturer.toString());
+                }
+                
+                // 提取实验设备信息
+                Object assignedTestingEquipment = results.get(0).get("assigned_testing_equipment");
+                if (assignedTestingEquipment != null) {
+                    taskInfo.put("assignedTestingEquipment", assignedTestingEquipment.toString());
+                }
+                
+                Object testingEquipmentManufacturer = results.get(0).get("testing_equipment_manufacturer");
+                if (testingEquipmentManufacturer != null) {
+                    taskInfo.put("testingEquipmentManufacturer", testingEquipmentManufacturer.toString());
+                }
+                
+                return taskInfo;
+            }
+            
+            return null;
+        } catch (Exception e) {
+            logger.error("获取任务指派信息和设备信息时发生错误: {}", e.getMessage(), e);
+            return null;
+        }
+    }
 }

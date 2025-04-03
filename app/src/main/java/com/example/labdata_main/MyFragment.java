@@ -373,12 +373,23 @@ public class MyFragment extends Fragment {
         apiService.getUserAvatar(currentUserId).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                // 检查Fragment是否仍然附加到Activity
+                if (!isAdded()) {
+                    Log.d("MyFragment", "Fragment已分离，取消加载头像");
+                    return;
+                }
+                
                 if (response.isSuccessful() && response.body() != null) {
                     Log.d("MyFragment", "成功从服务器获取头像");
                     
                     // 创建临时文件保存头像
                     try {
-                        File outputDir = new File(requireContext().getCacheDir(), "avatars");
+                        // 再次检查防止在IO操作过程中分离
+                        if (!isAdded()) {
+                            return;
+                        }
+                        
+                        File outputDir = new File(getContext().getCacheDir(), "avatars");
                         if (!outputDir.exists()) {
                             outputDir.mkdirs();
                         }
@@ -394,13 +405,16 @@ public class MyFragment extends Fragment {
                         saveAvatarUri(avatarUri.toString());
                         
                         // 使用Glide显示头像
-                        if (getActivity() != null) {
+                        if (getActivity() != null && isAdded()) {
                             getActivity().runOnUiThread(() -> {
-                                Glide.with(requireContext())
-                                        .load(avatarUri)
-                                        .diskCacheStrategy(DiskCacheStrategy.NONE)
-                                        .skipMemoryCache(true)
-                                        .into(ivAvatar);
+                                // 再次检查以确保在UI更新时Fragment仍然附加
+                                if (isAdded()) {
+                                    Glide.with(getContext())
+                                            .load(avatarUri)
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                            .skipMemoryCache(true)
+                                            .into(ivAvatar);
+                                }
                             });
                         }
                     } catch (IOException e) {
@@ -437,6 +451,12 @@ public class MyFragment extends Fragment {
             return;
         }
         
+        // 检查Fragment是否已附加
+        if (!isAdded()) {
+            Log.d("MyFragment", "Fragment已分离，取消上传头像");
+            return;
+        }
+        
         Log.d("MyFragment", "开始上传头像到服务器, 用户ID: " + currentUserId);
         
         try {
@@ -464,6 +484,12 @@ public class MyFragment extends Fragment {
             apiService.uploadUserAvatar(currentUserId, filePart).enqueue(new Callback<ApiResponse<String>>() {
                 @Override
                 public void onResponse(Call<ApiResponse<String>> call, Response<ApiResponse<String>> response) {
+                    // 检查Fragment是否仍然附加
+                    if (!isAdded()) {
+                        Log.d("MyFragment", "Fragment已分离，取消处理头像上传响应");
+                        return;
+                    }
+                    
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                         Log.d("MyFragment", "头像上传成功: " + response.body().getData());
                         
@@ -471,10 +497,14 @@ public class MyFragment extends Fragment {
                         loadAvatarFromServer();
                         
                         // 显示成功消息
-                        Toast.makeText(requireContext(), "头像上传成功", Toast.LENGTH_SHORT).show();
+                        if (getContext() != null) {
+                            Toast.makeText(getContext(), "头像上传成功", Toast.LENGTH_SHORT).show();
+                        }
                     } else {
                         Log.e("MyFragment", "头像上传失败: " + (response.body() != null ? response.body().getMessage() : "未知错误"));
-                        Toast.makeText(requireContext(), "头像上传失败，请重试", Toast.LENGTH_SHORT).show();
+                        if (getContext() != null) {
+                            Toast.makeText(getContext(), "头像上传失败，请重试", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
                 
@@ -482,14 +512,22 @@ public class MyFragment extends Fragment {
                 public void onFailure(Call<ApiResponse<String>> call, Throwable t) {
                     Log.e("MyFragment", "头像上传请求失败: " + t.getMessage());
                     t.printStackTrace();
-                    Toast.makeText(requireContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    
+                    // 检查Fragment是否仍然附加
+                    if (isAdded() && getContext() != null) {
+                        Toast.makeText(getContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
             
         } catch (Exception e) {
             Log.e("MyFragment", "准备上传头像时出错: " + e.getMessage());
             e.printStackTrace();
-            Toast.makeText(requireContext(), "上传头像失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            
+            // 检查Fragment是否仍然附加
+            if (isAdded() && getContext() != null) {
+                Toast.makeText(getContext(), "上传头像失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         }
     }
     
@@ -570,6 +608,12 @@ public class MyFragment extends Fragment {
             return;
         }
         
+        // 检查Fragment是否附加
+        if (!isAdded()) {
+            Log.d("MyFragment", "Fragment已分离，取消获取用户组织信息");
+            return;
+        }
+        
         // 显示加载提示
         // 这里可以添加进度指示器，但为了保持最小修改，我们不添加UI变化
 
@@ -579,6 +623,12 @@ public class MyFragment extends Fragment {
         apiService.getUserInfoByUsername(username).enqueue(new Callback<ApiResponse<Map<String, Object>>>() {
             @Override
             public void onResponse(Call<ApiResponse<Map<String, Object>>> call, Response<ApiResponse<Map<String, Object>>> response) {
+                // 检查Fragment是否仍然附加
+                if (!isAdded()) {
+                    Log.d("MyFragment", "Fragment已分离，取消处理用户组织信息响应");
+                    return;
+                }
+                
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
                     Map<String, Object> userData = response.body().getData();
                     
@@ -619,12 +669,18 @@ public class MyFragment extends Fragment {
                     Log.d("MyFragment", "成功获取用户信息: 组织=" + organization + ", 管理员状态=" + isAdmin);
                     
                     // 更新UI显示
-                    if (getActivity() != null) {
+                    if (getActivity() != null && isAdded()) {
                         // 创建final副本，以便在lambda表达式中使用
                         final String finalOrganization = organization != null && !organization.isEmpty() ? organization : "";
                         final boolean finalIsAdmin = isAdmin;
                         
                         getActivity().runOnUiThread(() -> {
+                            // 再次检查Fragment是否仍然附加
+                            if (!isAdded()) {
+                                Log.d("MyFragment", "Fragment已分离，取消UI更新");
+                                return;
+                            }
+                            
                             // 更新组织信息
                             if (!finalOrganization.isEmpty()) {
                                 tvCompany.setText(finalOrganization);
@@ -635,9 +691,7 @@ public class MyFragment extends Fragment {
                             btnUserManagement.setVisibility(finalIsAdmin ? View.VISIBLE : View.GONE);
                             
                             // 更新存储的用户类型
-                            if (getContext() != null) {
-                                sharedPrefsManager.setUserType(finalIsAdmin ? 1 : 0);
-                            }
+                            sharedPrefsManager.setUserType(finalIsAdmin ? 1 : 0);
                             
                             Log.d("MyFragment", "更新UI: 用户类型=" + (finalIsAdmin ? "管理员" : "普通用户"));
 

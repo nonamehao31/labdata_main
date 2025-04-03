@@ -41,7 +41,7 @@ public interface MixtureTaskService {
      * 注意：此方法返回ApiResponse包装的数组
      */
     @GET("api/mixture-tasks/company")
-    Call<ApiResponse<List<MixtureTaskResponse>>> getUserMixtureTasks(@Query("companyId") String companyId);
+    Call<ApiResponse<List<MixtureTaskResponse>>> getUserMixtureTasks(@Query("companyId") String companyId, @Query("username") String username);
 
     /**
      * 根据任务ID获取项目名称

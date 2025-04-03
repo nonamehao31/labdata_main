@@ -1,6 +1,7 @@
 package com.example.labdata.controller;
 
 import com.example.labdata.model.MixtureBendingTest;
+import com.example.labdata.payload.response.MixtureBendingTestDTO;
 import com.example.labdata.service.MixtureBendingTestService;
 import com.example.labdata.service.MixtureTaskStatusService;
 import com.example.labdata.payload.ApiResponse;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 沥青混合料弯曲试验控制器
@@ -119,10 +121,27 @@ public class MixtureBendingTestController {
      * @return 指定任务的所有弯曲试验数据列表
      */
     @GetMapping("/mixture-bending-test/task/{taskId}")
-    public ResponseEntity<ApiResponse<List<MixtureBendingTest>>> getMixtureBendingTestsByTaskId(@PathVariable String taskId) {
+    public ResponseEntity<ApiResponse<List<MixtureBendingTestDTO>>> getMixtureBendingTestsByTaskId(@PathVariable String taskId) {
         try {
             List<MixtureBendingTest> tests = mixtureBendingTestService.getMixtureBendingTestsByTaskId(taskId);
-            return ResponseEntity.ok(new ApiResponse<>(true, "获取数据成功", tests));
+            
+            // 将实体对象转换为DTO对象
+            List<MixtureBendingTestDTO> dtoList = tests.stream()
+                .map(MixtureBendingTestDTO::fromEntity)
+                .collect(Collectors.toList());
+                
+            logger.info("查询到沥青混合料弯曲试验数据 {} 条，taskId: {}", dtoList.size(), taskId);
+            // 输出第一条数据的关键字段用于调试
+            if (!dtoList.isEmpty()) {
+                MixtureBendingTestDTO firstDto = dtoList.get(0);
+                logger.info("第一条数据示例: id={}, taskId={}, mixRatioId={}, averageFlexuralStrength={}, " +
+                            "averageMaxStrain={}, averageStiffnessModulus={}",
+                            firstDto.getId(), firstDto.getTaskId(), firstDto.getMixRatioId(), 
+                            firstDto.getAverageFlexuralStrength(), firstDto.getAverageMaxStrain(),
+                            firstDto.getAverageStiffnessModulus());
+            }
+            
+            return ResponseEntity.ok(new ApiResponse<>(true, "获取数据成功", dtoList));
         } catch (Exception e) {
             logger.error("获取沥青混合料弯曲试验数据失败", e);
             return ResponseEntity.badRequest()

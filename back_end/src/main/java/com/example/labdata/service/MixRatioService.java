@@ -87,7 +87,9 @@ public class MixRatioService {
         mixRatio.setMixName(request.getMixName());
         
         // 设置用户单位ID和用户ID
-        mixRatio.setMixCompany(request.getMixCompany());
+        if (request.getMixCompany() != null) {
+            mixRatio.setMixCompany(String.valueOf(request.getMixCompany()));
+        }
         mixRatio.setCreatedBy(request.getCreatedBy());
         
         // 生成配合比ID: phb + 年月日 + 序号（如 phb20250314002）
@@ -164,7 +166,7 @@ public class MixRatioService {
         
         // 更新用户单位ID和用户ID（如果请求中包含这些字段）
         if (request.getMixCompany() != null) {
-            mixRatio.setMixCompany(request.getMixCompany());
+            mixRatio.setMixCompany(String.valueOf(request.getMixCompany()));
         }
         
         if (request.getCreatedBy() != null) {
@@ -335,13 +337,20 @@ public class MixRatioService {
     }
     
     /**
-     * 根据公司ID获取该公司的所有配比
+     * 根据公司ID获取该公司下的所有配比
      * 
-     * @param companyId 公司ID
+     * @param companyId 公司ID (可以是数字或字符串)
      * @return 该公司的配比列表，包含详细信息
      */
-    public List<MixRatioResponse> getMixRatiosByCompany(Long companyId) {
+    public List<MixRatioResponse> getMixRatiosByCompany(String companyId) {
+        // 直接使用字符串类型的公司ID查询
         List<MixRatio> mixRatios = mixRatioRepository.findByMixCompany(companyId);
+        
+        // 如果没有找到结果，尝试使用字符串匹配方法
+        if (mixRatios.isEmpty()) {
+            mixRatios = mixRatioRepository.findByMixCompanyString(companyId);
+        }
+        
         return mixRatios.stream()
                 .map(this::convertToDetailedResponse)
                 .collect(Collectors.toList());

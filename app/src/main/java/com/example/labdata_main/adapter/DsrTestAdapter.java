@@ -47,7 +47,9 @@ public class DsrTestAdapter extends RecyclerView.Adapter<DsrTestAdapter.ViewHold
         
         // 设置试验参数
         holder.tvTestRadius.setText("试验板半径(R): " + 
-                (result.getTestRadius() != null ? result.getTestRadius() + " mm" : "--"));
+                (result.getTestRadius() != null && result.getTestRadius() > 0 
+                ? String.format("%.2f", result.getTestRadius()) + " mm" 
+                : "--"));
         holder.tvPlateGap.setText("试验平板间距(h): " + 
                 (result.getPlateGap() != null ? result.getPlateGap() + " mm" : "--"));
         holder.tvControlMode.setText("控制方式: " + 

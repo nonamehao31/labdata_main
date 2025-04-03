@@ -46,6 +46,14 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
     private String assignedAsphaltEquipment;
     private String assignedAsphaltEquipmentManufacturer;
     
+    // 混合料设备指派信息
+    private String assignedMixingEquipment;
+    private String mixingEquipmentManufacturer;
+    private String assignedFormingEquipment;
+    private String formingEquipmentManufacturer;
+    private String assignedTestingEquipment;
+    private String testingEquipmentManufacturer;
+    
     // 无参构造函数
     public CompletedExperimentTask() {
     }
@@ -72,6 +80,12 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
         asphaltExperimentType = in.readString();
         assignedAsphaltEquipment = in.readString();
         assignedAsphaltEquipmentManufacturer = in.readString();
+        assignedMixingEquipment = in.readString();
+        mixingEquipmentManufacturer = in.readString();
+        assignedFormingEquipment = in.readString();
+        formingEquipmentManufacturer = in.readString();
+        assignedTestingEquipment = in.readString();
+        testingEquipmentManufacturer = in.readString();
     }
     
     // 实现 Parcelable.Creator
@@ -113,6 +127,12 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
         dest.writeString(asphaltExperimentType);
         dest.writeString(assignedAsphaltEquipment);
         dest.writeString(assignedAsphaltEquipmentManufacturer);
+        dest.writeString(assignedMixingEquipment);
+        dest.writeString(mixingEquipmentManufacturer);
+        dest.writeString(assignedFormingEquipment);
+        dest.writeString(formingEquipmentManufacturer);
+        dest.writeString(assignedTestingEquipment);
+        dest.writeString(testingEquipmentManufacturer);
     }
     
     // 工具方法 - 格式化时间
@@ -259,6 +279,54 @@ public class CompletedExperimentTask implements Serializable, Parcelable {
     
     public void setAssignedAsphaltEquipmentManufacturer(String assignedAsphaltEquipmentManufacturer) {
         this.assignedAsphaltEquipmentManufacturer = assignedAsphaltEquipmentManufacturer;
+    }
+    
+    public String getAssignedMixingEquipment() {
+        return assignedMixingEquipment;
+    }
+    
+    public void setAssignedMixingEquipment(String assignedMixingEquipment) {
+        this.assignedMixingEquipment = assignedMixingEquipment;
+    }
+    
+    public String getMixingEquipmentManufacturer() {
+        return mixingEquipmentManufacturer;
+    }
+    
+    public void setMixingEquipmentManufacturer(String mixingEquipmentManufacturer) {
+        this.mixingEquipmentManufacturer = mixingEquipmentManufacturer;
+    }
+    
+    public String getAssignedFormingEquipment() {
+        return assignedFormingEquipment;
+    }
+    
+    public void setAssignedFormingEquipment(String assignedFormingEquipment) {
+        this.assignedFormingEquipment = assignedFormingEquipment;
+    }
+    
+    public String getFormingEquipmentManufacturer() {
+        return formingEquipmentManufacturer;
+    }
+    
+    public void setFormingEquipmentManufacturer(String formingEquipmentManufacturer) {
+        this.formingEquipmentManufacturer = formingEquipmentManufacturer;
+    }
+    
+    public String getAssignedTestingEquipment() {
+        return assignedTestingEquipment;
+    }
+    
+    public void setAssignedTestingEquipment(String assignedTestingEquipment) {
+        this.assignedTestingEquipment = assignedTestingEquipment;
+    }
+    
+    public String getTestingEquipmentManufacturer() {
+        return testingEquipmentManufacturer;
+    }
+    
+    public void setTestingEquipmentManufacturer(String testingEquipmentManufacturer) {
+        this.testingEquipmentManufacturer = testingEquipmentManufacturer;
     }
     
     // 获取格式化的设备信息

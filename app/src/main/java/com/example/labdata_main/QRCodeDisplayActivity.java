@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -12,6 +13,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
@@ -19,9 +21,14 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.example.labdata_main.adapter.QRCodeAdapter;
 import com.example.labdata_main.model.Equipment;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class QRCodeDisplayActivity extends AppCompatActivity {
     private static final String TAG = "QRCodeDisplay";
@@ -81,7 +88,8 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
             if (btnSave == null) {
                 throw new IllegalStateException("Save button not found in layout");
             }
-            btnSave.setOnClickListener(v -> saveCurrentQRCode());
+            btnSave.setText("保存并分享设备码");
+            btnSave.setOnClickListener(v -> saveAndShareCurrentQRCode());
 
             // 完成按钮点击事件
             MaterialButton btnFinish = findViewById(R.id.btnFinish);
@@ -105,7 +113,10 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
         }
     }
 
-    private void saveCurrentQRCode() {
+    /**
+     * 保存并分享当前二维码
+     */
+    private void saveAndShareCurrentQRCode() {
         try {
             // 获取 ViewPager2 内部的 RecyclerView
             RecyclerView recyclerView = (RecyclerView) viewPager.getChildAt(0);
@@ -136,31 +147,87 @@ public class QRCodeDisplayActivity extends AppCompatActivity {
             // 获取当前设备信息用于文件名
             Equipment currentDevice = equipmentList.get(viewPager.getCurrentItem());
             String deviceType = getDeviceTypeName(currentDevice.getType());
-
-            // 保存图片
-            String fileName = deviceType + "_二维码_" + System.currentTimeMillis() + ".png";
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
-            values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
-            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES);
-
-            Uri imageUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-            if (imageUri == null) {
-                Toast.makeText(this, "保存失败：无法创建文件", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            try (OutputStream out = getContentResolver().openOutputStream(imageUri)) {
-                if (out == null) {
-                    Toast.makeText(this, "保存失败：无法写入文件", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-                Toast.makeText(this, deviceType + "二维码已保存到相册", Toast.LENGTH_SHORT).show();
-            }
+            
+            // 保存图片并分享
+            saveAndShareQRCodeImage(bitmap, deviceType + "_二维码");
+            
         } catch (Exception e) {
             Log.e(TAG, "Error saving QR code: " + e.getMessage(), e);
             Toast.makeText(this, "保存失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * 保存二维码图像到文件并分享
+     * @param bitmap 二维码位图
+     * @param fileName 文件名前缀
+     */
+    private void saveAndShareQRCodeImage(Bitmap bitmap, String fileName) {
+        try {
+            // 生成文件名，添加日期时间戳
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String imageFileName = fileName + "_" + timeStamp + ".png";
+            
+            Uri imageUri;
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+使用MediaStore API
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, imageFileName);
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/LabData");
+                
+                imageUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                if (imageUri != null) {
+                    try (OutputStream outputStream = getContentResolver().openOutputStream(imageUri)) {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+                    }
+                }
+            } else {
+                // Android 9及以下使用传统文件存储
+                File storageDir = new File(Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_PICTURES), "LabData");
+                if (!storageDir.exists()) {
+                    storageDir.mkdirs();
+                }
+                
+                File imageFile = new File(storageDir, imageFileName);
+                try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                }
+                
+                // 通知媒体扫描器更新
+                Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                imageUri = Uri.fromFile(imageFile);
+                mediaScanIntent.setData(imageUri);
+                sendBroadcast(mediaScanIntent);
+                
+                // 对于Android 7+，需要使用FileProvider
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    imageUri = FileProvider.getUriForFile(this,
+                            getApplicationContext().getPackageName() + ".provider",
+                            imageFile);
+                }
+            }
+            
+            // 显示成功消息
+            Toast.makeText(this, "设备码已保存", Toast.LENGTH_SHORT).show();
+            
+            // 创建分享Intent
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("image/png");
+            shareIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            
+            // 启动分享选择器
+            startActivity(Intent.createChooser(shareIntent, "分享设备码"));
+            
+        } catch (IOException e) {
+            Log.e(TAG, "保存设备码图像失败", e);
+            Toast.makeText(this, "保存设备码失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Log.e(TAG, "处理设备码图像时出错", e);
+            Toast.makeText(this, "处理设备码时出错: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 

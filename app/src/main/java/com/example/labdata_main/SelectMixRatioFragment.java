@@ -1,6 +1,8 @@
 package com.example.labdata_main;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -47,6 +49,7 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
     private MixRatioApiService apiService;
     private List<MixRatio> selectedMixRatios = new ArrayList<>();
     private SwipeRefreshLayout swipeRefreshLayout;
+    private View loadingLayout;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -74,6 +77,7 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
         emptyView = view.findViewById(R.id.emptyView);
         progressBar = view.findViewById(R.id.progressBar);
         swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout);
+        loadingLayout = view.findViewById(R.id.loadingLayout);
 
         // 初始化配比列表
         rvMixRatios.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -98,8 +102,36 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
         // 显示加载中状态
         showLoading(true);
         
-        // 从API获取配比数据
-        apiService.getComprehensiveMixRatios(new Callback<ApiResponse<List<MixRatioResponse>>>() {
+        // 获取当前用户的公司ID
+        SharedPreferences sharedPreferences = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+        String companyIdStr = sharedPreferences.getString("userCompany", "");
+        long companyId = -1;
+        
+        // 尝试将公司ID字符串转换为长整型
+        if (companyIdStr != null && !companyIdStr.isEmpty()) {
+            try {
+                companyId = Long.parseLong(companyIdStr);
+                Log.d(TAG, "从SharedPreferences获取到公司ID: " + companyId);
+            } catch (NumberFormatException e) {
+                Log.e(TAG, "公司ID格式不正确，无法转换为数字: " + companyIdStr);
+                // 如果公司ID不是数字格式，可能是直接使用公司名称
+            }
+        }
+        
+        if (companyId == -1) {
+            Log.e(TAG, "无法获取当前用户的有效公司ID");
+            showError("无法获取公司信息，请重新登录");
+            showLoading(false);
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setRefreshing(false);
+            }
+            return;
+        }
+        
+        Log.d(TAG, "获取公司ID: " + companyId + " 的配比数据");
+        
+        // 从API获取当前公司的配比数据
+        apiService.getMixRatiosByCompany(String.valueOf(companyId), new Callback<ApiResponse<List<MixRatioResponse>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<MixRatioResponse>>> call, Response<ApiResponse<List<MixRatioResponse>>> response) {
                 showLoading(false);
@@ -111,7 +143,7 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
                 
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     List<MixRatioResponse> mixRatioResponses = response.body().getData();
-                    Log.d(TAG, "成功从API获取 " + (mixRatioResponses != null ? mixRatioResponses.size() : 0) + " 条配比数据");
+                    Log.d(TAG, "成功从API获取 " + (mixRatioResponses != null ? mixRatioResponses.size() : 0) + " 条公司配比数据");
                     
                     // 打印API返回的原始数据
                     if (mixRatioResponses != null && !mixRatioResponses.isEmpty()) {
@@ -154,11 +186,15 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
                     }
                     
                     // 更新UI
-                    requireActivity().runOnUiThread(() -> {
-                        mixRatioAdapter.submitList(mixRatios);
-                        updateEmptyView(mixRatios.isEmpty());
-                        checkInputValidity();
-                    });
+                    if (isAdded() && getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (isAdded()) {  // 再次检查，确保Fragment仍然附加
+                                mixRatioAdapter.submitList(mixRatios);
+                                updateEmptyView(mixRatios.isEmpty());
+                                checkInputValidity();
+                            }
+                        });
+                    }
                 } else {
                     // 处理错误
                     String errorMessage = response.body() != null ? response.body().getMessage() : "未知错误";
@@ -191,18 +227,85 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
     // 从本地数据库加载数据的备用方法
     private void loadFromLocalDatabase() {
         Log.d(TAG, "从本地数据库加载配比数据");
+        
+        // 获取当前用户的公司ID
+        SharedPreferences sharedPreferences = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+        String companyIdStr = sharedPreferences.getString("userCompany", "");
+        long companyId = -1;
+        
+        // 尝试将公司ID字符串转换为长整型
+        if (companyIdStr != null && !companyIdStr.isEmpty()) {
+            try {
+                companyId = Long.parseLong(companyIdStr);
+                Log.d(TAG, "从SharedPreferences获取到公司ID: " + companyId);
+            } catch (NumberFormatException e) {
+                Log.e(TAG, "公司ID格式不正确，无法转换为数字: " + companyIdStr);
+                // 如果公司ID不是数字格式，可能是直接使用公司名称
+            }
+        }
+        
+        if (companyId == -1) {
+            Log.e(TAG, "无法获取当前用户的有效公司ID，无法从本地数据库加载配比");
+            if (isAdded()) {
+                requireActivity().runOnUiThread(() -> {
+                    // 停止刷新动画
+                    if (swipeRefreshLayout != null) {
+                        swipeRefreshLayout.setRefreshing(false);
+                    }
+                    
+                    updateEmptyView(true);
+                    showError("无法获取公司信息，请重新登录");
+                });
+            }
+            return;
+        }
+        
+        // 创建一个final变量存储公司ID，以便在lambda表达式中使用
+        final long finalCompanyId = companyId;
+        
         executorService.execute(() -> {
-            List<MixRatio> mixRatios = databaseHelper.mixRatioDao().getAllMixRatios();
-            requireActivity().runOnUiThread(() -> {
-                // 停止刷新动画
-                if (swipeRefreshLayout != null) {
-                    swipeRefreshLayout.setRefreshing(false);
+            // 尝试获取当前公司ID的配比
+            List<MixRatio> mixRatios = new ArrayList<>();
+            
+            try {
+                // 获取全部配比，然后根据公司ID过滤
+                List<MixRatio> allMixRatios = databaseHelper.mixRatioDao().getAllMixRatios();
+                
+                // 过滤属于当前公司的配比
+                // 注意：根据数据模型，这里假设MixRatio中有getCompanyId方法或类似字段
+                // 如果MixRatio模型没有公司ID字段，可能需要修改数据模型
+                for (MixRatio mixRatio : allMixRatios) {
+                    // TODO: 这里根据实际的MixRatio模型进行筛选
+                    // 由于图片显示MixRatio表包含mix_company字段，应该可以用它来过滤
+                    if (mixRatio.getCompanyId() != null && mixRatio.getCompanyId() == finalCompanyId) {
+                        mixRatios.add(mixRatio);
+                    }
                 }
                 
-                mixRatioAdapter.submitList(mixRatios);
-                updateEmptyView(mixRatios.isEmpty());
-                checkInputValidity();
-            });
+                Log.d(TAG, "从本地数据库成功加载 " + mixRatios.size() + " 条公司配比数据");
+            } catch (Exception e) {
+                Log.e(TAG, "从本地数据库加载配比发生错误", e);
+            }
+            
+            // 更新UI
+            if (isAdded() && getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (!isAdded()) return;
+                    
+                    // 停止刷新动画
+                    if (swipeRefreshLayout != null) {
+                        swipeRefreshLayout.setRefreshing(false);
+                    }
+                    
+                    mixRatioAdapter.submitList(mixRatios);
+                    updateEmptyView(mixRatios.isEmpty());
+                    checkInputValidity();
+                    
+                    if (mixRatios.isEmpty()) {
+                        showError("未找到公司相关配比数据");
+                    }
+                });
+            }
         });
     }
     
@@ -219,6 +322,48 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
             mixRatio.setId(response.getId());
             mixRatio.setName(response.getMixName());
             mixRatio.setDescription(""); // 删除说明文字
+            
+            // 提取并设置公司ID
+            if (response.getMixCompany() != null && !response.getMixCompany().isEmpty()) {
+                try {
+                    // 尝试将公司ID字符串转换为Long类型
+                    Long companyId = null;
+                    
+                    try {
+                        // 尝试直接解析为数字
+                        companyId = Long.parseLong(response.getMixCompany());
+                    } catch (NumberFormatException e) {
+                        // 如果不是纯数字，可能是其他格式，记录日志
+                        Log.d(TAG, "公司ID格式不是纯数字: " + response.getMixCompany());
+                    }
+                    
+                    mixRatio.setCompanyId(companyId);
+                    Log.d(TAG, "设置配比公司ID: " + companyId + ", 原始值: " + response.getMixCompany());
+                } catch (Exception e) {
+                    Log.e(TAG, "设置公司ID时出错: " + e.getMessage());
+                }
+            } else {
+                // 从当前用户的SharedPreferences获取公司ID作为后备
+                SharedPreferences sharedPreferences = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+                String companyIdStr = sharedPreferences.getString("userCompany", "");
+                long companyId = -1;
+                
+                // 尝试将公司ID字符串转换为长整型
+                if (companyIdStr != null && !companyIdStr.isEmpty()) {
+                    try {
+                        companyId = Long.parseLong(companyIdStr);
+                        Log.d(TAG, "从SharedPreferences获取到公司ID: " + companyId);
+                    } catch (NumberFormatException e) {
+                        Log.e(TAG, "公司ID格式不正确，无法转换为数字: " + companyIdStr);
+                        // 如果公司ID不是数字格式，可能是直接使用公司名称
+                    }
+                }
+                
+                if (companyId != -1) {
+                    mixRatio.setCompanyId(companyId);
+                    Log.d(TAG, "使用当前用户公司ID作为配比公司ID: " + companyId);
+                }
+            }
             
             // 将材料组件转换为本地MaterialItem
             List<MaterialItem> materials = new ArrayList<>();
@@ -293,8 +438,8 @@ public class SelectMixRatioFragment extends Fragment implements MixRatioAdapter.
 
     // 显示/隐藏加载进度条
     private void showLoading(boolean isLoading) {
-        if (progressBar != null) {
-            progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        if (loadingLayout != null) {
+            loadingLayout.setVisibility(isLoading ? View.VISIBLE : View.GONE);
         }
     }
 
