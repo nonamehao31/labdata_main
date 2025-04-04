@@ -1,0 +1,1 @@
+INSERT INTO "direct_stretching_fatigue_specimens" ("id", "task_id", "specimen_id", "diameter", "height", "test_temperature", "created_at", "updated_at", "test_id") VALUES (21, NULL, 1, '1', '2', NULL, '2025-04-03 00:58:30.519', NULL, 'be457a40-8829-4157-bf34-c0d30091e9d3');

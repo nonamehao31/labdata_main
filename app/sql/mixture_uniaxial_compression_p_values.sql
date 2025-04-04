@@ -1,0 +1,3 @@
+INSERT INTO "mixture_uniaxial_compression_p_values" ("id", "specimen_id", "p_index", "p_value", "created_at", "updated_at") VALUES (68, '6357c614-f57d-42ad-8cb7-f7092ebfe2d0', 1, '4.000', '2025-04-03 01:01:33.300103', '2025-04-03 01:01:33.300103');
+INSERT INTO "mixture_uniaxial_compression_p_values" ("id", "specimen_id", "p_index", "p_value", "created_at", "updated_at") VALUES (69, '6357c614-f57d-42ad-8cb7-f7092ebfe2d0', 2, '5.000', '2025-04-03 01:01:33.505222', '2025-04-03 01:01:33.505222');
+INSERT INTO "mixture_uniaxial_compression_p_values" ("id", "specimen_id", "p_index", "p_value", "created_at", "updated_at") VALUES (70, '6357c614-f57d-42ad-8cb7-f7092ebfe2d0', 3, '6.000', '2025-04-03 01:01:33.71046', '2025-04-03 01:01:33.71046');

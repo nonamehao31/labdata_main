@@ -1,0 +1,5 @@
+INSERT INTO "dynamic_modulus_specimen" ("id", "test_id", "specimen_number", "diameter", "height", "bulk_density", "air_void_content", "created_at") VALUES (24, 26, 1, '1.00', '2.00', NULL, NULL, '2025-04-03 00:54:36.232');
+INSERT INTO "dynamic_modulus_specimen" ("id", "test_id", "specimen_number", "diameter", "height", "bulk_density", "air_void_content", "created_at") VALUES (25, 27, 1, '1.00', '2.00', NULL, NULL, '2025-04-03 00:54:45.754');
+INSERT INTO "dynamic_modulus_specimen" ("id", "test_id", "specimen_number", "diameter", "height", "bulk_density", "air_void_content", "created_at") VALUES (26, 28, 1, '1.00', '1.00', NULL, NULL, '2025-04-03 10:34:54.676');
+INSERT INTO "dynamic_modulus_specimen" ("id", "test_id", "specimen_number", "diameter", "height", "bulk_density", "air_void_content", "created_at") VALUES (27, 29, 1, '1.00', '1.00', NULL, NULL, '2025-04-03 10:35:00.053');
+INSERT INTO "dynamic_modulus_specimen" ("id", "test_id", "specimen_number", "diameter", "height", "bulk_density", "air_void_content", "created_at") VALUES (28, 30, 1, '1.00', '1.00', NULL, NULL, '2025-04-03 10:41:22.434');

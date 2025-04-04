@@ -20,7 +20,7 @@ public interface CompactionMethodService {
      * 
      * @return 制件方法列表的API响应
      */
-    @GET("/api/compaction-methods/organization")
+    @GET("api/compaction-methods/organization")
     Call<ApiResponse<List<MoldingMethod>>> getOrganizationCompactionMethods();
     
     /**
@@ -29,7 +29,7 @@ public interface CompactionMethodService {
      * @param organizationId 单位ID
      * @return 制件方法列表的API响应
      */
-    @GET("/api/compaction-methods")
+    @GET("api/compaction-methods")
     Call<ApiResponse<List<MoldingMethod>>> getCompactionMethodsByOrganization(
             @Query("organizationId") Long organizationId);
 }

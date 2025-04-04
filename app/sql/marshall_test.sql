@@ -1,0 +1,1 @@
+INSERT INTO "marshall_test" ("id", "task_id", "stability_1", "stream_value1", "stability_2", "stream_value2", "stability_3", "stream_value3", "created_at", "updated_at") VALUES (30, '16bddc71-9e8b-4df3-8cfc-378b116ced57-1', '12', '15', '13', '16', '14', '17', '2025-04-03 14:10:11.446495', '2025-04-03 14:10:11.446495');

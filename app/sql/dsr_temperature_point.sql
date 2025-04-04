@@ -1,0 +1,3 @@
+INSERT INTO "dsr_temperature_point" ("id", "test_id", "point_number", "temperature", "created_at", "updated_at", "task_id") VALUES (7, 8, 1, '1', '2025-04-03 12:11:02.610499', '2025-04-03 12:11:02.610499', NULL);
+INSERT INTO "dsr_temperature_point" ("id", "test_id", "point_number", "temperature", "created_at", "updated_at", "task_id") VALUES (8, 9, 1, '123456', '2025-04-03 12:41:12.562016', '2025-04-03 12:41:12.562016', NULL);
+INSERT INTO "dsr_temperature_point" ("id", "test_id", "point_number", "temperature", "created_at", "updated_at", "task_id") VALUES (9, 10, 1, '1', '2025-04-03 13:39:50.025059', '2025-04-03 13:39:50.025059', '31931f37-4231-4a5e-bb8a-bf312e3414a1');

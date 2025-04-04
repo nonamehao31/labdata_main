@@ -2,6 +2,9 @@ package com.example.labdata_main.api.request;
 
 import java.util.Map;
 
+/**
+ * 布鲁克菲尔德旋转黏度实验请求数据类
+ */
 public class BrookfieldViscosityTestRequest {
     private String taskId;
     private String experimenter;
@@ -17,8 +20,9 @@ public class BrookfieldViscosityTestRequest {
         return taskId;
     }
 
-    public void setTaskId(String taskId) {
-        this.taskId = taskId;
+    public void setTaskId(Object taskId) {
+        // 确保taskId始终作为String类型存储，即使输入是数值类型
+        this.taskId = String.valueOf(taskId);
     }
 
     public String getExperimenter() {

@@ -15,6 +15,6 @@ public interface SpecimenService {
      * @param specimenId 制件方法ID
      * @return 制件参数响应
      */
-    @GET("/api/specimens/{id}/parameters")
+    @GET("api/specimens/{id}/parameters")
     Call<ApiResponse<SpecimenParametersResponse>> getSpecimenParameters(@Path("id") Long specimenId);
 }

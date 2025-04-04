@@ -1,0 +1,9 @@
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('1', '马歇尔稳定度试验', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('6', '动稳定度试验', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('7', '沥青混合料车辙实验（汉堡车辙）', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('8', '沥青混合料弯曲试验', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('9', '动态模量试验', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('10', '沥青混合料直接拉伸循环疲劳测黏弹损伤试验', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('11', '沥青混合料四点弯曲疲劳寿命试验', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('12', '沥青混合料单轴压缩试验(圆柱体法)', 'MINTURE');
+INSERT INTO "support_mixture_task_copy1" ("task_id", "task_name", "task_type") VALUES ('13', '沥青混合料劈裂试验', 'MINTURE');

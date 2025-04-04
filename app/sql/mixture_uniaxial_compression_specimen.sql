@@ -1,0 +1,1 @@
+INSERT INTO "mixture_uniaxial_compression_specimen" ("id", "test_id", "specimen_number", "diameter", "height", "created_at", "specimen_id", "updated_at") VALUES (35, 'e08af260-b1f3-41eb-9fe3-ad6a8567fe7b', '1', '2.00', '3.00', '2025-04-03 01:01:33.096515', '6357c614-f57d-42ad-8cb7-f7092ebfe2d0', '2025-04-03 01:01:33.096515');

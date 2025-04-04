@@ -1,0 +1,1 @@
+INSERT INTO "mixture_four_point_bending_specimen" ("id", "test_id", "specimen_number", "length_mm", "width_mm", "height_mm", "span_mm", "strain_range", "frequency_hz", "test_temperature", "fatigue_life", "created_at", "updated_at") VALUES (22, 23, 1, '1.00', '2.00', '3.00', '4.00', '5.00', '6.00', '7.00', 88, '2025-04-03 00:59:16.394', '2025-04-03 00:59:16.496701');

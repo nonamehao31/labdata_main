@@ -33,7 +33,9 @@ import retrofit2.http.Path;
  */
 public class SpecimenApiService {
     private static final String TAG = "SpecimenApiService";
-    private static final String BASE_URL = "http://10.11.232.216:8080/api/"; // 使用配置文件中定义的真实 IP 地址
+    //public static final String BASE_URL = "http://182.92.76.162:80/";
+    public static final String BASE_URL = "http://182.92.76.162:80/api/";
+    //private static final String BASE_URL = "http://192.168.1.3:8080/api/"; // 使用配置文件中定义的真实 IP 地址
     private final SpecimenApi api;
 
     /**
@@ -113,25 +115,25 @@ public class SpecimenApiService {
     }
 
     public interface SpecimenApi {
-        @GET("specimens/mixratio/{mixRatioId}")
+        @GET("api/specimens/mixratio/{mixRatioId}")
         Call<ApiResponse<List<Specimen>>> getSpecimensByMixRatioId(@Path("mixRatioId") Long mixRatioId);
         
-        @GET("specimens/{id}")
+        @GET("api/specimens/{id}")
         Call<ApiResponse<Specimen>> getSpecimenById(@Path("id") Long id);
         
-        @POST("specimens")
+        @POST("api/specimens")
         Call<ApiResponse<Specimen>> createSpecimen(@Body Specimen specimen);
         
-        @POST("specimens")
+        @POST("api/specimens")
         Call<ApiResponse<Specimen>> createSpecimenWithDTO(@Body SpecimenCreateDTO dto);
         
-        @POST("specimens/batch")
+        @POST("api/specimens/batch")
         Call<ApiResponse<List<Specimen>>> createSpecimens(@Body List<Specimen> specimens);
         
-        @PUT("specimens/{id}")
+        @PUT("api/specimens/{id}")
         Call<ApiResponse<Specimen>> updateSpecimen(@Path("id") Long id, @Body Specimen specimen);
         
-        @DELETE("specimens/{id}")
+        @DELETE("api/specimens/{id}")
         Call<ApiResponse<Void>> deleteSpecimen(@Path("id") Long id);
     }
 

@@ -30,7 +30,9 @@ import retrofit2.http.Path;
 
 public class MixRatioApiService {
     private static final String TAG = "MixRatioApiService";
-    private static final String BASE_URL = "http://10.11.232.216:8080/api/"; // 使用配置文件中定义的真实 IP 地址
+    //public static final String BASE_URL = "http://182.92.76.162:80/";
+    public static final String BASE_URL = "http://182.92.76.162:80/api/";
+    //private static final String BASE_URL = "http://192.168.1.3:8080/api/"; // 使用配置文件中定义的真实 IP 地址
     private final MixRatioApi api;
 
     /**
@@ -105,25 +107,25 @@ public class MixRatioApiService {
     }
 
     public interface MixRatioApi {
-        @GET("mixratios")
+        @GET("api/mixratios")
         Call<ApiResponse<List<MixRatioResponse>>> getAllMixRatios();
         
-        @GET("mixratios/{id}")
+        @GET("api/mixratios/{id}")
         Call<ApiResponse<MixRatioResponse>> getMixRatioById(@Path("id") Long id);
         
-        @POST("mixratios")
+        @POST("api/mixratios")
         Call<ApiResponse<MixRatioResponse>> createMixRatio(@Body MixRatioRequest request);
         
-        @PUT("mixratios/{id}")
+        @PUT("api/mixratios/{id}")
         Call<ApiResponse<MixRatioResponse>> updateMixRatio(@Path("id") Long id, @Body MixRatioRequest request);
         
-        @DELETE("mixratios/{id}")
+        @DELETE("api/mixratios/{id}")
         Call<ApiResponse<Void>> deleteMixRatio(@Path("id") Long id);
         
-        @GET("mixratios/comprehensive")
+        @GET("api/mixratios/comprehensive")
         Call<ApiResponse<List<MixRatioResponse>>> getComprehensiveMixRatios();
         
-        @GET("mixratios/by-company/{companyId}")
+        @GET("api/mixratios/by-company/{companyId}")
         Call<ApiResponse<List<MixRatioResponse>>> getMixRatiosByCompany(@Path("companyId") String companyId);
     }
 

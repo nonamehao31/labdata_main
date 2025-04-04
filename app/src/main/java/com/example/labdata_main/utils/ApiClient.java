@@ -12,7 +12,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class ApiClient {
     // API基础URL - 使用实际服务器地址
-    private static final String BASE_URL = "http://10.11.232.216:8080/";
+    //public static final String BASE_URL = "http://182.92.76.162:80/";
+    public static final String BASE_URL = "http://182.92.76.162:80/api/";
+    //private static final String BASE_URL = "http://192.168.1.3:8080/";
     private static final String TAG = "ApiClient";
     
     private static Retrofit retrofit = null;

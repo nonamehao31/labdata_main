@@ -1,0 +1,3 @@
+INSERT INTO "brookfield_viscosity_measurement" ("id", "temperature_point_id", "measurement_id", "spindle_type", "rotation_speed", "viscosity", "created_at") VALUES (16, 13, '1', '1', '2', '4', '2025-04-03 12:34:46.849654+08');
+INSERT INTO "brookfield_viscosity_measurement" ("id", "temperature_point_id", "measurement_id", "spindle_type", "rotation_speed", "viscosity", "created_at") VALUES (17, 14, '1', '123456789', '9', '999', '2025-04-03 12:38:48.169782+08');
+INSERT INTO "brookfield_viscosity_measurement" ("id", "temperature_point_id", "measurement_id", "spindle_type", "rotation_speed", "viscosity", "created_at") VALUES (18, 14, '2', '123456789', '9', '9999', '2025-04-03 12:38:48.295979+08');
