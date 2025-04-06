@@ -14,7 +14,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.app.Activity;
+
 import com.example.labdata_main.R;
+import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.MoldingMethod;
 import com.google.android.material.card.MaterialCardView;
@@ -33,6 +36,7 @@ public class MoldingMethodAdapter extends RecyclerView.Adapter<MoldingMethodAdap
     private Context context;
     private List<MixRatio> availableMixRatios = new ArrayList<>();
     private Map<Integer, MixRatio> selectedMixRatios = new HashMap<>();
+    private AppDatabase database;
 
     public interface OnDeleteClickListener {
         void onDeleteClick(MoldingMethod method);
@@ -103,6 +107,7 @@ public class MoldingMethodAdapter extends RecyclerView.Adapter<MoldingMethodAdap
     private void setupMixRatioDropdown(MoldingMethodViewHolder holder, int position, MoldingMethod method) {
         Log.d("MoldingMethodAdapter", "Setting up dropdown for position " + position + ", available mix ratios: " + availableMixRatios.size());
         Log.d("MoldingMethodAdapter", "当前制件方法ID: " + method.getId() + ", 压实方法: " + method.getCompactionMethod());
+        Log.d("MoldingMethodAdapter", "当前制件方法信息: " + method.toString());
         
         // 创建下拉菜单选项，使用配比的实际名称
         String[] items = new String[availableMixRatios.size()];
@@ -142,6 +147,76 @@ public class MoldingMethodAdapter extends RecyclerView.Adapter<MoldingMethodAdap
             method.setMixRatioId(selectedRatio.getId());
             notifyItemChanged(position);
         });
+    }
+
+    /**
+     * 刷新制件方法ID，确保使用最新的数据库ID
+     * 在保存试件后调用此方法，以确保使用后端分配的ID而不是本地临时ID
+     * @param context 上下文，用于获取数据库实例
+     */
+    public void refreshMoldingMethodIds(Context context) {
+        if (moldingMethods == null || moldingMethods.isEmpty()) {
+            Log.d("MoldingMethodAdapter", "没有制件方法需要刷新");
+            return;
+        }
+
+        Log.d("MoldingMethodAdapter", "开始刷新制件方法ID");
+        
+        // 初始化数据库（如果还没有初始化）
+        if (database == null) {
+            database = AppDatabase.getInstance(context);
+        }
+        
+        // 在后台线程中执行数据库操作
+        new Thread(() -> {
+            try {
+                // 从数据库获取所有制件方法
+                List<MoldingMethod> allMethods = database.moldingMethodDao().getAllMoldingMethods();
+                Log.d("MoldingMethodAdapter", "从数据库获取到 " + allMethods.size() + " 个制件方法");
+                
+                // 遍历当前适配器中的所有制件方法
+                for (int i = 0; i < moldingMethods.size(); i++) {
+                    MoldingMethod currentMethod = moldingMethods.get(i);
+                    Long currentId = currentMethod.getId();
+                    Log.d("MoldingMethodAdapter", "检查制件方法 ID: " + currentId);
+                    
+                    // 在数据库返回的列表中查找匹配的对象
+                    for (MoldingMethod dbMethod : allMethods) {
+                        // 如果找到相同ID的制件方法，检查其他属性是否有变化
+                        if (dbMethod.getId() == currentId) {
+                            Log.d("MoldingMethodAdapter", "找到匹配ID: " + currentId);
+                            
+                            // 检查是否有变更（例如，如果ID在服务器端被更新）
+                            if (!currentMethod.equals(dbMethod)) {
+                                Log.d("MoldingMethodAdapter", "制件方法已更新: " + 
+                                      "原ID=" + currentId + 
+                                      ", 新方法=" + dbMethod.toString());
+                                
+                                // 更新当前列表中的对象
+                                moldingMethods.set(i, dbMethod);
+                                
+                                // 如果需要，更新选中的配比关联
+                                if (selectedMixRatios.containsKey(i)) {
+                                    MixRatio ratio = selectedMixRatios.get(i);
+                                    dbMethod.setMixRatioId(ratio.getId());
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // 在UI线程更新界面
+                if (context instanceof Activity) {
+                    ((Activity) context).runOnUiThread(() -> {
+                        notifyDataSetChanged();
+                        Log.d("MoldingMethodAdapter", "制件方法ID刷新完成");
+                    });
+                }
+            } catch (Exception e) {
+                Log.e("MoldingMethodAdapter", "刷新制件方法ID时出错", e);
+            }
+        }).start();
     }
 
     private void toggleSelection(int position) {

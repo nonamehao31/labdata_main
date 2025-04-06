@@ -102,8 +102,15 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
     protected void onDestroy() {
         super.onDestroy();
         executor.shutdown();
-        // 取消注册令牌过期广播接收器
-        unregisterReceiver(tokenExpirationReceiver);
+        // 注销令牌过期广播接收器
+        if (tokenExpirationReceiver != null) {
+            try {
+                unregisterReceiver(tokenExpirationReceiver);
+            } catch (IllegalArgumentException e) {
+                // 接收器可能已经被注销
+                Log.w("ExperimentTaskSetup", "Failed to unregister receiver: " + e.getMessage());
+            }
+        }
     }
 
     private void initViews() {

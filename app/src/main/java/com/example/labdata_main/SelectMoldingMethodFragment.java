@@ -528,6 +528,61 @@ public class SelectMoldingMethodFragment extends Fragment implements MixingMetho
     public List<MixRatio> getSelectedMixRatios() {
         return selectedMixRatios;
     }
+    
+    /**
+     * 获取制件方法适配器，供其他组件使用
+     * @return 制件方法适配器实例
+     */
+    public MoldingMethodAdapter getMoldingMethodAdapter() {
+        return moldingMethodAdapter;
+    }
+    
+    /**
+     * 直接更新指定压实方法名的制件方法ID
+     * @param compactionMethodName 压实方法名称
+     * @param newId 新的ID
+     * @return 是否找到并更新了匹配的制件方法
+     */
+    public boolean updateMoldingMethodId(String compactionMethodName, Long newId) {
+        if (compactionMethodName == null || newId == null || moldingMethods == null) {
+            return false;
+        }
+        
+        boolean updated = false;
+        
+        // 在所有制件方法中查找匹配的压实方法并更新ID
+        for (MoldingMethod method : moldingMethods) {
+            if (compactionMethodName.equals(method.getCompactionMethod())) {
+                // 记录旧ID用于日志
+                Long oldId = method.getId();
+                
+                // 更新对象的ID
+                method.setId(newId);
+                Log.d("SelectMoldingMethodFragment", "直接更新制件方法ID: " + compactionMethodName + 
+                      " 从 " + oldId + " 到 " + newId);
+                
+                // 更新适配器中的数据
+                if (moldingMethodAdapter != null) {
+                    moldingMethodAdapter.notifyDataSetChanged();
+                    Log.d("SelectMoldingMethodFragment", "已通知适配器数据已更新");
+                }
+                
+                // 如果此方法已被选中，也更新selectedMethods中的实例
+                for (MoldingMethod selectedMethod : selectedMethods) {
+                    if (compactionMethodName.equals(selectedMethod.getCompactionMethod())) {
+                        selectedMethod.setId(newId);
+                        Log.d("SelectMoldingMethodFragment", "已更新已选择的制件方法ID");
+                        break;
+                    }
+                }
+                
+                updated = true;
+                break;
+            }
+        }
+        
+        return updated;
+    }
 
     /**
      * 将制件方法保存到本地数据库

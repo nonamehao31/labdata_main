@@ -20,6 +20,7 @@ import com.example.labdata_main.db.DatabaseHelper;
 import com.example.labdata_main.model.User;
 import com.example.labdata_main.utils.JwtUtils;
 import com.example.labdata_main.utils.SharedPrefsManager;
+import com.example.labdata_main.utils.TokenExpirationReceiver;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -47,6 +48,13 @@ public class LoginActivity extends AppCompatActivity {
             getSupportActionBar().hide();
         }
         setContentView(R.layout.activity_login);
+
+        // 检查是否是从令牌过期跳转过来的
+        if (getIntent().getBooleanExtra("from_token_expiration", false)) {
+            // 重置TokenExpirationReceiver的处理标志
+            TokenExpirationReceiver.resetHandlingFlag();
+            Log.d("LoginActivity", "从令牌过期跳转而来，已重置处理标志");
+        }
 
         // 初始化工具类
         databaseHelper = new DatabaseHelper(this);
@@ -244,9 +252,61 @@ public class LoginActivity extends AppCompatActivity {
                     // 登录失败
                     String errorMsg = "登录失败: ";
                     if (response.errorBody() != null) {
-                        errorMsg += "服务器验证错误";
+                        try {
+                            // 尝试从错误响应中提取详细信息
+                            String errorBodyString = response.errorBody().string();
+                            Log.d(TAG, "错误响应体: " + errorBodyString);
+                            
+                            // 根据HTTP状态码显示具体错误类型
+                            switch (response.code()) {
+                                case 401:
+                                    errorMsg = "账号或密码错误";
+                                    break;
+                                case 403:
+                                    errorMsg = "账号已被禁用，请联系管理员";
+                                    break;
+                                case 404:
+                                    errorMsg = "账号不存在";
+                                    break;
+                                case 429:
+                                    errorMsg = "登录尝试次数过多，请稍后再试";
+                                    break;
+                                case 500:
+                                    errorMsg = "服务器内部错误，请稍后再试";
+                                    break;
+                                default:
+                                    // 尝试从错误响应中提取消息
+                                    if (errorBodyString.contains("message")) {
+                                        // 简单解析包含message字段的JSON
+                                        int messageIndex = errorBodyString.indexOf("\"message\"");
+                                        if (messageIndex > 0) {
+                                            int valueStart = errorBodyString.indexOf(":", messageIndex) + 1;
+                                            int valueEnd = errorBodyString.indexOf("\"", valueStart + 2);
+                                            if (valueStart > 0 && valueEnd > valueStart) {
+                                                String serverMessage = errorBodyString.substring(valueStart, valueEnd)
+                                                        .replace("\"", "").trim();
+                                                if (!serverMessage.isEmpty()) {
+                                                    errorMsg = serverMessage;
+                                                } else {
+                                                    errorMsg = "登录失败，请检查账户信息";
+                                                }
+                                            } else {
+                                                errorMsg = "服务器验证错误";
+                                            }
+                                        } else {
+                                            errorMsg = "服务器验证错误";
+                                        }
+                                    } else {
+                                        errorMsg = "服务器验证错误";
+                                    }
+                                    break;
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "解析错误响应失败", e);
+                            errorMsg = "登录失败，请检查账户信息";
+                        }
                     } else {
-                        errorMsg += "账号或密码错误";
+                        errorMsg = "账号或密码错误";
                     }
                     Toast.makeText(LoginActivity.this, errorMsg, Toast.LENGTH_SHORT).show();
                     Log.e(TAG, errorMsg);

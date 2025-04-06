@@ -15,6 +15,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.labdata_main.R;
 import com.example.labdata_main.SelectMoldingMethodFragment;
+import com.example.labdata_main.adapter.MoldingMethodAdapter;
 import com.example.labdata_main.api.SpecimenApiService;
 import com.example.labdata_main.database.AppDatabase;
 import com.example.labdata_main.model.ApiResponse;
@@ -194,6 +195,45 @@ public class CompactionMethodFragment extends Fragment {
                                 Specimen savedSpecimen = response.body().getData();
                                 if (savedSpecimen != null) {
                                     android.util.Log.d("CompactionMethodFragment", "后端返回的试件ID: " + savedSpecimen.getId());
+                                    
+                                    // 直接更新MoldingMethod对象的ID
+                                    moldingMethod.setId(savedSpecimen.getId());
+                                    
+                                    // 通知UI线程更新适配器中的ID
+                                    if (getActivity() != null) {
+                                        getActivity().runOnUiThread(() -> {
+                                            try {
+                                                // 查找并更新SelectMoldingMethodFragment中的moldingMethods集合
+                                                Fragment parentFragment = getParentFragment();
+                                                if (parentFragment != null && parentFragment.getChildFragmentManager() != null) {
+                                                    for (Fragment fragment : parentFragment.getChildFragmentManager().getFragments()) {
+                                                        if (fragment instanceof com.example.labdata_main.SelectMoldingMethodFragment) {
+                                                            com.example.labdata_main.SelectMoldingMethodFragment selectFragment = 
+                                                                (com.example.labdata_main.SelectMoldingMethodFragment) fragment;
+                                                            
+                                                            // 直接更新SelectMoldingMethodFragment中的所有MoldingMethod对象
+                                                            boolean updated = selectFragment.updateMoldingMethodId(
+                                                                specimen.getCompactionMethod(), savedSpecimen.getId());
+                                                            
+                                                            if (updated) {
+                                                                android.util.Log.d("CompactionMethodFragment", 
+                                                                    "成功更新SelectMoldingMethodFragment中的制件方法ID从 1 到 " + 
+                                                                    savedSpecimen.getId());
+                                                            } else {
+                                                                android.util.Log.w("CompactionMethodFragment", 
+                                                                    "未能在SelectMoldingMethodFragment中找到匹配的制件方法");
+                                                            }
+                                                            
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            } catch (Exception e) {
+                                                android.util.Log.e("CompactionMethodFragment", 
+                                                    "刷新MoldingMethodAdapter失败", e);
+                                            }
+                                        });
+                                    }
                                 }
                             } else {
                                 String errorMsg = "试件保存失败";

@@ -2,6 +2,8 @@ package com.example.labdata_main.api;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.example.labdata_main.utils.SharedPrefsManager;
@@ -25,6 +27,10 @@ public class AuthInterceptor implements Interceptor {
     private static final String TAG = "AuthInterceptor";
     private final SharedPrefsManager sharedPrefsManager;
     private final Context appContext;
+    // 添加静态变量，防止重复发送广播
+    private static boolean isTokenExpiredBroadcastSent = false;
+    private static long lastTokenExpiredTime = 0;
+    private static final long TOKEN_EXPIRED_THROTTLE_MS = 3000; // 3秒内不重复发送过期广播
     
     public AuthInterceptor(SharedPrefsManager sharedPrefsManager, Context appContext) {
         this.sharedPrefsManager = sharedPrefsManager;
@@ -71,9 +77,27 @@ public class AuthInterceptor implements Interceptor {
         // 如果状态码是401（未授权），可能是令牌已过期
         if (response.code() == 401) {
             Log.e(TAG, "认证失败: 令牌可能过期或无效");
-            Intent tokenExpiredIntent = new Intent("com.example.labdata_main.TOKEN_EXPIRED");
-            appContext.sendBroadcast(tokenExpiredIntent);
-            Log.d(TAG, "已发送令牌过期广播");
+            
+            // 检查是否已发送过令牌过期广播，或者是否在节流时间范围内
+            long currentTime = System.currentTimeMillis();
+            if (!isTokenExpiredBroadcastSent && (currentTime - lastTokenExpiredTime > TOKEN_EXPIRED_THROTTLE_MS)) {
+                // 设置标志，防止重复发送
+                isTokenExpiredBroadcastSent = true;
+                lastTokenExpiredTime = currentTime;
+                
+                // 发送令牌过期广播
+                Intent tokenExpiredIntent = new Intent("com.example.labdata_main.TOKEN_EXPIRED");
+                appContext.sendBroadcast(tokenExpiredIntent);
+                Log.d(TAG, "已发送令牌过期广播");
+                
+                // 3秒后重置标志，允许再次发送
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    isTokenExpiredBroadcastSent = false;
+                    Log.d(TAG, "令牌过期广播标志已重置");
+                }, TOKEN_EXPIRED_THROTTLE_MS);
+            } else {
+                Log.d(TAG, "跳过发送令牌过期广播：已经发送过或在节流时间内");
+            }
         }
         
         return response;
