@@ -23,6 +23,8 @@
         android:background="@color/white"
         app:tabGravity="fill"
         app:tabMode="fixed"
+        app:tabMaxWidth="0dp"
+        app:tabMinWidth="0dp"
         app:tabTextColor="@color/gray_text"
         app:tabSelectedTextColor="@color/blue_theme"
         app:tabIndicatorColor="@color/blue_theme"
@@ -30,6 +32,8 @@
         app:tabTextAppearance="@style/CustomTabTextAppearance"
         app:tabPaddingTop="4dp"
         app:tabPaddingBottom="4dp"
+        app:tabPaddingStart="4dp"
+        app:tabPaddingEnd="4dp"
         app:elevation="8dp"/>
     
     <!-- 内联加载指示器和状态消息 -->

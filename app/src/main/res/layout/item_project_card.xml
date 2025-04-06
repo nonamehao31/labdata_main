@@ -22,7 +22,9 @@
             android:textColor="@android:color/black"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp"
+            android:ellipsize="end"
+            android:maxLines="2"/>
 
         <!-- 步骤列表容器 -->
         <LinearLayout
@@ -54,17 +56,19 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="2"
                     android:orientation="vertical"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="12dp">
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="备料"
                         android:textColor="@android:color/black"
-                        android:textSize="16sp"/>
+                        android:textSize="14sp"
+                        android:ellipsize="end"
+                        android:maxLines="1"/>
 
                     <TextView
                         android:id="@+id/tvStep1Status"
@@ -72,16 +76,26 @@
                         android:layout_height="wrap_content"
                         android:textColor="@android:color/black"
                         android:textSize="12sp"
-                        android:layout_marginTop="4dp"/>
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"/>
                 </LinearLayout>
 
                 <!-- 操作按钮 -->
                 <Button
                     android:id="@+id/btnStep1Action"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
                     android:text="查看实验与配比信息"
                     android:textSize="12sp"
+                    android:maxLines="2"
+                    android:minLines="1"
+                    android:ellipsize="end"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:textColor="@android:color/black"
                     app:strokeColor="@android:color/white"/>
@@ -108,17 +122,19 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="2"
                     android:orientation="vertical"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="12dp">
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="制件"
                         android:textColor="@android:color/black"
-                        android:textSize="16sp"/>
+                        android:textSize="14sp"
+                        android:ellipsize="end"
+                        android:maxLines="1"/>
 
                     <TextView
                         android:id="@+id/tvStep2Status"
@@ -126,17 +142,27 @@
                         android:layout_height="wrap_content"
                         android:textColor="@android:color/black"
                         android:textSize="12sp"
-                        android:layout_marginTop="4dp"/>
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"/>
                 </LinearLayout>
 
                 <Button
                     android:id="@+id/btnStep2Action"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
                     android:text="开始制件"
                     android:textColor="@android:color/black"
                     android:textSize="12sp"
+                    android:maxLines="2"
+                    android:minLines="1"
+                    android:ellipsize="end"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
                     app:strokeColor="@android:color/white" />
             </LinearLayout>
 
@@ -160,17 +186,19 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="2"
                     android:orientation="vertical"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="12dp">
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="实验"
                         android:textColor="@android:color/black"
-                        android:textSize="16sp"/>
+                        android:textSize="14sp"
+                        android:ellipsize="end"
+                        android:maxLines="1"/>
 
                     <TextView
                         android:id="@+id/tvStep3Status"
@@ -178,15 +206,25 @@
                         android:layout_height="wrap_content"
                         android:textColor="@android:color/black"
                         android:textSize="12sp"
-                        android:layout_marginTop="4dp"/>
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"/>
                 </LinearLayout>
 
                 <Button
                     android:id="@+id/btnStep3Action"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
                     android:text="记录实验数据"
                     android:textSize="12sp"
+                    android:maxLines="2"
+                    android:minLines="1"
+                    android:ellipsize="end"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:textColor="@android:color/black"
                     app:strokeColor="@android:color/white"/>
