@@ -9,13 +9,17 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-public class ManufacturingMethodActivity extends AppCompatActivity {
+public class ManufacturingMethodActivity extends AppCompatActivity 
+        implements SpecimenProcessBottomSheet.OnProcessConfirmedListener {
     private ImageButton btnBack;
     private ImageButton btnAddSpecimen;
     private Button btnNext;
     private TextView tvProjectName;
     private TextView tvProgress;
     private String projectName;
+    private String selectedMixing;
+    private String selectedCompaction;
+    private String selectedCutting;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +64,14 @@ public class ManufacturingMethodActivity extends AppCompatActivity {
     }
 
     public void enableNextButton() {
+        btnNext.setEnabled(true);
+    }
+
+    @Override
+    public void onProcessConfirmed(String mixing, String compaction, String cutting) {
+        this.selectedMixing = mixing;
+        this.selectedCompaction = compaction;
+        this.selectedCutting = cutting;
         btnNext.setEnabled(true);
     }
 }

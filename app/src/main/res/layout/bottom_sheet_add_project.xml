@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/bottom_sheet_background">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="添加新项目"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/black"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="为新项目命名"
+        android:textSize="14sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="8dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilProjectName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        app:boxCornerRadiusTopStart="8dp"
+        app:boxCornerRadiusTopEnd="8dp"
+        app:boxCornerRadiusBottomStart="8dp"
+        app:boxCornerRadiusBottomEnd="8dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etProjectName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="名称"
+            android:inputType="text"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilDeadline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        app:boxCornerRadiusTopStart="8dp"
+        app:boxCornerRadiusTopEnd="8dp"
+        app:boxCornerRadiusBottomStart="8dp"
+        app:boxCornerRadiusBottomEnd="8dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDeadline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="截止日期"
+            android:focusable="false"
+            android:clickable="true"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnNext"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="下一步"
+        android:padding="12dp"
+        android:layout_marginTop="8dp"
+        app:cornerRadius="8dp"/>
+
+</LinearLayout>

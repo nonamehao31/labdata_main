@@ -7,10 +7,12 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-import com.example.labdata_main.model.User;
 import com.example.labdata_main.model.Equipment;
 import com.example.labdata_main.model.Experimenter;
+import com.example.labdata_main.model.MaterialItem;
+import com.example.labdata_main.model.MixRatio;
 import com.example.labdata_main.model.Project;
+import com.example.labdata_main.model.User;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +51,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String TABLE_PROJECTS = "projects";
     private static final String COLUMN_PROJECT_NAME = "project_name";
+    private static final String COLUMN_DEADLINE = "deadline";
+    private static final String COLUMN_CREATE_TIME = "create_time";
+    private static final String COLUMN_IS_ACCESSIBLE = "is_accessible";
 
     // 设备表
     private static final String TABLE_EQUIPMENT = "equipment";
@@ -58,8 +63,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_MANUFACTURER = "manufacturer";
     private static final String COLUMN_PURCHASE_YEAR = "purchase_year";
 
+    // 配比表
+    private static final String TABLE_MIX_RATIOS = "mix_ratios";
+    private static final String COLUMN_MIX_RATIO_ID = "id";
+    private static final String COLUMN_MIX_RATIO_NAME = "name";
+    private static final String COLUMN_CREATION_TIME = "creation_time";
+
+    // 配比材料关联表
+    private static final String TABLE_MIX_RATIO_MATERIALS = "mix_ratio_materials";
+    private static final String COLUMN_MATERIAL_NAME = "material_name";
+    private static final String COLUMN_MATERIAL_PERCENTAGE = "percentage";
+    private static final String COLUMN_MATERIAL_TYPE = "material_type";
+
     // 修改数据库版本号，触发升级
-    private static final int DATABASE_VERSION = 3; // 从2升级到3
+    private static final int DATABASE_VERSION = 4; // 从3升级到4
     
     // 创建用户表的 SQL
     private static final String CREATE_USERS_TABLE = "CREATE TABLE " + TABLE_USERS + "("
@@ -93,7 +110,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // 创建项目表的 SQL
     private static final String CREATE_PROJECTS_TABLE = "CREATE TABLE " + TABLE_PROJECTS + "("
             + COLUMN_PROJECT_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-            + COLUMN_PROJECT_NAME + " TEXT NOT NULL)";
+            + COLUMN_PROJECT_NAME + " TEXT NOT NULL,"
+            + COLUMN_DEADLINE + " TEXT,"
+            + COLUMN_CREATE_TIME + " INTEGER,"
+            + COLUMN_IS_ACCESSIBLE + " INTEGER DEFAULT 1)";
 
     // 创建项目访问权限表的 SQL
     private static final String CREATE_PROJECT_ACCESS_TABLE = "CREATE TABLE " + TABLE_PROJECT_ACCESS + "("
@@ -101,6 +121,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             + COLUMN_PROJECT_ID + " INTEGER,"
             + COLUMN_HAS_ACCESS + " INTEGER DEFAULT 0,"
             + "PRIMARY KEY (" + COLUMN_EXPERIMENTER_ID + ", " + COLUMN_PROJECT_ID + "))";
+
+    // 创建配比表的 SQL
+    private static final String CREATE_MIX_RATIOS_TABLE = "CREATE TABLE " + TABLE_MIX_RATIOS + "("
+            + COLUMN_MIX_RATIO_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+            + COLUMN_MIX_RATIO_NAME + " TEXT NOT NULL,"
+            + COLUMN_CREATION_TIME + " INTEGER NOT NULL"
+            + ")";
+
+    // 创建配比材料关联表的 SQL
+    private static final String CREATE_MIX_RATIO_MATERIALS_TABLE = "CREATE TABLE " + TABLE_MIX_RATIO_MATERIALS + "("
+            + COLUMN_MIX_RATIO_ID + " INTEGER NOT NULL,"
+            + COLUMN_MATERIAL_NAME + " TEXT NOT NULL,"
+            + COLUMN_MATERIAL_PERCENTAGE + " REAL NOT NULL,"
+            + COLUMN_MATERIAL_TYPE + " TEXT NOT NULL,"
+            + "FOREIGN KEY(" + COLUMN_MIX_RATIO_ID + ") REFERENCES " + TABLE_MIX_RATIOS + "(" + COLUMN_MIX_RATIO_ID + ") ON DELETE CASCADE,"
+            + "PRIMARY KEY(" + COLUMN_MIX_RATIO_ID + ", " + COLUMN_MATERIAL_NAME + ")"
+            + ")";
 
     /**
      * 构造函数
@@ -134,6 +171,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // 创建项目访问权限表
             db.execSQL(CREATE_PROJECT_ACCESS_TABLE);
             Log.d(TAG, "Project access table created successfully");
+
+            // 创建配比表
+            db.execSQL(CREATE_MIX_RATIOS_TABLE);
+            Log.d(TAG, "Mix ratios table created successfully");
+
+            // 创建配比材料关联表
+            db.execSQL(CREATE_MIX_RATIO_MATERIALS_TABLE);
+            Log.d(TAG, "Mix ratio materials table created successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error creating tables: " + e.getMessage());
             e.printStackTrace();
@@ -563,14 +608,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
 
         Cursor cursor = db.query(TABLE_PROJECTS,
-                new String[]{COLUMN_PROJECT_ID, COLUMN_PROJECT_NAME},
+                new String[]{COLUMN_PROJECT_ID, COLUMN_PROJECT_NAME, COLUMN_DEADLINE, COLUMN_CREATE_TIME, COLUMN_IS_ACCESSIBLE},
                 null, null, null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
                 int id = cursor.getInt(0);
                 String name = cursor.getString(1);
-                projects.add(new Project(id, name, false)); // 添加默认访问权限为false
+                String deadline = cursor.getString(2);
+                long createTime = cursor.getLong(3);
+                boolean isAccessible = cursor.getInt(4) == 1;
+                projects.add(new Project(id, name, deadline, createTime, isAccessible)); 
             } while (cursor.moveToNext());
             cursor.close();
         }
@@ -583,6 +631,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
 
         String query = "SELECT p." + COLUMN_PROJECT_ID + ", p." + COLUMN_PROJECT_NAME + 
+                      ", p." + COLUMN_DEADLINE + ", p." + COLUMN_CREATE_TIME + ", p." + COLUMN_IS_ACCESSIBLE + 
                       ", COALESCE(pa." + COLUMN_HAS_ACCESS + ", 0) as has_access" +
                       " FROM " + TABLE_PROJECTS + " p" +
                       " LEFT JOIN " + TABLE_PROJECT_ACCESS + " pa" +
@@ -595,8 +644,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             do {
                 int id = cursor.getInt(0);
                 String name = cursor.getString(1);
-                boolean hasAccess = cursor.getInt(2) == 1;
-                projects.add(new Project(id, name, hasAccess));
+                String deadline = cursor.getString(2);
+                long createTime = cursor.getLong(3);
+                boolean isAccessible = cursor.getInt(4) == 1;
+                boolean hasAccess = cursor.getInt(5) == 1;
+                projects.add(new Project(id, name, deadline, createTime, isAccessible, hasAccess));
             } while (cursor.moveToNext());
             cursor.close();
         }
@@ -614,5 +666,153 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.replace(TABLE_PROJECT_ACCESS,
                 null,
                 values);
+    }
+
+    // 插入新项目
+    public long insertProject(Project project) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_PROJECT_NAME, project.getName());
+        values.put(COLUMN_DEADLINE, project.getDeadline());
+        values.put(COLUMN_CREATE_TIME, project.getCreateTime());
+        values.put(COLUMN_IS_ACCESSIBLE, project.isAccessible() ? 1 : 0);
+        return db.insert(TABLE_PROJECTS, null, values);
+    }
+
+    // 获取可访问的项目列表
+    public List<Project> getAccessibleProjects() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        List<Project> projects = new ArrayList<>();
+
+        String query = "SELECT " + COLUMN_PROJECT_ID + ", " + COLUMN_PROJECT_NAME + 
+                      ", " + COLUMN_DEADLINE + ", " + COLUMN_CREATE_TIME + ", " + COLUMN_IS_ACCESSIBLE +
+                      " FROM " + TABLE_PROJECTS +
+                      " WHERE " + COLUMN_IS_ACCESSIBLE + " = 1" +
+                      " ORDER BY " + COLUMN_CREATE_TIME + " DESC";
+
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                int id = cursor.getInt(0);
+                String name = cursor.getString(1);
+                String deadline = cursor.getString(2);
+                long createTime = cursor.getLong(3);
+                boolean isAccessible = cursor.getInt(4) == 1;
+                projects.add(new Project(id, name, deadline, createTime, isAccessible));
+            } while (cursor.moveToNext());
+            cursor.close();
+        }
+
+        return projects;
+    }
+
+    // 获取所有配比列表
+    public List<MixRatio> getMixRatios() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        List<MixRatio> mixRatios = new ArrayList<>();
+
+        String query = "SELECT * FROM mix_ratios ORDER BY creation_time DESC";
+        Cursor cursor = db.rawQuery(query, null);
+
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                MixRatio mixRatio = new MixRatio();
+                mixRatio.setId(cursor.getLong(cursor.getColumnIndex("id")));
+                mixRatio.setName(cursor.getString(cursor.getColumnIndex("name")));
+                mixRatio.setCreationTime(cursor.getLong(cursor.getColumnIndex("creation_time")));
+                
+                // 获取材料列表
+                List<com.example.labdata_main.model.MaterialItem> materials = new ArrayList<>();
+                
+                // 从数据库中读取材料信息并创建MaterialItem对象
+                // 假设我们有一个关联表 mix_ratio_materials 存储材料信息
+                String materialQuery = "SELECT * FROM mix_ratio_materials WHERE mix_ratio_id = ?";
+                Cursor materialCursor = db.rawQuery(materialQuery, 
+                    new String[]{String.valueOf(mixRatio.getId())});
+                
+                if (materialCursor != null && materialCursor.moveToFirst()) {
+                    do {
+                        String name = materialCursor.getString(
+                            materialCursor.getColumnIndex("material_name"));
+                        float percentage = materialCursor.getFloat(
+                            materialCursor.getColumnIndex("percentage"));
+                        String type = materialCursor.getString(
+                            materialCursor.getColumnIndex("material_type"));
+                        
+                        materials.add(new com.example.labdata_main.model.MaterialItem(name, percentage, type));
+                    } while (materialCursor.moveToNext());
+                    materialCursor.close();
+                }
+                
+                mixRatio.setMaterials(materials);
+                mixRatios.add(mixRatio);
+            } while (cursor.moveToNext());
+            cursor.close();
+        }
+
+        return mixRatios;
+    }
+
+    /**
+     * 删除项目
+     * @param projectId 要删除的项目ID
+     * @return 是否删除成功
+     */
+    public boolean deleteProject(int projectId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        try {
+            // 开始事务
+            db.beginTransaction();
+            
+            // 删除项目访问权限记录
+            db.delete(TABLE_PROJECT_ACCESS, COLUMN_PROJECT_ID + " = ?", 
+                    new String[]{String.valueOf(projectId)});
+            
+            // 删除项目
+            int result = db.delete(TABLE_PROJECTS, COLUMN_PROJECT_ID + " = ?", 
+                    new String[]{String.valueOf(projectId)});
+            
+            // 提交事务
+            db.setTransactionSuccessful();
+            
+            return result > 0;
+        } catch (Exception e) {
+            Log.e(TAG, "Error deleting project: " + e.getMessage());
+            return false;
+        } finally {
+            // 结束事务
+            db.endTransaction();
+        }
+    }
+
+    /**
+     * 批量更新项目访问权限
+     * @param projects 要更新的项目列表
+     * @return 是否更新成功
+     */
+    public boolean updateProjectsAccess(List<Project> projects) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        try {
+            db.beginTransaction();
+            
+            for (Project project : projects) {
+                ContentValues values = new ContentValues();
+                values.put(COLUMN_IS_ACCESSIBLE, project.isAccessible() ? 1 : 0);
+                
+                db.update(TABLE_PROJECTS, 
+                         values,
+                         COLUMN_PROJECT_ID + " = ?",
+                         new String[]{String.valueOf(project.getId())});
+            }
+            
+            db.setTransactionSuccessful();
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating projects access: " + e.getMessage());
+            return false;
+        } finally {
+            db.endTransaction();
+        }
     }
 }

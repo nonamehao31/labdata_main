@@ -1,97 +1,113 @@
 package com.example.labdata_main;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 public class SpecimenProcessBottomSheet extends BottomSheetDialogFragment {
-    private TextView tvProcessTitle1, tvProcessTitle2;
-    private LinearLayout layoutProcessContent1, layoutProcessContent2;
-    private TextView btnMixing, btnCompaction;
-    private TextView btnRectangle, btnCylinder, btnSemiCircle;
-    private Button btnNext;
-    private ImageButton btnClose;
-    private boolean isFirstProcess = true;
+    private TextInputEditText etMixing;
+    private TextInputEditText etCompaction;
+    private TextInputEditText etCutting;
+    private MaterialButton btnConfirm;
+    private OnProcessConfirmedListener listener;
+
+    public interface OnProcessConfirmedListener {
+        void onProcessConfirmed(String mixing, String compaction, String cutting);
+    }
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        if (context instanceof OnProcessConfirmedListener) {
+            listener = (OnProcessConfirmedListener) context;
+        } else {
+            throw new RuntimeException(context.toString() + " must implement OnProcessConfirmedListener");
+        }
+    }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                           @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.bottom_sheet_specimen_process, container, false);
-        initViews(view);
-        setupClickListeners();
+
+        // 初始化视图
+        etMixing = view.findViewById(R.id.etMixing);
+        etCompaction = view.findViewById(R.id.etCompaction);
+        etCutting = view.findViewById(R.id.etCutting);
+        btnConfirm = view.findViewById(R.id.btnConfirm);
+
+        // 设置点击监听器
+        etMixing.setOnClickListener(v -> showMixingDialog());
+        etCompaction.setOnClickListener(v -> showCompactionDialog());
+        etCutting.setOnClickListener(v -> showCuttingDialog());
+
+        btnConfirm.setOnClickListener(v -> {
+            String mixing = etMixing.getText().toString();
+            String compaction = etCompaction.getText().toString();
+            String cutting = etCutting.getText().toString();
+
+            if (mixing.isEmpty() || compaction.isEmpty() || cutting.isEmpty()) {
+                Toast.makeText(requireContext(), "请完成所有选项", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (listener != null) {
+                listener.onProcessConfirmed(mixing, compaction, cutting);
+            }
+            dismiss();
+        });
+
         return view;
     }
 
-    private void initViews(View view) {
-        tvProcessTitle1 = view.findViewById(R.id.tvProcessTitle1);
-        tvProcessTitle2 = view.findViewById(R.id.tvProcessTitle2);
-        layoutProcessContent1 = view.findViewById(R.id.layoutProcessContent1);
-        layoutProcessContent2 = view.findViewById(R.id.layoutProcessContent2);
-        btnMixing = view.findViewById(R.id.btnMixing);
-        btnCompaction = view.findViewById(R.id.btnCompaction);
-        btnRectangle = view.findViewById(R.id.btnRectangle);
-        btnCylinder = view.findViewById(R.id.btnCylinder);
-        btnSemiCircle = view.findViewById(R.id.btnSemiCircle);
-        btnNext = view.findViewById(R.id.btnNext);
-        btnClose = view.findViewById(R.id.btnClose);
+    private void showMixingDialog() {
+        // 显示拌合方式选择对话框
+        String[] mixingMethods = {"机械拌合", "人工拌合"};
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("选择拌合方式")
+            .setItems(mixingMethods, (dialog, which) -> {
+                etMixing.setText(mixingMethods[which]);
+            })
+            .show();
     }
 
-    private void setupClickListeners() {
-        btnClose.setOnClickListener(v -> dismiss());
+    private void showCompactionDialog() {
+        // 显示击实方式选择对话框
+        String[] compactionMethods = {"振动台振实", "重型击实", "马歇尔击实"};
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("选择击实方式")
+            .setItems(compactionMethods, (dialog, which) -> {
+                etCompaction.setText(compactionMethods[which]);
+            })
+            .show();
+    }
 
-        btnMixing.setOnClickListener(v -> {
-            btnMixing.setSelected(true);
-            btnCompaction.setSelected(false);
-            // 显示拌合流程对话框
-            MixingProcessBottomSheet mixingSheet = new MixingProcessBottomSheet();
-            mixingSheet.show(getParentFragmentManager(), "MixingProcess");
-            btnNext.setEnabled(true);
-        });
+    private void showCuttingDialog() {
+        // 显示切割形状选择对话框
+        String[] shapes = {"长方体", "圆柱体", "半圆形"};
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("选择切割形状")
+            .setItems(shapes, (dialog, which) -> {
+                etCutting.setText(shapes[which]);
+            })
+            .show();
+    }
 
-        btnCompaction.setOnClickListener(v -> {
-            btnMixing.setSelected(false);
-            btnCompaction.setSelected(true);
-            // 显示击实流程对话框
-            CompactionProcessBottomSheet compactionSheet = new CompactionProcessBottomSheet();
-            compactionSheet.show(getParentFragmentManager(), "CompactionProcess");
-            btnNext.setEnabled(true);
-        });
-
-        btnNext.setOnClickListener(v -> {
-            // 直接跳转到切割属性界面
-            isFirstProcess = false;
-            tvProcessTitle1.setTextColor(getResources().getColor(R.color.gray));
-            tvProcessTitle2.setTextColor(getResources().getColor(R.color.blue));
-            layoutProcessContent1.setVisibility(View.GONE);
-            layoutProcessContent2.setVisibility(View.VISIBLE);
-            btnNext.setEnabled(false);
-        });
-
-        // 切割属性按钮点击事件
-        View.OnClickListener shapeClickListener = v -> {
-            btnRectangle.setSelected(v == btnRectangle);
-            btnCylinder.setSelected(v == btnCylinder);
-            btnSemiCircle.setSelected(v == btnSemiCircle);
-            btnNext.setEnabled(true);
-            
-            if (getActivity() instanceof ManufacturingMethodActivity) {
-                ((ManufacturingMethodActivity) getActivity()).enableNextButton();
-                dismiss();
-            }
-        };
-
-        btnRectangle.setOnClickListener(shapeClickListener);
-        btnCylinder.setOnClickListener(shapeClickListener);
-        btnSemiCircle.setOnClickListener(shapeClickListener);
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        listener = null;
     }
 }

@@ -12,7 +12,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/white"
-        android:elevation="0dp">
+        android:elevation="0dp"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tabLayout"

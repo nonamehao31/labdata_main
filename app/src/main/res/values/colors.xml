@@ -1,5 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Material Design Blues -->
+    <color name="blue_500">#2196F3</color>
+    <color name="blue_700">#1976D2</color>
+    <color name="blue">#2196F3</color>
+    <color name="blue_light">#BBDEFB</color>
+    <color name="blue_theme">#2196F3</color>
+    <color name="step_active">#2196F3</color>
+    <color name="step_completed">#4CAF50</color>
+    <color name="step_inactive">#BDBDBD</color>
+    <color name="step_line_active">#2196F3</color>
+    <color name="step_line_inactive">#E0E0E0</color>
+    <color name="step_text_active">#000000</color>
+    <color name="step_text_inactive">#757575</color>
+    <!-- Grays -->
+    <color name="gray">#757575</color>
+    <color name="gray_light">#EEEEEE</color>
+    <color name="divider">#BDBDBD</color>
+    <color name="gray_text">#757575</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    
+    <!-- Component Colors -->
+    <color name="chip_background_color">#F5F5F5</color>
+    <color name="red">#F44336</color>
+
+    <!-- Common material colors -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -7,16 +35,13 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="blue_theme">#2196F3</color>
-    <color name="gray_text">#9E9E9E</color>
-    <color name="blue">#1684FC</color>
-    <color name="gray">#DCDCDC</color>
-    <color name="gray_light">#FFCCCCCC</color>
-    <color name="blue_light">#FFE3F2FD</color>
-
-    <!-- 自定义颜色 -->
-    <color name="background_gray">#F5F5F5</color>
-    <color name="text_primary">#333333</color>
-    <color name="text_secondary">#666666</color>
-    <color name="divider">#E0E0E0</color>
+    
+    <!-- 添加自定义颜色 -->
+    <color name="blue_light_custom">#2196F3</color>
+    <color name="blue_dark">#1976D2</color>
+    <color name="red_light">#F44336</color>
+    <color name="red_dark">#D32F2F</color>
+    <color name="gray_light_custom">#EEEEEE</color>
+    <color name="gray_dark">#757575</color>
+    <color name="selected_mix_ratio_background">#E6E6E6</color>
 </resources>

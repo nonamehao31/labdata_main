@@ -9,6 +9,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
@@ -42,6 +43,17 @@ public class OverviewFragment extends Fragment {
         addMixButton.setOnClickListener(v -> {
             MixRatioBottomSheetFragment bottomSheet = MixRatioBottomSheetFragment.newInstance();
             bottomSheet.show(getChildFragmentManager(), "MixRatioBottomSheet");
+        });
+
+        // 初始化添加实验任务按钮
+        MaterialButton addExperimentButton = view.findViewById(R.id.assign_task_button);
+        addExperimentButton.setOnClickListener(v -> {
+            AddExperimentBottomSheet bottomSheet = AddExperimentBottomSheet.newInstance();
+            bottomSheet.setOnExperimentNameSubmitListener(experimentName -> {
+                // TODO: 处理实验任务名称的提交
+                Toast.makeText(requireContext(), "实验任务名称: " + experimentName, Toast.LENGTH_SHORT).show();
+            });
+            bottomSheet.show(getChildFragmentManager(), "AddExperimentBottomSheet");
         });
 
         // 设置欢迎语
@@ -88,6 +100,12 @@ public class OverviewFragment extends Fragment {
             public void onNothingSelected(AdapterView<?> parent) {
                 // Do nothing
             }
+        });
+
+        // 设置制订实验任务按钮点击事件
+        view.findViewById(R.id.assign_task_button).setOnClickListener(v -> {
+            ExperimentTaskBottomSheet.newInstance()
+                .show(getParentFragmentManager(), "ExperimentTaskBottomSheet");
         });
 
         return view;

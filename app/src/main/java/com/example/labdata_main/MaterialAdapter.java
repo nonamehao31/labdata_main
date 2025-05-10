@@ -5,13 +5,13 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.labdata_main.model.MaterialItem;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.List;
@@ -47,27 +47,37 @@ public class MaterialAdapter extends RecyclerView.Adapter<MaterialAdapter.Materi
     }
 
     class MaterialViewHolder extends RecyclerView.ViewHolder {
-        private CheckBox checkbox;
+        private ImageButton deleteButton;
         private TextView nameText;
         private TextView percentageText;
         private ImageButton editButton;
 
         MaterialViewHolder(@NonNull View itemView) {
             super(itemView);
-            checkbox = itemView.findViewById(R.id.material_checkbox);
+            deleteButton = itemView.findViewById(R.id.delete_button);
             nameText = itemView.findViewById(R.id.material_name);
             percentageText = itemView.findViewById(R.id.material_percentage);
             editButton = itemView.findViewById(R.id.edit_button);
         }
 
         void bind(MaterialItem item) {
-            checkbox.setChecked(item.isSelected());
             nameText.setText(item.getName());
             percentageText.setText(String.format("%.1f%%", item.getPercentage()));
 
-            checkbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                item.setSelected(isChecked);
-                onDataChangedListener.run();
+            deleteButton.setOnClickListener(v -> {
+                new AlertDialog.Builder(context)
+                    .setTitle("删除原料")
+                    .setMessage("确定要删除该原料吗？")
+                    .setPositiveButton("确定", (dialog, which) -> {
+                        int position = getAdapterPosition();
+                        if (position != RecyclerView.NO_POSITION) {
+                            materials.remove(position);
+                            notifyItemRemoved(position);
+                            onDataChangedListener.run();
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
             });
 
             editButton.setOnClickListener(v -> showEditDialog(item));

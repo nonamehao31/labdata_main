@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/bottom_sheet_background"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="@drawable/bottom_sheet_background">
 
     <ImageButton
         android:id="@+id/btnClose"
@@ -52,28 +53,94 @@
         android:orientation="vertical"
         android:layout_marginTop="24dp">
 
-        <!-- 拌合部分 -->
         <TextView
-            android:id="@+id/btnMixing"
-            android:layout_width="145dp"
-            android:layout_height="48dp"
-            android:text="拌合"
-            android:textColor="#1684FC"
-            android:textSize="18sp"
-            android:gravity="center"
-            android:background="@drawable/process_button_background"
-            android:layout_marginBottom="16dp" />
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="制件方式"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="选择制件流程"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- 拌合部分 -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilMixing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:boxCornerRadiusTopStart="8dp"
+            app:boxCornerRadiusTopEnd="8dp"
+            app:boxCornerRadiusBottomStart="8dp"
+            app:boxCornerRadiusBottomEnd="8dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etMixing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="拌合方式"
+                android:focusable="false"
+                android:clickable="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
         <!-- 击实部分 -->
-        <TextView
-            android:id="@+id/btnCompaction"
-            android:layout_width="145dp"
-            android:layout_height="48dp"
-            android:text="击实"
-            android:textColor="#1684FC"
-            android:textSize="18sp"
-            android:gravity="center"
-            android:background="@drawable/process_button_background" />
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilCompaction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:boxCornerRadiusTopStart="8dp"
+            app:boxCornerRadiusTopEnd="8dp"
+            app:boxCornerRadiusBottomStart="8dp"
+            app:boxCornerRadiusBottomEnd="8dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCompaction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="击实方式"
+                android:focusable="false"
+                android:clickable="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- 切割属性部分 -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilCutting"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:boxCornerRadiusTopStart="8dp"
+            app:boxCornerRadiusTopEnd="8dp"
+            app:boxCornerRadiusBottomStart="8dp"
+            app:boxCornerRadiusBottomEnd="8dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCutting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="切割形状"
+                android:focusable="false"
+                android:clickable="true"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="确认"
+            android:padding="12dp"
+            android:layout_marginTop="8dp"
+            app:cornerRadius="8dp"/>
     </LinearLayout>
 
     <!-- 切割属性流程内容 -->

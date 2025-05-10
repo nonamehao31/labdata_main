@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- 顶部工具栏 -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <androidx.appcompat.widget.Toolbar
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/white">
+
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="12dp"
+                android:src="@drawable/ic_back"
+                app:tint="@color/black" />
+
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="切割属性"
+                android:textColor="@color/black"
+                android:textSize="18sp" />
+
+        </androidx.appcompat.widget.Toolbar>
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- 切割形状选择 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="切割属性"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupCutShape"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCuboid"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="长方体"
+                    android:checkable="true"
+                    app:chipBackgroundColor="@color/chip_background_color"
+                    app:chipStrokeColor="@color/gray"
+                    app:chipStrokeWidth="1dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCylinder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="圆柱体"
+                    android:checkable="true"
+                    app:chipBackgroundColor="@color/chip_background_color"
+                    app:chipStrokeColor="@color/gray"
+                    app:chipStrokeWidth="1dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipHalfCylinder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="半圆柱体"
+                    android:checkable="true"
+                    app:chipBackgroundColor="@color/chip_background_color"
+                    app:chipStrokeColor="@color/gray"
+                    app:chipStrokeWidth="1dp" />
+
+            </com.google.android.material.chip.ChipGroup>
+
+            <!-- 切割数量输入框 -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilCutCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="切割数量"
+                app:endIconMode="clear_text">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etCutCount"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- 长方体尺寸输入框 -->
+            <LinearLayout
+                android:id="@+id/layoutCuboid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="长度 (mm)"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etLength"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="宽度 (mm)"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etWidth"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="高度 (mm)"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etHeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
+            <!-- 圆柱体尺寸输入框 -->
+            <LinearLayout
+                android:id="@+id/layoutCylinder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="底面半径 (mm)"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etRadius"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="高度 (mm)"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etCylinderHeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
+            <!-- 半圆柱体尺寸输入框 -->
+            <LinearLayout
+                android:id="@+id/layoutHalfCylinder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="半径 (mm)"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etHalfRadius"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="高度 (mm)"
+                    app:endIconMode="clear_text">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etHalfCylinderHeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <!-- 底部按钮 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnConfirm"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:text="确定"
+        android:textSize="16sp" />
+
+</LinearLayout>

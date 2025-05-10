@@ -1,0 +1,22 @@
+package com.example.labdata_main.dao;
+
+import androidx.room.Dao;
+import androidx.room.Delete;
+import androidx.room.Insert;
+import androidx.room.Query;
+
+import com.example.labdata_main.model.MoldingMethod;
+
+import java.util.List;
+
+@Dao
+public interface MoldingMethodDao {
+    @Insert
+    long insert(MoldingMethod moldingMethod);
+
+    @Query("SELECT * FROM molding_methods")
+    List<MoldingMethod> getAllMoldingMethods();
+
+    @Delete
+    void delete(MoldingMethod moldingMethod);
+}

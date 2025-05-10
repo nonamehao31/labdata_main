@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="16dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvMixTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginBottom="16dp"/>
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupExperiments"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:singleSelection="false">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipMarshall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="马歇尔稳定度"
+                style="@style/Widget.MaterialComponents.Chip.Filter"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipBeam"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="弯曲梁"
+                style="@style/Widget.MaterialComponents.Chip.Filter"/>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipElastic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="弹性模量"
+                style="@style/Widget.MaterialComponents.Chip.Filter"/>
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

@@ -9,7 +9,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/purple_500"
+        android:background="@color/blue_700"
         android:elevation="4dp">
 
         <!-- 欢迎语区域 -->

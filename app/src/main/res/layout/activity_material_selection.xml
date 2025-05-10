@@ -2,50 +2,41 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@android:color/white">
+    android:layout_height="match_parent">
 
-    <!-- 顶部工具栏 -->
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/white"
-        android:elevation="4dp"
-        app:layout_constraintTop_toTopOf="parent">
+    <ImageButton
+        android:id="@+id/back_button"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="返回"
+        android:src="@drawable/ic_back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageButton
-            android:id="@+id/back_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="12dp"
-            android:src="@drawable/ic_arrow_back" />
+    <TextView
+        android:id="@+id/title_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="添加原料"
+        android:textColor="@color/black"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@id/back_button"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@id/back_button" />
 
-        <TextView
-            android:id="@+id/title_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="32dp"
-            android:text="添加原料"
-            android:textColor="@color/black"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-    </androidx.appcompat.widget.Toolbar>
-
-    <!-- 原料类型选择 -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/material_type_tabs"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/white"
-        app:layout_constraintTop_toBottomOf="@id/toolbar"
-        app:tabMode="fixed"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/back_button"
         app:tabGravity="fill"
-        app:tabTextColor="@color/gray"
-        app:tabSelectedTextColor="@color/blue"
-        app:tabIndicatorColor="@color/blue"/>
+        app:tabMode="fixed" />
 
     <!-- 原料信息卡片 -->
     <androidx.cardview.widget.CardView
@@ -54,7 +45,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         app:cardCornerRadius="8dp"
-        app:cardElevation="4dp"
+        app:cardElevation="2dp"
         app:layout_constraintTop_toBottomOf="@id/material_type_tabs">
 
         <LinearLayout
@@ -79,6 +70,81 @@
                 android:textColor="@color/gray"
                 android:textSize="14sp"/>
 
+            <!-- 材料属性选择 -->
+            <LinearLayout
+                android:id="@+id/material_property_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical">
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/property_card_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:foreground="?attr/selectableItemBackground"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/property_text_1"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"/>
+
+                        <ImageView
+                            android:id="@+id/property_check_1"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_check"
+                            android:visibility="gone"/>
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/property_card_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:foreground="?attr/selectableItemBackground"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/property_text_2"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"/>
+
+                        <ImageView
+                            android:id="@+id/property_check_2"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_check"
+                            android:visibility="gone"/>
+                    </LinearLayout>
+
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
         </LinearLayout>
 
     </androidx.cardview.widget.CardView>
@@ -88,60 +154,67 @@
         android:id="@+id/gradation_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="选择级配"
-        android:textColor="@color/black"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:text="级配选择"
+        android:textColor="@color/text_primary"
         android:textSize="16sp"
         android:textStyle="bold"
+        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/material_info_card"/>
+        app:layout_constraintTop_toBottomOf="@id/material_info_card" />
 
-    <!-- 级配按钮组 -->
+    <!-- 级配选择 -->
     <HorizontalScrollView
         android:id="@+id/gradation_scroll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:clipToPadding="false"
-        android:paddingHorizontal="16dp"
+        android:layout_marginHorizontal="16dp"
         android:scrollbars="none"
+        android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/gradation_title">
 
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/gradation_chips"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:paddingVertical="8dp"
             app:singleSelection="true"
-            app:chipSpacing="8dp"/>
+            app:chipSpacingHorizontal="8dp" />
 
     </HorizontalScrollView>
 
-    <!-- 比例选择标题 -->
-    <TextView
-        android:id="@+id/percentage_title"
-        android:layout_width="wrap_content"
+    <!-- 配比选择标题和数值 -->
+    <LinearLayout
+        android:id="@+id/percentage_header"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="选择比例"
-        android:textColor="@color/black"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/gradation_scroll"/>
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/gradation_scroll">
 
-    <!-- 比例显示 -->
-    <TextView
-        android:id="@+id/percentage_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:textColor="@color/gray"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/gradation_scroll"/>
+        <TextView
+            android:id="@+id/percentage_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="配比选择"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-    <!-- 拖动条 -->
+        <TextView
+            android:id="@+id/percentage_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/blue"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- 百分比选择 -->
     <com.google.android.material.slider.Slider
         android:id="@+id/percentage_slider"
         android:layout_width="match_parent"
@@ -150,17 +223,19 @@
         android:layout_marginTop="8dp"
         android:valueFrom="0"
         android:valueTo="100"
-        app:layout_constraintTop_toBottomOf="@id/percentage_title"/>
+        app:thumbRadius="12dp"
+        app:trackHeight="8dp"
+        app:haloRadius="24dp"
+        app:tickVisible="false"
+        app:labelBehavior="floating"
+        app:layout_constraintTop_toBottomOf="@id/percentage_header" />
 
-    <!-- 确定按钮 -->
-    <com.google.android.material.button.MaterialButton
+    <Button
         android:id="@+id/confirm_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:text="确定"
-        android:textSize="16sp"
-        app:cornerRadius="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        android:text="确认"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

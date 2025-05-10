@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/bottom_sheet_background">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="添加实验任务"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"
+        android:gravity="center"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/experimentNameLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/experimentNameInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="请输入实验任务名称"
+            android:inputType="text"
+            android:maxLines="1" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/nextStepButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="下一步"
+        android:padding="12dp"
+        app:cornerRadius="8dp"/>
+
+</LinearLayout>

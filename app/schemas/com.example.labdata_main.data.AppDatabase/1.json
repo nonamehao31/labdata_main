@@ -1,0 +1,114 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "3e4a93d73f3b13c562f8888afeb2ffee",
+    "entities": [
+      {
+        "tableName": "material_properties",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT, `name` TEXT, `code` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "code",
+            "columnName": "code",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "mix_designs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `materialType` TEXT, `materialName` TEXT, `materialCode` TEXT, `gradation` TEXT, `percentage` REAL NOT NULL, `timestamp` INTEGER NOT NULL, `designGroup` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "materialType",
+            "columnName": "materialType",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "materialName",
+            "columnName": "materialName",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "materialCode",
+            "columnName": "materialCode",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "gradation",
+            "columnName": "gradation",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "percentage",
+            "columnName": "percentage",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "designGroup",
+            "columnName": "designGroup",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3e4a93d73f3b13c562f8888afeb2ffee')"
+    ]
+  }
+}
