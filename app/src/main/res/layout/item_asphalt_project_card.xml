@@ -84,6 +84,8 @@
                     android:textSize="12sp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:textColor="@android:color/black"
+                    android:enabled="true"
+                    android:clickable="true"
                     app:strokeColor="@android:color/white"/>
             </LinearLayout>
 
@@ -140,6 +142,8 @@
                     android:textSize="12sp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:textColor="@android:color/black"
+                    android:enabled="true"
+                    android:clickable="true"
                     app:strokeColor="@android:color/white"/>
             </LinearLayout>
         </LinearLayout>

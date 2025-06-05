@@ -48,6 +48,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_PROJECT_ACCESS = "project_access";
     private static final String COLUMN_PROJECT_ID = "project_id";
     private static final String COLUMN_HAS_ACCESS = "has_access";
+    
+    // 特殊权限表
+    private static final String TABLE_SPECIAL_PERMISSIONS = "special_permissions";
+    private static final String COLUMN_USER_EMAIL = "user_email";
+    private static final String COLUMN_PERMISSION_TYPE = "permission_type";
+    private static final String COLUMN_PERMISSION_ENABLED = "enabled";
 
     private static final String TABLE_PROJECTS = "projects";
     private static final String COLUMN_PROJECT_NAME = "project_name";
@@ -639,20 +645,60 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      */
     public int getUserTypeByEmail(String email) {
         SQLiteDatabase db = this.getReadableDatabase();
-        int userType = 0;  // 默认为实验员
+        int userType = 0;  // 默认为普通用户
 
-        Cursor cursor = db.query(TABLE_USERS,
-                new String[]{COLUMN_USER_TYPE},
-                COLUMN_EMAIL + "=?",
-                new String[]{email},
-                null, null, null);
+        try {
+            String query = "SELECT " + COLUMN_USER_TYPE + " FROM " + TABLE_USERS + 
+                          " WHERE " + COLUMN_EMAIL + " = ?";
+            Cursor cursor = db.rawQuery(query, new String[]{email});
 
-        if (cursor != null && cursor.moveToFirst()) {
-            userType = cursor.getInt(0);
+            if (cursor.moveToFirst()) {
+                userType = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_USER_TYPE));
+            }
             cursor.close();
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting user type: " + e.getMessage());
         }
-        db.close();
+
         return userType;
+    }
+
+    /**
+     * 检查用户是否拥有特定权限
+     * 
+     * @param email 用户邮箱
+     * @param permissionType 权限类型，例如 "device_init_permission"
+     * @return 如果用户拥有此权限返回true，否则返回false
+     */
+    public boolean checkUserPermission(String email, String permissionType) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        boolean hasPermission = false;
+        
+        // 管理员用户自动拥有所有权限
+        if (getUserTypeByEmail(email) == 1) {
+            return true;
+        }
+        
+        try {
+            // 查询特殊权限表
+            String query = "SELECT " + COLUMN_PERMISSION_ENABLED + 
+                          " FROM " + TABLE_SPECIAL_PERMISSIONS + 
+                          " WHERE " + COLUMN_USER_EMAIL + " = ? AND " + 
+                          COLUMN_PERMISSION_TYPE + " = ?";
+                          
+            Cursor cursor = db.rawQuery(query, new String[]{email, permissionType});
+            
+            if (cursor.moveToFirst()) {
+                // 如果找到记录，检查权限是否启用
+                int enabled = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_PERMISSION_ENABLED));
+                hasPermission = (enabled == 1);
+            }
+            cursor.close();
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking user permission: " + e.getMessage());
+        }
+        
+        return hasPermission;
     }
 
     // 获取所有实验员

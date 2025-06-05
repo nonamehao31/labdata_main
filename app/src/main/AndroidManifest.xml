@@ -289,6 +289,13 @@
             android:exported="false"
             android:label="实时数据分析"/>
             
+        <activity
+            android:name=".DeviceManagementActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:label="设备管理"
+            android:windowSoftInputMode="adjustResize"/>
+            
         <!-- FileProvider配置，用于分享二维码图片 -->
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -277,6 +277,31 @@ public class SpecimenMethodAdapter extends RecyclerView.Adapter<SpecimenMethodAd
     public int getSelectedPosition() {
         return selectedPosition;
     }
+    
+    /**
+     * 程序化选择一个位置
+     * @param position 要选择的位置
+     */
+    public void setSelectedPosition(int position) {
+        if (position >= 0 && position < moldingMethods.size()) {
+            // 取消当前选中项
+            int oldPosition = selectedPosition;
+            selectedPosition = position;
+            
+            // 更新所有需要刷新的项
+            if (oldPosition != RecyclerView.NO_POSITION) {
+                notifyItemChanged(oldPosition);
+            }
+            notifyItemChanged(selectedPosition);
+            
+            // 通知监听器
+            if (onMethodSelectedListener != null) {
+                MoldingMethod method = getMoldingMethod(position);
+                MixRatio mixRatio = getMixRatio(position);
+                onMethodSelectedListener.onMethodSelected(method, mixRatio, position);
+            }
+        }
+    }
 
     public MoldingMethod getMoldingMethod(int position) {
         if (position < 0 || position >= moldingMethods.size()) {

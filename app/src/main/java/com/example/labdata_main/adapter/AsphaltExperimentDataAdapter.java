@@ -1944,4 +1944,28 @@ public class AsphaltExperimentDataAdapter extends RecyclerView.Adapter<AsphaltEx
     public List<String> getExperimentTypes() {
         return new ArrayList<>(experimentTypes);
     }
+    
+    /**
+     * 更新特定实验类型的特定字段值
+     * @param experimentType 实验类型
+     * @param fieldKey 字段键
+     * @param value 字段值
+     */
+    public void updateExperimentValue(String experimentType, String fieldKey, String value) {
+        // 确保实验类型存在
+        if (!experimentDataMap.containsKey(experimentType)) {
+            experimentDataMap.put(experimentType, new HashMap<>());
+            
+            // 如果这个实验类型不在当前列表中，也添加进去
+            if (!experimentTypes.contains(experimentType)) {
+                experimentTypes.add(experimentType);
+            }
+        }
+        
+        // 更新字段值
+        Map<String, String> values = experimentDataMap.get(experimentType);
+        values.put(fieldKey, value);
+        
+        Log.d("AsphaltAdapter", "更新实验值: experimentType=" + experimentType + ", fieldKey=" + fieldKey + ", value=" + value);
+    }
 }

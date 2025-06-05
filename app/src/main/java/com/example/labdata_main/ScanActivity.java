@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
-public class ScanActivity extends AppCompatActivity {
+public class ScanActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

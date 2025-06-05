@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.viewpager2.widget.ViewPager2;
@@ -39,7 +40,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     private long backPressedTime;
     private Toast backToast;
@@ -60,6 +61,13 @@ public class MainActivity extends AppCompatActivity {
 
         // 初始化实验类型
         ExperimentTypeInitializer.initializeExperimentTypes(this);
+        
+        // 确保首次使用时默认选择"沥青混合料试验"
+        String savedExperimentType = sharedPrefsManager.getSelectedExperimentType("");
+        if (savedExperimentType.isEmpty()) {
+            sharedPrefsManager.saveSelectedExperimentType("沥青混合料试验");
+            Log.d("MainActivity", "初始化默认实验类型为：沥青混合料试验");
+        }
 
         // 添加数据库调试代码
         executorService.execute(() -> {
@@ -254,6 +262,25 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
         }).attach();
+        
+        // 添加页面切换监听器，并恢复选择的Tab
+        SharedPrefsManager prefs = new SharedPrefsManager(this);
+        int savedTabPosition = prefs.getInt("selected_tab_position", 0);
+        viewPager.setCurrentItem(savedTabPosition, false);
+        
+        // 监听页面变化，保存当前选中的Tab
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                // 保存选中的标签位置
+                prefs.saveInt("selected_tab_position", position);
+                // 如果切换到首页(OverviewFragment)，需要通知首页刷新数据
+                if (position == 0) {
+                    refreshOverviewFragmentIfNeeded();
+                }
+            }
+        });
 
         // 禁用ViewPager2的滑动功能以避免与其他手势冲突
         viewPager.setUserInputEnabled(true);
@@ -411,13 +438,33 @@ public class MainActivity extends AppCompatActivity {
      */
     private void processRefreshDataFlag() {
         Intent intent = getIntent();
-        if (intent != null && intent.getBooleanExtra("refreshData", false)) {
+        boolean shouldRefresh = intent != null && intent.getBooleanExtra("refreshData", false);
+        boolean fromLogin = intent != null && intent.getBooleanExtra("from_login", false);
+        
+        if (shouldRefresh) {
             Log.d("MainActivity", "刷新数据标志已设置，正在刷新UI...");
             // 清除标志，避免重复刷新
             intent.removeExtra("refreshData");
             
             // 刷新实验任务列表
             loadTasks();
+            
+            // 如果是从登录页面过来的，特别刷新首页OverviewFragment
+            if (fromLogin) {
+                Log.d("MainActivity", "检测到登录成功跳转，刷新首页内容");
+                intent.removeExtra("from_login"); // 清除标志
+                
+                // 确保显示首页Tab
+                ViewPager2 viewPager = findViewById(R.id.viewPager);
+                if (viewPager != null) {
+                    viewPager.setCurrentItem(0, false);
+                    // 保存当前Tab位置
+                    sharedPrefsManager.saveInt("selected_tab_position", 0);
+                }
+                
+                // 强制刷新首页Fragment
+                refreshOverviewFragmentIfNeeded();
+            }
             
             // 可能需要刷新其他UI组件
             Toast.makeText(this, "数据已更新", Toast.LENGTH_SHORT).show();
@@ -436,5 +483,26 @@ public class MainActivity extends AppCompatActivity {
         }
         startActivity(intent);
         finish();
+    }
+    
+    /**
+     * 当回到首页Tab时刷新OverviewFragment
+     */
+    private void refreshOverviewFragmentIfNeeded() {
+        try {
+            ViewPagerAdapter adapter = (ViewPagerAdapter) ((ViewPager2) findViewById(R.id.viewPager)).getAdapter();
+            if (adapter != null) {
+                Fragment fragment = getSupportFragmentManager().findFragmentByTag("f0");
+                if (fragment instanceof OverviewFragment) {
+                    OverviewFragment overviewFragment = (OverviewFragment) fragment;
+                    
+                    Log.d("MainActivity", "刷新首页实验类型同步");
+                    // 刷新首页实验类型选择器
+                    overviewFragment.syncExperimentTypeSelection();
+                }
+            }
+        } catch (Exception e) {
+            Log.e("MainActivity", "刷新OverviewFragment失败", e);
+        }
     }
 }

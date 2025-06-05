@@ -316,6 +316,10 @@ public class AuthController {
                 user.setAllowAddMixratio(permissions.get("allowAddMixratio"));
             }
             
+            if (permissions.containsKey("allowDeviceInit")) {
+                user.setAllowDeviceInit(permissions.get("allowDeviceInit"));
+            }
+            
             userRepository.save(user);
         }
         
@@ -345,11 +349,13 @@ public class AuthController {
             permissions.put("allowAddMixture", true);
             permissions.put("allowAddAsphalt", true);
             permissions.put("allowAddMixratio", true);
+            permissions.put("allowDeviceInit", true);
         } else {
             // 返回该用户的实际权限
             permissions.put("allowAddMixture", user.isAllowAddMixture());
             permissions.put("allowAddAsphalt", user.isAllowAddAsphalt());
             permissions.put("allowAddMixratio", user.isAllowAddMixratio());
+            permissions.put("allowDeviceInit", user.isAllowDeviceInit());
         }
         
         return ResponseEntity.ok(new ApiResponse(true, "获取用户权限成功", permissions));

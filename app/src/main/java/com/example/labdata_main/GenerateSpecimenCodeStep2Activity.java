@@ -94,6 +94,7 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
     private TextView tvQRCodeContent;
     private MaterialButton btnGenerateQRCode;
     private MaterialButton btnComplete;
+    private MaterialButton btnBackToScan;
     private SpecimenInfoAdapter specimenInfoAdapter;
     private QRCodePagerAdapter qrCodePagerAdapter;
     
@@ -222,6 +223,7 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
         tvQRCodeContent = findViewById(R.id.tvQRCodeContent);
         btnGenerateQRCode = findViewById(R.id.btnGenerateQRCode);
         btnComplete = findViewById(R.id.btnComplete);
+        btnBackToScan = findViewById(R.id.btnBackToScan); // 添加返回到扫描界面的按钮
         
         // 添加保存二维码按钮
         MaterialButton btnSaveQRCode = findViewById(R.id.btnSaveQRCode);
@@ -251,6 +253,23 @@ public class GenerateSpecimenCodeStep2Activity extends AppCompatActivity {
         });
 
         btnComplete.setOnClickListener(v -> completeSpecimenGeneration());
+        
+        // 添加返回到扫描界面的按钮点击事件
+        btnBackToScan.setOnClickListener(v -> {
+            // 显示确认对话框
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("确认返回")
+                   .setMessage("确定要返回到设备扫描界面吗？")
+                   .setPositiveButton("确定", (dialog, which) -> {
+                       // 确认返回，结束当前活动，回到扫描界面
+                       finish();
+                   })
+                   .setNegativeButton("取消", (dialog, which) -> {
+                       // 取消操作，关闭对话框
+                       dialog.dismiss();
+                   })
+                   .show();
+        });
     }
 
     /**

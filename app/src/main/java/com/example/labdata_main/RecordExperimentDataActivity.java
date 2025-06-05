@@ -3,8 +3,10 @@ package com.example.labdata_main;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -2141,6 +2143,114 @@ public class RecordExperimentDataActivity extends AppCompatActivity implements A
         // 每次页面恢复时获取最新状态，确保实验完成后返回页面时能过滤掉
         if (taskIdString != null && !taskIdString.isEmpty()) {
             fetchExperimentStatus();
+            
+            // 恢复临时保存的数据
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                restoreTemporaryData();
+            }, 500); // 延迟500毫秒，确保数据加载完成
+        }
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 保存临时数据
+        if (asphaltAdapter != null) {
+            saveTemporaryData();
+        }
+    }
+    
+    /**
+     * 保存临时输入的数据到SharedPreferences，在用户离开Activity时调用
+     */
+    private void saveTemporaryData() {
+        if (asphaltAdapter != null && taskIdString != null) {
+            try {
+                // 获取当前输入的数据
+                Map<String, Map<String, String>> experimentData = asphaltAdapter.getExperimentData();
+                if (experimentData == null || experimentData.isEmpty()) {
+                    Log.d("SaveTempData", "没有数据需要保存");
+                    return;
+                }
+                
+                // 转换为JSON字符串
+                String jsonData = new Gson().toJson(experimentData);
+                Log.d("SaveTempData", "将保存数据, 记录数: " + experimentData.size());
+                
+                // 使用SharedPreferences保存数据
+                SharedPreferences preferences = getSharedPreferences("asphalt_experiment_temp_data", MODE_PRIVATE);
+                SharedPreferences.Editor editor = preferences.edit();
+                
+                // 使用任务ID作为唯一键
+                String dataKey = "temp_data_" + taskIdString;
+                editor.putString(dataKey, jsonData);
+                boolean success = editor.commit(); // 使用commit()而非apply()确保同步写入
+                
+                Log.d("SaveTempData", "保存临时数据" + (success ? "成功" : "失败") + ": " + dataKey + ", 数据大小: " + jsonData.length());
+            } catch (Exception e) {
+                Log.e("SaveTempData", "保存临时数据时出错", e);
+            }
+        } else {
+            Log.w("SaveTempData", "无法保存数据: " + (asphaltAdapter == null ? "适配器为空" : "任务ID为空"));
+        }
+    }
+    
+    /**
+     * 从 SharedPreferences 恢复临时保存的数据，在Activity创建或恢复时调用
+     */
+    private void restoreTemporaryData() {
+        if (asphaltAdapter == null || taskIdString == null) {
+            Log.w("RestoreTempData", "无法恢复数据: " + (asphaltAdapter == null ? "适配器为空" : "任务ID为空"));
+            return;
+        }
+        
+        try {
+            // 从 SharedPreferences 读取之前保存的数据
+            SharedPreferences preferences = getSharedPreferences("asphalt_experiment_temp_data", MODE_PRIVATE);
+            
+            // 使用任务ID作为唯一键
+            String dataKey = "temp_data_" + taskIdString;
+            String jsonData = preferences.getString(dataKey, null);
+            
+            Log.d("RestoreTempData", "尝试恢复临时数据, key=" + dataKey + ", 数据是否存在: " + (jsonData != null));
+            
+            if (jsonData != null && !jsonData.isEmpty()) {
+                // 使用Gson将JSON字符串转换回数据结构
+                Map<String, Map<String, String>> savedData = new Gson().fromJson(jsonData,
+                        new com.google.gson.reflect.TypeToken<Map<String, Map<String, String>>>(){}.getType());
+                
+                if (savedData != null && !savedData.isEmpty()) {
+                    Log.d("RestoreTempData", "找到临时数据，记录数: " + savedData.size());
+                    
+                    // 在UI线程上更新数据
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        // 迭代恢复每个实验值
+                        for (Map.Entry<String, Map<String, String>> entry : savedData.entrySet()) {
+                            String experimentType = entry.getKey();
+                            Map<String, String> values = entry.getValue();
+                            
+                            for (Map.Entry<String, String> valueEntry : values.entrySet()) {
+                                String fieldKey = valueEntry.getKey();
+                                String value = valueEntry.getValue();
+                                asphaltAdapter.updateExperimentValue(experimentType, fieldKey, value);
+                                Log.d("RestoreTempData", "恢复数据项: experimentType=" + experimentType + ", key=" + fieldKey + ", value=" + value);
+                            }
+                        }
+                        
+                        // 强制UI刷新
+                        asphaltAdapter.notifyDataSetChanged();
+                        
+                        Toast.makeText(this, "已恢复之前输入的数据", Toast.LENGTH_SHORT).show();
+                        Log.d("RestoreTempData", "数据恢复完成");
+                    }, 300); // 延迟300毫秒，确保视图已绑定
+                } else {
+                    Log.d("RestoreTempData", "解析的savedData为空或无效");
+                }
+            } else {
+                Log.d("RestoreTempData", "没有找到临时保存的数据");
+            }
+        } catch (Exception e) {
+            Log.e("RestoreTempData", "恢复临时数据时出错", e);
         }
     }
 }

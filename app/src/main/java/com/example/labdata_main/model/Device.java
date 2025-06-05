@@ -5,6 +5,7 @@ import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
+import androidx.room.Relation;
 
 @Entity(tableName = "devices")
 public class Device {
@@ -28,6 +29,9 @@ public class Device {
     @NonNull
     @ColumnInfo(name = "company_id")
     private String companyId;  // 公司ID
+    
+    @Ignore
+    private int indicatorColor = 0xFF4CAF50;  // 设备类型指示条颜色，默认绿色
 
     // Room 将使用这个构造器
     public Device() {
@@ -98,5 +102,19 @@ public class Device {
 
     public void setCompanyId(@NonNull String companyId) {
         this.companyId = companyId;
+    }
+    
+    /**
+     * 获取设备类型指示条颜色
+     */
+    public int getIndicatorColor() {
+        return indicatorColor;
+    }
+
+    /**
+     * 设置设备类型指示条颜色
+     */
+    public void setIndicatorColor(int indicatorColor) {
+        this.indicatorColor = indicatorColor;
     }
 }

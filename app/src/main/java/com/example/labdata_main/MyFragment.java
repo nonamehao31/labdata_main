@@ -26,11 +26,11 @@ import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.example.labdata_main.db.DatabaseHelper;  
-import com.example.labdata_main.utils.SharedPrefsManager;
 import com.example.labdata_main.api.ApiClient;
 import com.example.labdata_main.api.ApiService;
 import com.example.labdata_main.api.response.ApiResponse;
+import com.example.labdata_main.db.DatabaseHelper;
+import com.example.labdata_main.utils.SharedPrefsManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -65,6 +65,7 @@ public class MyFragment extends Fragment {
     private Button btnModifyInfo;
     private Button btnLogout;
     private Button btnUserManagement;
+    private Button btnDeviceInit;
 
     private SharedPrefsManager sharedPrefsManager;
     private Uri tempImageUri;
@@ -167,6 +168,7 @@ public class MyFragment extends Fragment {
         btnModifyInfo = view.findViewById(R.id.btnModifyInfo);
         btnLogout = view.findViewById(R.id.btnLogout);
         btnUserManagement = view.findViewById(R.id.btnUserManagement);
+        btnDeviceInit = view.findViewById(R.id.btnDeviceInit);
     }
 
     /**
@@ -187,6 +189,17 @@ public class MyFragment extends Fragment {
         btnUserManagement.setOnClickListener(v -> {
             // 处理权限管理的点击事件
             Intent intent = new Intent(getActivity(), UserManagementActivity.class);
+            startActivity(intent);
+        });
+        
+        // 设备初始化按钮点击事件
+        btnDeviceInit.setOnClickListener(v -> {
+            // 跳转到设备管理页面
+            String companyId = sharedPrefsManager.getUserCompany();
+            Intent intent = new Intent(getActivity(), DeviceManagementActivity.class);
+            if (companyId != null) {
+                intent.putExtra("company_id", companyId);
+            }
             startActivity(intent);
         });
 
@@ -212,9 +225,18 @@ public class MyFragment extends Fragment {
         tvCompany.setText(company);
         tvPosition.setText(userType == 1 ? "管理员" : "实验员");
         
-        // 根据用户类型显示或隐藏权限管理按钮
+        // 根据用户类型显示或隐藏权限管理按钮和设备初始化按钮
         boolean isAdmin = userType == 1;
         btnUserManagement.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+        
+        // 默认情况下设备初始化按钮仅对管理员可见
+        // 后续将通过API获取实验员权限
+        btnDeviceInit.setVisibility(isAdmin ? View.VISIBLE : View.GONE);
+        
+        // 如果不是管理员，则从后端获取设备初始化权限
+        if (!isAdmin) {
+            fetchUserPermissions();
+        }
         
         // 通过API获取用户组织信息
         fetchUserOrganizationByUsername(username);
@@ -224,6 +246,50 @@ public class MyFragment extends Fragment {
         Log.d("MyFragment", "姓名: " + name);
         Log.d("MyFragment", "邮箱: " + email);
         Log.d("MyFragment", "用户类型: " + (isAdmin ? "管理员" : "普通用户"));
+    }
+    
+    /**
+     * 从后端获取用户权限
+     */
+    private void fetchUserPermissions() {
+        long userId = sharedPrefsManager.getUserId();
+        if (userId <= 0) {
+            Log.e("MyFragment", "无法获取用户ID，无法获取权限信息");
+            return;
+        }
+        
+        ApiService apiService = ApiClient.getClient().create(ApiService.class);
+        Call<ApiResponse<Map<String, Boolean>>> call = apiService.getUserPermissions((int)userId);
+        
+        call.enqueue(new Callback<ApiResponse<Map<String, Boolean>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, Boolean>>> call, Response<ApiResponse<Map<String, Boolean>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Map<String, Boolean> permissions = response.body().getData();
+                    
+                    // 检查是否有设备初始化权限
+                    if (permissions != null && permissions.containsKey("allowDeviceInit")) {
+                        boolean allowDeviceInit = permissions.get("allowDeviceInit");
+                        Log.d("MyFragment", "用户设备初始化权限: " + allowDeviceInit);
+                        
+                        // 在主线程中更新UI
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                btnDeviceInit.setVisibility(allowDeviceInit ? View.VISIBLE : View.GONE);
+                            });
+                        }
+                    }
+                } else {
+                    Log.e("MyFragment", "获取用户权限失败: " + 
+                            (response.body() != null ? response.body().getMessage() : "未知错误"));
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<ApiResponse<Map<String, Boolean>>> call, Throwable t) {
+                Log.e("MyFragment", "获取用户权限请求失败: " + t.getMessage());
+            }
+        });
     }
     
     /**

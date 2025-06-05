@@ -30,7 +30,7 @@ import retrofit2.Response;
  * 登录界面Activity
  * 处理用户登录和注册跳转功能
  */
-public class LoginActivity extends AppCompatActivity {
+public class LoginActivity extends BaseActivity {
     private static final String TAG = "LoginActivity";
     private EditText etEmail;
     private EditText etPassword;
@@ -325,6 +325,11 @@ public class LoginActivity extends AppCompatActivity {
 
     private void startMainActivity() {
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        // 添加登录成功后刷新标志
+        intent.putExtra("refreshData", true);
+        // 添加登录来源标志以便MainActivity知道这是从登录页面过来的
+        intent.putExtra("from_login", true);
+        Log.d(TAG, "向MainActivity传递登录成功和刷新标志");
         startActivity(intent);
     }
 }

@@ -71,7 +71,7 @@ import retrofit2.Response;
 
 import com.example.labdata_main.model.CompletedExperimentTask;
 
-public class RecordMixtureExperimentDataActivity extends AppCompatActivity
+public class RecordMixtureExperimentDataActivity extends BaseActivity
         implements MixtureExperimentDataAdapter.OnDeviceScanRequestListener {
 
     private static final String TAG = "RecordMixtureExperimentDataActivity";
@@ -169,14 +169,21 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             // 使用保存的currentTaskId，而不是每次从Intent获取
             if (currentTaskId != null && !currentTaskId.isEmpty()) {
                 Log.d(TAG, "用户手动下拉刷新，使用当前任务ID: " + currentTaskId);
-                // 刷新数据 - 保存当前设备信息，以便稍后恢复
+                
+                // 先保存当前输入的实验数据到临时存储
+                if (adapter != null) {
+                    saveTemporaryData();
+                    Log.d(TAG, "下拉刷新前已保存临时实验数据");
+                }
+                
+                // 刷新数据 - 保存当前设备信息和实验数据，以便稍后恢复
                 Map<String, DeviceInfo> savedDeviceInfo = null;
                 if (adapter != null) {
                     savedDeviceInfo = new HashMap<>(adapter.getDeviceData());
                     Log.d(TAG, "保存当前设备信息以便刷新后恢复: " + savedDeviceInfo.size() + " 个设备");
                 }
                 
-                // 执行刷新，并在完成后恢复设备信息
+                // 执行刷新，并在完成后恢复设备信息和实验数据
                 final Map<String, DeviceInfo> finalSavedDeviceInfo = savedDeviceInfo;
                 fetchSpecimenData(currentTaskId, finalSavedDeviceInfo);
             } else {
@@ -917,7 +924,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                                                 if (adapter != null) {
                                                     // 更新跨径长度
                                                     if (spanLength != null) {
-                                                        adapter.updateExperimentData(mixRatioId, "沥青混合料弯曲试验_跨径长度L",
+                                                        adapter.updateBulkExperimentData(mixRatioId, "沥青混合料弯曲试验_跨径长度L",
                                                                 String.valueOf(spanLength));
                                                     }
 
@@ -928,50 +935,50 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
 
                                                         // 更新试件尺寸
                                                         if (specimen.get("width") != null) {
-                                                            adapter.updateExperimentData(mixRatioId, prefix + "宽度b",
+                                                            adapter.updateBulkExperimentData(mixRatioId, prefix + "宽度b",
                                                                     specimen.get("width").toString());
                                                         }
                                                         if (specimen.get("height") != null) {
-                                                            adapter.updateExperimentData(mixRatioId, prefix + "高度h",
+                                                            adapter.updateBulkExperimentData(mixRatioId, prefix + "高度h",
                                                                     specimen.get("height").toString());
                                                         }
 
                                                         // 更新试验结果
                                                         if (specimen.get("maxLoad") != null) {
-                                                            adapter.updateExperimentData(mixRatioId, prefix + "最大荷载P",
+                                                            adapter.updateBulkExperimentData(mixRatioId, prefix + "最大荷载P",
                                                                     specimen.get("maxLoad").toString());
                                                         }
                                                         if (specimen.get("deflection") != null) {
-                                                            adapter.updateExperimentData(mixRatioId, prefix + "跨中挠度d",
+                                                            adapter.updateBulkExperimentData(mixRatioId, prefix + "跨中挠度d",
                                                                     specimen.get("deflection").toString());
                                                         }
 
                                                         // 更新计算结果
                                                         if (specimen.get("flexuralStrength") != null) {
-                                                            adapter.updateExperimentData(mixRatioId, prefix + "抗弯拉强度R",
+                                                            adapter.updateBulkExperimentData(mixRatioId, prefix + "抗弯拉强度R",
                                                                     specimen.get("flexuralStrength").toString());
                                                         }
                                                         if (specimen.get("maxStrain") != null) {
-                                                            adapter.updateExperimentData(mixRatioId, prefix + "最大弯拉应变ε",
+                                                            adapter.updateBulkExperimentData(mixRatioId, prefix + "最大弯拉应变ε",
                                                                     specimen.get("maxStrain").toString());
                                                         }
                                                         if (specimen.get("stiffnessModulus") != null) {
-                                                            adapter.updateExperimentData(mixRatioId, prefix + "弯曲劲度模量S",
+                                                            adapter.updateBulkExperimentData(mixRatioId, prefix + "弯曲劲度模量S",
                                                                     specimen.get("stiffnessModulus").toString());
                                                         }
                                                     }
 
                                                     // 更新平均值
                                                     if (avgFlexuralStrength != null) {
-                                                        adapter.updateExperimentData(mixRatioId, "沥青混合料弯曲试验_平均抗弯拉强度",
+                                                        adapter.updateBulkExperimentData(mixRatioId, "沥青混合料弯曲试验_平均抗弯拉强度",
                                                                 String.valueOf(avgFlexuralStrength));
                                                     }
                                                     if (avgMaxStrain != null) {
-                                                        adapter.updateExperimentData(mixRatioId, "沥青混合料弯曲试验_平均最大弯拉应变",
+                                                        adapter.updateBulkExperimentData(mixRatioId, "沥青混合料弯曲试验_平均最大弯拉应变",
                                                                 String.valueOf(avgMaxStrain));
                                                     }
                                                     if (avgStiffnessModulus != null) {
-                                                        adapter.updateExperimentData(mixRatioId, "沥青混合料弯曲试验_平均弯曲劲度模量",
+                                                        adapter.updateBulkExperimentData(mixRatioId, "沥青混合料弯曲试验_平均弯曲劲度模量",
                                                                 String.valueOf(avgStiffnessModulus));
                                                     }
 
@@ -2683,7 +2690,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
                         String fieldName = mapping[1];
 
                         // 构建实际的字段键名
-                        String key = experimentName + "_utm_" + i + "_row" + rowIndex + "_col" + colIndex;
+                        String key = experimentName + "_" + i + "_" + pressureLevel + "_" + fieldName;
                         Float value = parseFloatSafely(experiments.get(key));
 
                         if (value != null) {
@@ -2950,7 +2957,7 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         Log.w(TAG, "无法获取实验类型 '" + experimentType + "' 的特定任务ID，使用默认任务ID: " + currentTask.getTaskId());
         return currentTask != null ? currentTask.getTaskId() : currentTaskId;
     }
-
+    
     @Override
     protected void onResume() {
         super.onResume();
@@ -2964,11 +2971,25 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             // 重置标志，但不刷新界面
             returnFromScanning = false;
         } else if (currentTaskId != null && !currentTaskId.isEmpty()) {
-            // 正常的返回界面，加载任务数据
+            // 检查是否存在临时数据
+            boolean hasTemporaryData = checkTemporaryDataExists(currentTaskId);
+            Log.d(TAG, "onResume: 临时数据是否存在: " + hasTemporaryData);
+            
+            // 先加载任务数据
             loadTaskData(currentTaskId, false);
+            
+            // 如果有临时数据，确保在任务数据加载后恢复它
+            if (hasTemporaryData) {
+                Log.d(TAG, "onResume: 延迟恢复临时数据");
+                // 使用较长的延迟，确保任务数据完全加载并且UI组件已准备就绪
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    Log.d(TAG, "onResume: 现在开始恢复临时数据");
+                    restoreTemporaryData();
+                }, 800);
+            }
         }
     }
-
+    
     @Override
     protected void onPause() {
         super.onPause();
@@ -2976,6 +2997,9 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
         if (!returnFromScanning && adapter != null) {
             savedExperimentData = adapter.getExperimentData();
             Log.d(TAG, "onPause: 暂存实验数据: " + new Gson().toJson(savedExperimentData));
+            
+            // 将数据持久化到SharedPreferences
+            saveTemporaryData();
         }
     }
 
@@ -3014,108 +3038,133 @@ public class RecordMixtureExperimentDataActivity extends AppCompatActivity
             currentScanPosition = savedInstanceState.getInt("current_scan_position");
             Log.d(TAG, "恢复活动状态: 当前扫描位置=" + currentScanPosition);
         }
-        
-        // 恢复实验数据
-        if (savedInstanceState.containsKey("saved_experiment_data") && adapter != null) {
-            try {
-                HashMap<String, Map<String, String>> data = 
-                    (HashMap<String, Map<String, String>>) savedInstanceState.getSerializable("saved_experiment_data");
-                savedExperimentData = data;
-                adapter.restoreExperimentData(data);
-                Log.d(TAG, "恢复活动状态: 已恢复实验数据");
-            } catch (Exception e) {
-                Log.e(TAG, "恢复实验数据失败", e);
+    }
+    
+    /**
+     * 检查指定任务ID是否存在临时保存的数据
+     * @param taskId 任务ID
+     * @return 是否存在临时数据
+     */
+    private boolean checkTemporaryDataExists(String taskId) {
+        try {
+            if (taskId == null || taskId.isEmpty()) {
+                Log.d(TAG, "checkTemporaryDataExists: 任务ID为空，无法检查临时数据");
+                return false;
             }
+            
+            // 从SharedPreferences查询
+            SharedPreferences preferences = getSharedPreferences("mixture_experiment_temp_data", MODE_PRIVATE);
+            String dataKey = "temp_data_" + taskId;
+            String jsonData = preferences.getString(dataKey, null);
+            
+            boolean hasData = jsonData != null && !jsonData.isEmpty();
+            Log.d(TAG, "checkTemporaryDataExists: 任务[" + taskId + "] " + 
+                  (hasData ? "找到临时数据" : "无临时数据") + ", key=" + dataKey);
+            
+            return hasData;
+        } catch (Exception e) {
+            Log.e(TAG, "checkTemporaryDataExists: 检查临时数据时出错", e);
+            return false;
         }
     }
-
+    
     /**
      * 保存临时输入的数据到SharedPreferences，在用户离开Activity时调用
      */
     private void saveTemporaryData() {
-        if (adapter != null) {
+        if (adapter != null && currentTaskId != null) {
             try {
                 // 获取当前输入的数据
                 Map<String, Map<String, String>> experimentData = adapter.getExperimentData();
-
-                // 使用Gson将数据转换为JSON字符串
+                if (experimentData == null || experimentData.isEmpty()) {
+                    Log.d("SaveTempData", "没有数据需要保存");
+                    return;
+                }
+                
+                // 转换为JSON字符串
                 String jsonData = gson.toJson(experimentData);
-
-                // 使用保存的currentTaskId，而不是从Intent获取
-                String taskId = currentTaskId;
-
+                Log.d("SaveTempData", "将保存数据, 记录数: " + experimentData.size());
+                
                 // 使用SharedPreferences保存数据
                 SharedPreferences preferences = getSharedPreferences("mixture_experiment_temp_data", MODE_PRIVATE);
                 SharedPreferences.Editor editor = preferences.edit();
-
+                
                 // 使用任务ID作为唯一键
-                String dataKey = "temp_data_" + taskId;
+                String dataKey = "temp_data_" + currentTaskId;
                 editor.putString(dataKey, jsonData);
-                editor.apply();
-
-                Log.d(TAG, "已保存临时数据: " + dataKey + ", 数据大小: " + jsonData.length());
+                boolean success = editor.commit(); // 使用commit()而非apply()确保同步写入
+                
+                Log.d("SaveTempData", "保存临时数据" + (success ? "成功" : "失败") + ": " + dataKey + ", 数据大小: " + jsonData.length());
             } catch (Exception e) {
-                Log.e(TAG, "保存临时数据时出错", e);
+                Log.e("SaveTempData", "保存临时数据时出错", e);
             }
+        } else {
+            Log.w("SaveTempData", "无法保存数据: " + (adapter == null ? "适配器为空" : "任务ID为空"));
         }
     }
 
     /**
-     * 从SharedPreferences恢复临时保存的数据，在Activity创建时调用
+     * 从 SharedPreferences 恢复临时保存的数据，在Activity创建或恢复时调用
      */
     private void restoreTemporaryData() {
+        if (adapter == null || currentTaskId == null) {
+            Log.w("RestoreTempData", "无法恢复数据: " + (adapter == null ? "适配器为空" : "任务ID为空"));
+            return;
+        }
+        
         try {
-            // 使用保存的currentTaskId，而不是从Intent获取
-            String taskId = currentTaskId;
-
-            // 从SharedPreferences读取之前保存的数据
+            // 从 SharedPreferences 读取之前保存的数据
             SharedPreferences preferences = getSharedPreferences("mixture_experiment_temp_data", MODE_PRIVATE);
-
+            
             // 使用任务ID作为唯一键
-            String dataKey = "temp_data_" + taskId;
+            String dataKey = "temp_data_" + currentTaskId;
             String jsonData = preferences.getString(dataKey, null);
-
-            Log.d(TAG, "尝试恢复临时数据, key=" + dataKey + ", 数据是否存在: " + (jsonData != null));
-
-            if (jsonData != null && !jsonData.isEmpty() && adapter != null) {
+            
+            Log.d("RestoreTempData", "尝试恢复临时数据, key=" + dataKey + ", 数据是否存在: " + (jsonData != null));
+            
+            if (jsonData != null && !jsonData.isEmpty()) {
                 // 使用Gson将JSON字符串转换回数据结构
                 Map<String, Map<String, String>> savedData = gson.fromJson(jsonData,
                         new com.google.gson.reflect.TypeToken<Map<String, Map<String, String>>>(){}.getType());
-
+                
                 if (savedData != null && !savedData.isEmpty()) {
-                    // 先延迟一点时间让RecyclerView完全初始化
-                    new Handler().postDelayed(() -> {
-                        // 遍历并逐个更新实验数据，而不是直接传递Map
+                    Log.d("RestoreTempData", "找到临时数据，记录数: " + savedData.size());
+                    
+                    // 在UI线程上更新数据，使用更合理的延迟时间
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        int restoredFields = 0;
+                        // 迭代恢复每个实验值
                         for (Map.Entry<String, Map<String, String>> entry : savedData.entrySet()) {
                             String mixRatioId = entry.getKey();
                             Map<String, String> experiments = entry.getValue();
-
+                             
                             for (Map.Entry<String, String> experimentEntry : experiments.entrySet()) {
-                                String key = experimentEntry.getKey();
+                                String fieldKey = experimentEntry.getKey();
                                 String value = experimentEntry.getValue();
-                                adapter.updateExperimentValue(mixRatioId, key, value);
-                                Log.d(TAG, "恢复数据项: mixRatioId=" + mixRatioId + ", key=" + key + ", value=" + value);
+                                adapter.updateExperimentValue(mixRatioId, fieldKey, value);
+                                restoredFields++;
+                                 
+                                // 仅记录前10个字段的详细信息，避免日志过长
+                                if (restoredFields <= 10) {
+                                    Log.d("RestoreTempData", "恢复数据项: mixRatioId=" + mixRatioId + ", key=" + fieldKey + ", value=" + value);
+                                }
                             }
                         }
-
+                        
                         // 强制UI刷新
                         adapter.notifyDataSetChanged();
-
-                        Log.d(TAG, "已恢复临时数据: " + savedData.size() + " 条记录");
-                        Toast.makeText(this, "已恢复之前输入的数据", Toast.LENGTH_SHORT).show();
-                    }, 300); // 延迟300毫秒，确保视图已绑定
+                        
+                        Toast.makeText(RecordMixtureExperimentDataActivity.this, "已恢复之前输入的数据", Toast.LENGTH_SHORT).show();
+                        Log.d("RestoreTempData", "数据恢复完成，共恢复" + restoredFields + "个字段");
+                    }, 500); // 使用500毫秒延迟，比沥青实验略长但比原来短得多
                 } else {
-                    Log.d(TAG, "解析的savedData为空或无效");
+                    Log.d("RestoreTempData", "解析的savedData为空或无效");
                 }
             } else {
-                if (jsonData == null) {
-                    Log.d(TAG, "没有找到临时保存的数据");
-                } else if (adapter == null) {
-                    Log.d(TAG, "适配器尚未初始化");
-                }
+                Log.d("RestoreTempData", "没有找到临时保存的数据");
             }
         } catch (Exception e) {
-            Log.e(TAG, "恢复临时数据时出错", e);
+            Log.e("RestoreTempData", "恢复临时数据时出错", e);
         }
     }
 

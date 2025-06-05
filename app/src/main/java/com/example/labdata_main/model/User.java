@@ -25,6 +25,8 @@ public class User {
     private boolean allowAddAsphalt;
     // 用户权限：是否允许添加配合比
     private boolean allowAddMixratio;
+    // 用户权限：是否允许设备初始化
+    private boolean allowDeviceInit;
     
     // 默认构造函数
     public User() {
@@ -127,6 +129,14 @@ public class User {
 
     public void setAllowAddMixratio(boolean allowAddMixratio) {
         this.allowAddMixratio = allowAddMixratio;
+    }
+    
+    public boolean isAllowDeviceInit() {
+        return allowDeviceInit;
+    }
+
+    public void setAllowDeviceInit(boolean allowDeviceInit) {
+        this.allowDeviceInit = allowDeviceInit;
     }
     
     /**

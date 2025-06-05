@@ -40,7 +40,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MixtureTaskResultActivity extends AppCompatActivity {
+public class MixtureTaskResultActivity extends BaseActivity {
     private static final String TAG = "MixtureTaskResult";
     
     public static final String EXTRA_TASK = "extra_task";

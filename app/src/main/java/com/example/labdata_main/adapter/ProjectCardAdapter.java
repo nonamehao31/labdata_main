@@ -362,7 +362,7 @@ public class ProjectCardAdapter extends RecyclerView.Adapter<ProjectCardAdapter.
                 btnStep3Action.setText("记录实验数据");
             } else {
                 btnStep2Action.setText("生成试件码");
-                btnStep2Action.setEnabled(false);
+                btnStep2Action.setEnabled(true); // 按钮始终可点击
                 btnStep3Action.setText("记录实验数据");
             }
             

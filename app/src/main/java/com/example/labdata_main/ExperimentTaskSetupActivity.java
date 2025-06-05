@@ -49,14 +49,14 @@ import java.util.concurrent.Executors;
 import retrofit2.Call;
 import retrofit2.Response;
 
-public class ExperimentTaskSetupActivity extends AppCompatActivity implements AddProjectBottomSheet.OnProjectAddedListener {
+public class ExperimentTaskSetupActivity extends BaseActivity implements AddProjectBottomSheet.OnProjectAddedListener {
     private ViewPager2 viewPager;
     private MaterialButton btnNext;
     private String taskName;
     private Project selectedProject;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private SharedPrefsManager sharedPrefsManager;
-    private TokenExpirationReceiver tokenExpirationReceiver;
+    // 已在BaseActivity中处理TokenExpirationReceiver
 
     // 步骤导航视图
     private TextView[] stepCircles;
@@ -85,10 +85,7 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
         AppDatabase database = AppDatabase.getInstance(this);
         sharedPrefsManager = new SharedPrefsManager(this);
         
-        // 注册令牌过期广播接收器
-        tokenExpirationReceiver = new TokenExpirationReceiver(this);
-        IntentFilter intentFilter = new IntentFilter("com.example.labdata_main.TOKEN_EXPIRED");
-        registerReceiver(tokenExpirationReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+        // 令牌过期广播接收器已在BaseActivity中注册
         
         initViews();
         setupViewPager();
@@ -102,15 +99,7 @@ public class ExperimentTaskSetupActivity extends AppCompatActivity implements Ad
     protected void onDestroy() {
         super.onDestroy();
         executor.shutdown();
-        // 注销令牌过期广播接收器
-        if (tokenExpirationReceiver != null) {
-            try {
-                unregisterReceiver(tokenExpirationReceiver);
-            } catch (IllegalArgumentException e) {
-                // 接收器可能已经被注销
-                Log.w("ExperimentTaskSetup", "Failed to unregister receiver: " + e.getMessage());
-            }
-        }
+        // 令牌过期广播接收器已在BaseActivity中注销
     }
 
     private void initViews() {

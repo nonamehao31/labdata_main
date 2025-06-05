@@ -11,7 +11,7 @@ public class ApiConfig {
      */
     //public static final String BASE_URL = "http://182.92.76.162:80/";
     public static final String BASE_URL = "http://182.92.76.162:80/api/";
-    //public static final String BASE_URL = "http://192.168.1.3:8080/";
+    //public static final String BASE_URL = "http://192.168.42.78:8080/";
     
     /**
      * API基础路径前缀

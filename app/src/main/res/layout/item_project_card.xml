@@ -98,6 +98,8 @@
                     android:paddingBottom="4dp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:textColor="@android:color/black"
+                    android:enabled="true"
+                    android:clickable="true"
                     app:strokeColor="@android:color/white"/>
             </LinearLayout>
 
@@ -163,6 +165,8 @@
                     android:paddingEnd="8dp"
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
+                    android:enabled="true"
+                    android:clickable="true"
                     app:strokeColor="@android:color/white" />
             </LinearLayout>
 
@@ -227,6 +231,8 @@
                     android:paddingBottom="4dp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:textColor="@android:color/black"
+                    android:enabled="true"
+                    android:clickable="true"
                     app:strokeColor="@android:color/white"/>
             </LinearLayout>
 

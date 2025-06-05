@@ -84,7 +84,8 @@ import com.google.gson.Gson;
 public class OverviewFragment extends Fragment implements AdapterView.OnItemSelectedListener, 
         ExperimentTaskAdapter.OnTaskClickListener, 
         AsphaltProjectCardAdapter.OnAsphaltTaskActionListener,
-        TaskDetailBottomSheet.TaskAcceptListener, BottomSheetMixRatioDetailFragment.OnMaterialCompletedListener {
+        TaskDetailBottomSheet.TaskAcceptListener, BottomSheetMixRatioDetailFragment.OnMaterialCompletedListener,
+        SwipeRefreshLayout.OnRefreshListener {
     private static final String TAG = "OverviewFragment";
     
     private TextView welcomeText;
@@ -237,7 +238,11 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
 
             @Override
             public void onViewSpecimenCode(ExperimentTask task) {
-                // 不需要实现
+                Intent intent = new Intent(getActivity(), GenerateSpecimenCodeActivity.class);
+                intent.putExtra("taskId", task.getTaskId());
+                // Add flag to indicate the specimen is already completed
+                intent.putExtra("specimenCompleted", true);
+                startActivity(intent);
             }
 
             @Override
@@ -275,13 +280,24 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     }
 
     private void setupSpinner() {
-        spinner.setOnItemSelectedListener(this);
-        
-        // 设置默认选中项
+        // 设置监听器之前读取保存的实验类型
         String[] experimentTypes = getResources().getStringArray(R.array.experiment_types);
-        if (experimentTypes.length > 0) {
-            spinner.setSelection(0);
+        
+        // 从SharedPreferences获取之前保存的实验类型，默认为第一个类型
+        String savedType = sharedPrefsManager.getSelectedExperimentType(experimentTypes.length > 0 ? experimentTypes[0] : "");
+        
+        // 寻找保存的类型在数组中的位置
+        int selectionIndex = 0;
+        for (int i = 0; i < experimentTypes.length; i++) {
+            if (experimentTypes[i].equals(savedType)) {
+                selectionIndex = i;
+                break;
+            }
         }
+        
+        // 先设置选择，然后再设置监听器，避免触发不必要的刷新
+        spinner.setSelection(selectionIndex);
+        spinner.setOnItemSelectedListener(this);
     }
 
     private void registerTaskRefreshReceiver() {
@@ -1269,18 +1285,22 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         String selectedType = parent.getItemAtPosition(position).toString();
         Log.d(TAG, "选择的实验类型: " + selectedType);
         
-        // 如果已经从API加载了数据，直接使用内存中的数据
+        // 保存选择的实验类型到SharedPreferences
+        sharedPrefsManager.saveSelectedExperimentType(selectedType);
+        
+        // 修改：无论是否已加载数据，都从API获取最新数据
+        // 这样能确保用户切换实验类型时始终显示最新数据
+        refreshData();
+        
+        // 同时为了提高用户体验，先用内存中的数据快速展示
         if (hasLoadedApiData) {
             if ("沥青混合料试验".equals(selectedType)) {
-                Log.d(TAG, "使用内存中的混合料任务数据");
+                Log.d(TAG, "使用内存中的混合料任务数据（临时展示）");
                 updateTaskUI(apiMixtureUnacceptedTasks, apiMixtureAcceptedTasks, "MIXTURE");
             } else if ("沥青试验".equals(selectedType)) {
-                Log.d(TAG, "使用内存中的沥青任务数据");
+                Log.d(TAG, "使用内存中的沥青任务数据（临时展示）");
                 updateTaskUI(apiAsphaltUnacceptedTasks, apiAsphaltAcceptedTasks, "ASPHALT");
             }
-        } else {
-            // 如果尚未从API加载数据，尝试从服务器获取
-            refreshData();
         }
     }
 
@@ -1307,10 +1327,58 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
         }
     }
 
+    /**
+     * 刷新数据
+     */
+    @Override
+    public void onRefresh() {
+        refreshData();
+    }
+
+    /**
+     * 同步实验类型选择器与保存的实验类型选择
+     * 用于在从其他界面返回或切换Tab时确保选择器与内容一致
+     */
+    public void syncExperimentTypeSelection() {
+        try {
+            // 获取保存的实验类型
+            String[] experimentTypes = getResources().getStringArray(R.array.experiment_types);
+            String defaultType = experimentTypes.length > 0 ? experimentTypes[0] : "沥青混合料试验";
+            String savedExperimentType = sharedPrefsManager.getSelectedExperimentType(defaultType);
+
+            // 找到实验类型对应的位置
+            int selectionIndex = 0;
+            for (int i = 0; i < experimentTypes.length; i++) {
+                if (experimentTypes[i].equals(savedExperimentType)) {
+                    selectionIndex = i;
+                    break;
+                }
+            }
+
+            Log.d(TAG, "同步实验类型选择器: " + savedExperimentType + " (索引: " + selectionIndex + ")");
+
+            // 临时禁用选择器监听器，避免重复触发
+            spinner.setOnItemSelectedListener(null);
+
+            // 设置选择器的当前选项
+            spinner.setSelection(selectionIndex);
+
+            // 恢复选择器监听器
+            spinner.post(() -> spinner.setOnItemSelectedListener(this));
+
+            // 刷新数据
+            refreshData();
+        } catch (Exception e) {
+            Log.e(TAG, "同步实验类型选择器失败", e);
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         loadExperimentTasks();
+        // 同步实验类型选择器与保存的实验类型选择
+        syncExperimentTypeSelection();
     }
 
     // 实现 AsphaltProjectCardAdapter.OnAsphaltTaskActionListener 接口方法
@@ -1318,7 +1386,7 @@ public class OverviewFragment extends Fragment implements AdapterView.OnItemSele
     public void onViewAsphaltInfo(ExperimentTask task) {
         showDetailBottomSheet(task);
     }
-    
+
     @Override
     public void onRecordData(ExperimentTask task) {
         startAsphaltExperiment(task);

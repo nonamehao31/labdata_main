@@ -68,6 +68,9 @@ public class User extends DateAudit {
     @Column(name = "allow_add_mixratio", nullable = false, columnDefinition = "boolean default false")
     private boolean allowAddMixratio;
     
+    @Column(name = "allow_device_init", nullable = false, columnDefinition = "boolean default false")
+    private boolean allowDeviceInit;
+    
     @Column(name = "avatar_path")
     private String avatarPath;
 }

@@ -114,6 +114,7 @@ public class UserManagementActivity extends AppCompatActivity {
         CheckBox cbAllowAddMixture = dialogView.findViewById(R.id.cbAllowAddMixture);
         CheckBox cbAllowAddAsphalt = dialogView.findViewById(R.id.cbAllowAddAsphalt);
         CheckBox cbAllowAddMixratio = dialogView.findViewById(R.id.cbAllowAddMixratio);
+        CheckBox cbAllowDeviceInit = dialogView.findViewById(R.id.cbAllowDeviceInit);
         Button btnCancel = dialogView.findViewById(R.id.btnCancel);
         Button btnSave = dialogView.findViewById(R.id.btnSave);
         
@@ -124,6 +125,7 @@ public class UserManagementActivity extends AppCompatActivity {
         cbAllowAddMixture.setChecked(user.isAllowAddMixture());
         cbAllowAddAsphalt.setChecked(user.isAllowAddAsphalt());
         cbAllowAddMixratio.setChecked(user.isAllowAddMixratio());
+        cbAllowDeviceInit.setChecked(user.isAllowDeviceInit());
         
         AlertDialog dialog = builder.create();
         
@@ -136,12 +138,14 @@ public class UserManagementActivity extends AppCompatActivity {
             boolean allowAddMixture = cbAllowAddMixture.isChecked();
             boolean allowAddAsphalt = cbAllowAddAsphalt.isChecked();
             boolean allowAddMixratio = cbAllowAddMixratio.isChecked();
+            boolean allowDeviceInit = cbAllowDeviceInit.isChecked();
             
             // 创建权限参数
             Map<String, Boolean> permissions = new HashMap<>();
             permissions.put("allowAddMixture", allowAddMixture);
             permissions.put("allowAddAsphalt", allowAddAsphalt);
             permissions.put("allowAddMixratio", allowAddMixratio);
+            permissions.put("allowDeviceInit", allowDeviceInit);
             
             // 调用API更新权限
             updateUserPermissions(user.getId(), permissions, dialog);

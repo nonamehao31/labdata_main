@@ -4,6 +4,7 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -60,6 +61,7 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
     private AppDatabase db;
     private MoldingMethod selectedMethod;
     private MixRatio selectedMixRatio;
+    private boolean specimenCompleted;
     
     // 加载指示器相关视图
     private View loadingContainer;
@@ -83,6 +85,10 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
         // 获取传递过来的任务ID
         taskId = getIntent().getStringExtra("taskId");
         Log.d(TAG, "Received taskId: " + taskId);
+        
+        // 获取传递过来的试件完成标志
+        specimenCompleted = getIntent().getBooleanExtra("specimenCompleted", false);
+        Log.d(TAG, "Specimen completed: " + specimenCompleted);
 
         // 初始化数据库
         db = Room.databaseBuilder(getApplicationContext(),
@@ -488,6 +494,59 @@ public class GenerateSpecimenCodeActivity extends AppCompatActivity {
         });
         rvMoldingMethods.setAdapter(specimenMethodAdapter);
         Log.d(TAG, "Updated RecyclerView with new adapter");
+        
+        // 如果试件已完成，自动选择第一个方法并导航到第二步
+        if (specimenCompleted && specimenMethodAdapter.getItemCount() > 0) {
+            Log.d(TAG, "Specimen is completed, automatically navigating to step 2");
+            
+            // 自动选择第一个方法
+            specimenMethodAdapter.setSelectedPosition(0);
+            selectedMethod = specimenMethodAdapter.getMoldingMethod(0);
+            selectedMixRatio = specimenMethodAdapter.getMixRatio(0);
+            
+            // 准备导航到第二步，后台获取设备信息
+            new Handler().postDelayed(() -> {
+                // 创建默认设备信息，因为已经完成试件，所以可以直接跳过
+                DeviceInfo mixingDevice = new DeviceInfo();
+                mixingDevice.setType(DeviceInfo.TYPE_MIXING);
+                mixingDevice.setModel("已完成试件");
+                mixingDevice.setManufacturer("已完成试件");
+                
+                DeviceInfo formingDevice = new DeviceInfo();
+                formingDevice.setType(DeviceInfo.TYPE_FORMING);
+                formingDevice.setModel("已完成试件");
+                formingDevice.setManufacturer("已完成试件");
+                
+                // 将设备信息设置到适配器
+                specimenMethodAdapter.updateDeviceInfo(mixingDevice);
+                specimenMethodAdapter.updateDeviceInfo(formingDevice);
+                
+                // 更新步骤状态为第2步
+                updateStepStatus(2);
+                
+                // 创建Intent并传递数据
+                Intent intent = new Intent(GenerateSpecimenCodeActivity.this, GenerateSpecimenCodeStep2Activity.class);
+                Gson gson = new Gson();
+                
+                // 创建包含单个对象的列表
+                List<MoldingMethod> moldingMethods = Collections.singletonList(selectedMethod);
+                List<MixRatio> selectedMixRatios = Collections.singletonList(selectedMixRatio);
+                List<DeviceInfo> mixingDevices = Collections.singletonList(mixingDevice);
+                List<DeviceInfo> formingDevices = Collections.singletonList(formingDevice);
+                
+                // 将列表转换为JSON并传递
+                intent.putExtra("moldingMethod", gson.toJson(moldingMethods));
+                intent.putExtra("mixRatio", gson.toJson(selectedMixRatios));
+                intent.putExtra("mixingDevice", gson.toJson(mixingDevices));
+                intent.putExtra("formingDevice", gson.toJson(formingDevices));
+                
+                // 传递任务ID
+                intent.putExtra("taskId", taskId);
+                
+                // 启动第二步Activity
+                startActivityForResult(intent, SPECIMEN_CODE_STEP2_REQUEST);
+            }, 500); // 延迟500毫秒，确保UI已更新
+        }
     }
     
     /**

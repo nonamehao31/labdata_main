@@ -42,7 +42,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class AsphaltTaskResultActivity extends AppCompatActivity {
+public class AsphaltTaskResultActivity extends BaseActivity {
     private static final String TAG = "AsphaltTaskResult";
     public static final String EXTRA_TASK = "extra_task";
     public static final String EXTRA_TASK_ID = "extra_task_id";

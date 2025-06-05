@@ -14,7 +14,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 
-public class AddProjectActivity extends AppCompatActivity {
+public class AddProjectActivity extends BaseActivity {
     private TextInputEditText etProjectName;
     private TextInputEditText etDeadline;
     private MaterialButton btnSave;

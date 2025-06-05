@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashSet;
 
 public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureExperimentDataAdapter.ViewHolder> {
     private final List<Map<String, Object>> mixRatios;
@@ -52,6 +53,9 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     private String selectedExperimentType; // 存储用户在上一个界面选择的实验类型
     // 添加ViewHolder跟踪集合
     private final Set<ViewHolder> viewHolders = new HashSet<>();
+    
+    // 添加待处理更新队列，用于存储视图尚未准备好时的更新请求
+    private final Map<String, Map<String, String>> pendingUpdates = new HashMap<>();
 
     public interface OnDeviceScanRequestListener {
         void onDeviceScanRequested(int position, String experimentName);
@@ -198,6 +202,38 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
         // 添加实验输入字段
         holder.layoutInputs.removeAllViews();
         holder.addInputField(experimentType, mixRatioId);
+        
+        // 记录所有TextInputLayout标签
+        Log.d("MixtureAdapter", "记录ViewHolder中添加的所有TextInputLayout标签 - 实验类型: " + experimentType);
+        holder.logAllTextInputLayoutTags(holder.layoutInputs);
+        
+        // 日志记录所有TextInputLayout标签
+        Log.d("MixtureAdapter", "记录ViewHolder在位置 " + position + " 的所有TextInputLayout标签:");
+        holder.logAllTextInputLayoutTags(holder.layoutInputs);
+        
+        // 应用任何待处理的字段更新
+        String mixRatioIdStr = String.valueOf(mixRatioId);
+        if (pendingUpdates.containsKey(mixRatioIdStr)) {
+            Log.d("MixtureAdapter", "发现待处理更新：" + pendingUpdates.get(mixRatioIdStr).size() + " 个字段等待更新");
+            
+            // 延迟处理，确保视图已完全绘制
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Map<String, String> updates = pendingUpdates.get(mixRatioIdStr);
+                if (updates != null) {
+                    for (Map.Entry<String, String> entry : updates.entrySet()) {
+                        String fieldKey = entry.getKey();
+                        String fieldValue = entry.getValue();
+                        
+                        Log.d("MixtureAdapter", "应用待处理更新: " + fieldKey + " = " + fieldValue);
+                        boolean success = holder.updateViewHolderField(fieldKey, fieldValue);
+                        Log.d("MixtureAdapter", "待处理更新应用结果: " + (success ? "成功" : "失败"));
+                    }
+                    
+                    // 清除已处理的更新
+                    pendingUpdates.remove(mixRatioIdStr);
+                }
+            }, 100); // 短暂延迟确保视图已完全加载
+        }
         
         // 设置设备信息
         String deviceKey = String.valueOf(mixRatioId);
@@ -1015,14 +1051,188 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
 
         private void addMarshallStabilityFields(long mixRatioId) {
             String experimentName = "马歇尔稳定度试验";
+            Log.d("MixtureAdapter", "添加马歇尔稳定度字段，配比ID: " + mixRatioId);
+            
             // 添加稳定度输入字段
             for (int i = 1; i <= 3; i++) {
-                addSingleInputField("稳定度" + i, "kN", experimentName + "_stability_" + i, mixRatioId);
+                String fieldTag = experimentName + "_stability_" + i;
+                Log.d("MixtureAdapter", "创建马歇尔稳定度字段，Tag = " + fieldTag);
+                addSingleInputField("稳定度" + i, "kN", fieldTag, mixRatioId);
             }
+            
             // 添加流值输入字段
             for (int i = 1; i <= 3; i++) {
-                addSingleInputField("流值" + i, "mm", experimentName + "_flow_" + i, mixRatioId);
+                String fieldTag = experimentName + "_flow_" + i;
+                Log.d("MixtureAdapter", "创建马歇尔流值字段，Tag = " + fieldTag);
+                addSingleInputField("流值" + i, "mm", fieldTag, mixRatioId);
             }
+            
+            Log.d("MixtureAdapter", "马歇尔稳定度字段添加完成，共添加6个字段（3个稳定度+3个流值）");
+        }
+        
+        /**
+         * 递归检查并记录所有TextInputLayout标签
+         * @param viewGroup 要检查的ViewGroup
+         */
+        private void logAllTextInputLayoutTags(ViewGroup viewGroup) {
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                View child = viewGroup.getChildAt(i);
+                
+                // 如果是TextInputLayout，记录其标签
+                if (child instanceof TextInputLayout) {
+                    TextInputLayout til = (TextInputLayout) child;
+                    Object tag = til.getTag();
+                    String hint = til.getHint() != null ? til.getHint().toString() : "无提示文本";
+                    Log.d("MixtureAdapter", "发现TextInputLayout - Tag: " + tag + ", Hint: " + hint);
+                } 
+                // 递归检查子ViewGroup
+                else if (child instanceof ViewGroup) {
+                    logAllTextInputLayoutTags((ViewGroup) child);
+                }
+            }
+        }
+        
+        /**
+         * 更新ViewHolder中的字段值
+         * @param fieldKey 字段键
+         * @param value 新的值
+         * @return 是否成功更新
+         */
+        private boolean updateViewHolderField(String fieldKey, String value) {
+            if (layoutInputs != null) {
+                // 先记录正在尝试更新的字段信息
+                Log.d("MixtureAdapter", "DEBUG: 尝试更新字段 " + fieldKey + " 的值为 '" + value + "'");
+
+                for (int i = 0; i < layoutInputs.getChildCount(); i++) {
+                    View child = layoutInputs.getChildAt(i);
+
+                    if (child instanceof TextInputLayout) {
+                        TextInputLayout textInputLayout = (TextInputLayout) child;
+                        String tag = (String) textInputLayout.getTag();
+
+                        Log.d("MixtureAdapter", "DEBUG: 检查TextInputLayout - Tag: " + tag + " vs 目标: " + fieldKey);
+
+                        if (fieldKey.equals(tag)) {
+                            // 找到匹配的字段，更新其值
+                            TextInputEditText editText = (TextInputEditText) textInputLayout.getEditText();
+                            if (editText != null) {
+                                // 先获取更新前的值
+                                String beforeText = editText.getText() != null ? editText.getText().toString() : "null";
+                                Log.d("MixtureAdapter", "DEBUG: 更新前的值 = '" + beforeText + "', 将设置为 '" + value + "'");
+
+                                // 设置文本
+                                editText.setText(value);
+
+                                // 验证EditText确实接收了文本
+                                String actualText = editText.getText() != null ? editText.getText().toString() : "null";
+                                Log.d("MixtureAdapter", "验证字段: " + fieldKey +
+                                        " | 预期值='" + value + "'" +
+                                        " | 实际值='" + actualText + "'" +
+                                        " | 匹配=" + value.equals(actualText));
+
+                                // 检查TextInputLayout和EditText的可见性
+                                Log.d("MixtureAdapter", "UI可见性状态 - TextInputLayout: " +
+                                        visibilityToString(textInputLayout.getVisibility()) +
+                                        " | EditText: " +
+                                        visibilityToString(editText.getVisibility()) +
+                                        " | TextInputLayout是否启用: " +
+                                        textInputLayout.isEnabled() +
+                                        " | EditText是否启用: " +
+                                        editText.isEnabled() +
+                                        " | EditText是否可获取焦点: " +
+                                        editText.isFocusable() +
+                                        " | EditText父布局: " + editText.getParent().getClass().getSimpleName());
+
+                                // 强制刷新UI
+                                editText.invalidate();
+                                textInputLayout.invalidate();
+
+                                // 尝试额外强制方法
+                                editText.clearFocus(); // 清除焦点可能帮助刷新显示
+
+                                Log.d("MixtureAdapter", "已更新UI字段: " + fieldKey + " = " + value + ", 实际显示值: " + actualText);
+                                return true;
+                            } else {
+                                Log.d("MixtureAdapter", "错误: 找到了TextInputLayout但其EditText为空! Tag: " + tag);
+                            }
+                        }
+                    } else if (child instanceof ViewGroup) {
+                        // 递归查找嵌套布局中的字段
+                        TextInputEditText foundEditText = findEditTextByTag((ViewGroup) child, fieldKey);
+                        if (foundEditText != null) {
+                            String beforeText = foundEditText.getText() != null ? foundEditText.getText().toString() : "null";
+                            Log.d("MixtureAdapter", "DEBUG: 嵌套字段更新前的值 = '" + beforeText + "', 将设置为 '" + value + "'");
+
+                            foundEditText.setText(value);
+
+                            // 验证嵌套EditText确实接收了文本
+                            String actualText = foundEditText.getText() != null ? foundEditText.getText().toString() : "null";
+                            Log.d("MixtureAdapter", "验证嵌套字段: " + fieldKey +
+                                    " | 预期值='" + value + "'" +
+                                    " | 实际值='" + actualText + "'" +
+                                    " | 匹配=" + value.equals(actualText));
+
+                            // 检查嵌套EditText的可见性
+                            Log.d("MixtureAdapter", "嵌套UI可见性状态 - EditText: " +
+                                    visibilityToString(foundEditText.getVisibility()) +
+                                    " | 是否启用: " + foundEditText.isEnabled() +
+                                    " | 是否可获取焦点: " + foundEditText.isFocusable() +
+                                    " | 父视图类型: " + foundEditText.getParent().getClass().getSimpleName());
+
+                            // 强制刷新UI
+                            foundEditText.invalidate();
+                            ((View)foundEditText.getParent()).invalidate();
+                            foundEditText.clearFocus(); // 清除焦点可能帮助刷新显示
+
+                            Log.d("MixtureAdapter", "已更新嵌套UI字段: " + fieldKey + " = " + value + ", 实际显示值: " + actualText);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            Log.d("MixtureAdapter", "未找到UI字段: " + fieldKey);
+            return false;
+        }
+
+        // 辅助方法：将可见性状态转换为可读字符串
+        private String visibilityToString(int visibility) {
+            switch (visibility) {
+                case View.VISIBLE: return "VISIBLE";
+                case View.INVISIBLE: return "INVISIBLE";
+                case View.GONE: return "GONE";
+                default: return "未知(" + visibility + ")";
+            }
+        }
+        
+        /**
+         * 递归查找带有指定tag的EditText
+         * @param viewGroup 要搜索的视图组
+         * @param tag 要查找的tag
+         * @return 找到的EditText或者null
+         */
+        private TextInputEditText findEditTextByTag(ViewGroup viewGroup, String tag) {
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                View child = viewGroup.getChildAt(i);
+                
+                if (child instanceof TextInputLayout) {
+                    TextInputLayout textInputLayout = (TextInputLayout) child;
+                    String childTag = (String) textInputLayout.getTag();
+                    
+                    if (childTag != null && tag.equals(childTag) && textInputLayout.getEditText() instanceof TextInputEditText) {
+                        Log.d("MixtureAdapter", "找到匹配的tag: " + childTag);
+                        return (TextInputEditText) textInputLayout.getEditText();
+                    }
+                } else if (child instanceof ViewGroup) {
+                    // 递归查找
+                    TextInputEditText foundEditText = findEditTextByTag((ViewGroup) child, tag);
+                    if (foundEditText != null) {
+                        return foundEditText;
+                    }
+                }
+            }
+            
+            return null;
         }
 
         private void addHamburgWheelTrackingFields(long mixRatioId) {
@@ -3448,7 +3658,11 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
                     LinearLayout.LayoutParams.WRAP_CONTENT
             ));
             ((LinearLayout.LayoutParams) inputLayout.getLayoutParams()).setMargins(0, 0, 0, 16);
-
+            
+            // 明确设置标签，确保可以通过tag查找
+            inputLayout.setTag(dataKey);
+            Log.d("MixtureAdapter", "设置字段标签: " + dataKey + ", 提示文本: " + label + " (" + unit + ")");
+            
             // 创建输入框
             TextInputEditText editText = new TextInputEditText(inputLayout.getContext());
             editText.setLayoutParams(new LinearLayout.LayoutParams(
@@ -3461,6 +3675,19 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
             // 添加输入框到布局
             inputLayout.addView(editText);
             layoutInputs.addView(inputLayout);
+            
+            // 检查experimentData中是否已有该字段的值，如果有则填充到输入框中
+            String mixRatioIdStr = String.valueOf(mixRatioId);
+            if (experimentData.containsKey(mixRatioIdStr)) {
+                Map<String, String> mixRatioData = experimentData.get(mixRatioIdStr);
+                if (mixRatioData != null && mixRatioData.containsKey(dataKey)) {
+                    String existingValue = mixRatioData.get(dataKey);
+                    if (existingValue != null && !existingValue.isEmpty()) {
+                        editText.setText(existingValue);
+                        Log.d("MixtureAdapter", "字段 " + dataKey + " 恢复已保存的值: " + existingValue);
+                    }
+                }
+            }
 
             // 为输入框添加文本变化监听器
             String key = mixRatioId + "_" + dataKey;
@@ -3636,39 +3863,13 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     }
 
     /**
-     * 更新指定配比和实验字段的值
-     *
-     * @param mixRatioId 配比ID
-     * @param experimentKey 实验数据键
-     * @param value 要设置的值
-     */
-    public void updateExperimentValue(String mixRatioId, String experimentKey, String value) {
-        // 先检查mixRatioId是否存在于experimentData中
-        Map<String, String> mixRatioExperiments = experimentData.get(mixRatioId);
-        if (mixRatioExperiments == null) {
-            mixRatioExperiments = new HashMap<>();
-            experimentData.put(mixRatioId, mixRatioExperiments);
-        }
-
-        // 更新实验数据值
-        mixRatioExperiments.put(experimentKey, value);
-
-        Log.d("MixtureAdapter", "已更新数据: mixRatioId=" + mixRatioId + ", key=" + experimentKey + ", value=" + value);
-
-        // 延迟一点时间让RecyclerView完全刷新
-        new Handler(Looper.getMainLooper()).post(() -> {
-            notifyDataSetChanged();
-        });
-    }
-
-    /**
-     * 更新实验数据 - 用于从API加载的数据
-     *
+     * 更新批量实验数据 - 用于从API加载的数据
+     * 
      * @param mixRatioId 配比ID
      * @param key 实验数据键
      * @param value 要设置的值
      */
-    public void updateExperimentData(String mixRatioId, String key, String value) {
+    public void updateBulkExperimentData(String mixRatioId, String key, String value) {
         Map<String, String> mixRatioData = experimentData.computeIfAbsent(mixRatioId, k -> new HashMap<>());
         mixRatioData.put(key, value);
 
@@ -3799,7 +4000,385 @@ public class MixtureExperimentDataAdapter extends RecyclerView.Adapter<MixtureEx
     @Override
     public void onViewDetachedFromWindow(@NonNull ViewHolder holder) {
         super.onViewDetachedFromWindow(holder);
-        // 从ViewHolder集合移除
+        // 从跟踪集合中移除
         viewHolders.remove(holder);
+    }
+    /**
+     * 更新单个实验字段值，用于恢复临时保存的数据
+     * 
+     * @param mixRatioId 配比ID
+     * @param fieldKey 字段键
+     * @param value 字段值
+     */
+    public void updateExperimentValue(String mixRatioId, String fieldKey, String value) {
+        // 记录详细的调试信息
+        Log.d("MixtureAdapter", String.format("开始处理实验数据更新: mixRatioId=%s, fieldKey=%s, value=%s", 
+                mixRatioId, fieldKey, value));
+        Log.d("MixtureAdapter", "当前混合料配比数量: " + experimentData.size());
+                
+        // 先更新内存中的实验数据
+        if (experimentData.containsKey(mixRatioId)) {
+            experimentData.get(mixRatioId).put(fieldKey, value);
+            Log.d("MixtureAdapter", "更新内存中的实验数据: " + mixRatioId + ", " + fieldKey + " = " + value);
+        } else {
+            Map<String, String> newMap = new HashMap<>();
+            newMap.put(fieldKey, value);
+            experimentData.put(mixRatioId, newMap);
+            Log.d("MixtureAdapter", "创建新的实验数据条目: " + mixRatioId + ", " + fieldKey + " = " + value);
+        }
+        
+        // 然后尝试更新UI
+        Log.d("MixtureAdapter", "开始尝试更新UI字段: " + fieldKey);
+        
+        // 确保在主线程上运行
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            updateUIOnMainThread(mixRatioId, fieldKey, value);
+        } else {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                updateUIOnMainThread(mixRatioId, fieldKey, value);
+            });
+        }
+    }
+    
+    /**
+     * 在主线程上更新UI并处理重试选项
+     */
+    private void updateUIOnMainThread(String mixRatioId, String fieldKey, String value) {
+        boolean updated = updateViewHolderField(mixRatioId, fieldKey, value);
+        
+        if (!updated) {
+            Log.d("MixtureAdapter", String.format("无法更新UI字段: %s, 将使用递增延迟重试", fieldKey));
+            
+            // 使用递增延迟重试多次，以增加成功几率
+            for (int delay : new int[]{500, 1000, 2000}) {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    boolean retryUpdated = updateViewHolderField(mixRatioId, fieldKey, value);
+                    Log.d("MixtureAdapter", String.format("重试(%dms)更新UI字段: %s, 结果: %s", 
+                            delay, fieldKey, (retryUpdated ? "成功" : "失败")));
+                    
+                    // 如果还是失败，强制刷新全部UI
+                    if (!retryUpdated && delay == 2000) {
+                        Log.d("MixtureAdapter", "多次重试失败，将强制刷新整个UI");
+                        notifyDataSetChanged();
+                    }
+                }, delay);
+            }
+        }
+    }
+
+    /**
+     * 更新ViewHolder中的字段值
+     * 
+     * @param mixRatioId 配比ID
+     * @param fieldKey 要更新的字段键
+     * @param value 新的字段值
+     * @return 是否成功更新了UI
+     */
+    private boolean updateViewHolderField(String mixRatioId, String fieldKey, String value) {
+        boolean foundHolder = false;
+        boolean updateSuccess = false;
+        
+        for (ViewHolder holder : viewHolders) {
+            int position = holder.getAdapterPosition();
+            if (position != RecyclerView.NO_POSITION && position < mixRatioExperimentPairs.size()) {
+                Map<String, Object> pair = mixRatioExperimentPairs.get(position);
+                Map<String, Object> mixRatio = (Map<String, Object>) pair.get("mixRatio");
+                if (mixRatio != null && mixRatioId.equals(String.valueOf(mixRatio.get("id")))) {
+                    foundHolder = true;
+                    Log.d("MixtureAdapter", "找到对应ViewHolder，准备更新UI: mixRatioId=" + mixRatioId + ", position=" + position);
+                    
+                    // 尝试立即更新
+                    boolean directUpdateSuccess = updateViewHolderField(holder, fieldKey, value);
+                    if (directUpdateSuccess) {
+                        updateSuccess = true;
+                        Log.d("MixtureAdapter", "直接更新字段成功: " + fieldKey);
+                    } else {
+                        // 如果直接更新失败，尝试一次延迟更新
+                        Log.d("MixtureAdapter", "无法在ViewHolder中找到字段，将在100ms后重试: " + fieldKey);
+                        // 延迟较短时间再尝试一次，而不是立即添加到待处理队列
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            boolean retryResult = updateViewHolderField(holder, fieldKey, value);
+                            Log.d("MixtureAdapter", "立即重试更新UI结果: " + (retryResult ? "成功" : "失败") + ", fieldKey=" + fieldKey);
+                        }, 100);
+                    }
+                }
+            }
+        }
+        
+        if (!foundHolder) {
+            // 找不到相应的ViewHolder，只更新了数据但无法更新UI
+            Log.d("MixtureAdapter", "无法找到ViewHolder更新UI(将在下一次notifyDataSetChanged时生效): mixRatioId=" + mixRatioId + ", fieldKey=" + fieldKey);
+        }
+        
+        return updateSuccess;
+    }
+    
+    /**
+     * 更新ViewHolder中的字段值
+     * 
+     * @param holder ViewHolder实例
+     * @param fieldKey 要更新的字段键
+     * @param value 新的字段值
+     * @return 是否成功更新了UI
+     */
+    /**
+     * 递归记录ViewGroup内所有TextInputLayout的标签
+     */
+    private void logAllTextInputLayoutTags(ViewGroup container) {
+        if (container == null) {
+            Log.d("MixtureAdapter", "容器为空，无法记录标签");
+            return;
+        }
+        
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            
+            if (child instanceof TextInputLayout) {
+                TextInputLayout textInputLayout = (TextInputLayout) child;
+                Object tagObj = textInputLayout.getTag();
+                String tag = tagObj != null ? tagObj.toString() : "<no tag>";
+                String hint = textInputLayout.getHint() != null ? textInputLayout.getHint().toString() : "<no hint>";
+                Log.d("MixtureAdapter", "找到TextInputLayout: tag=" + tag + ", hint=" + hint);
+            } else if (child instanceof ViewGroup) {
+                // 递归检查子容器
+                logAllTextInputLayoutTags((ViewGroup) child);
+            }
+        }
+    }
+    
+    private boolean updateViewHolderField(ViewHolder holder, String fieldKey, String value) {
+        // 首先尝试在实验布局中查找字段
+        if (holder.layoutInputs != null) {
+            for (int i = 0; i < holder.layoutInputs.getChildCount(); i++) {
+                View child = holder.layoutInputs.getChildAt(i);
+                
+                if (child instanceof TextInputLayout) {
+                    TextInputLayout textInputLayout = (TextInputLayout) child;
+                    String tag = (String) textInputLayout.getTag();
+                    
+                    if (fieldKey.equals(tag)) {
+                        // 找到匹配的字段，更新其值
+                        TextInputEditText editText = (TextInputEditText) textInputLayout.getEditText();
+                        if (editText != null) {
+                            editText.setText(value);
+                            Log.d("MixtureAdapter", "已更新UI字段: " + fieldKey + " = " + value);
+                            return true;
+                        }
+                    }
+                } else if (child instanceof ViewGroup) {
+                    // 递归查找嵌套布局中的字段
+                    TextInputEditText foundEditText = findEditTextByTag((ViewGroup) child, fieldKey);
+                    if (foundEditText != null) {
+                        foundEditText.setText(value);
+                        Log.d("MixtureAdapter", "已更新嵌套UI字段: " + fieldKey + " = " + value);
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        Log.d("MixtureAdapter", "未找到UI字段: " + fieldKey);
+        return false;
+    }
+    
+    /**
+     * 递归查找带有指定tag的EditText
+     * 
+     * @param viewGroup 要搜索的ViewGroup
+     * @param tag 要匹配的tag
+     * @return 找到的TextInputEditText，如果没找到则返回null
+     */
+    private TextInputEditText findEditTextByTag(ViewGroup viewGroup, String tag) {
+        // 记录搜索起点
+        Log.d("MixtureAdapter", "开始搜索字段 " + tag + " 在ViewGroup: " + viewGroup.getClass().getSimpleName());
+
+        // 首先尝试直接匹配
+        TextInputEditText directResult = findEditTextByExactTag(viewGroup, tag);
+        if (directResult != null) {
+            Log.d("MixtureAdapter", "直接匹配找到字段: " + tag);
+            return directResult;
+        }
+        
+        // 标准化tag，尝试不同的格式来提高匹配率
+        String[] tagsToTry = normalizeFieldTag(tag);
+        
+        for (String normalizedTag : tagsToTry) {
+            Log.d("MixtureAdapter", "尝试查找标准化后的字段tag: " + normalizedTag);
+            TextInputEditText result = findEditTextByExactTag(viewGroup, normalizedTag);
+            if (result != null) {
+                Log.d("MixtureAdapter", "使用标准化tag找到字段: " + normalizedTag);
+                return result;
+            }
+        }
+        
+        // 尝试搜索整个View层次结构中带有任何tag的TextInputLayout
+        Log.d("MixtureAdapter", "尝试搜索整个View层次中任何带tag的字段");
+        List<TextInputLayout> allLayouts = new ArrayList<>();
+        findAllTextInputLayouts(viewGroup, allLayouts);
+        
+        Log.d("MixtureAdapter", "找到 " + allLayouts.size() + " 个TextInputLayout");
+        for (TextInputLayout layout : allLayouts) {
+            String layoutTag = (String) layout.getTag();
+            if (layoutTag != null) {
+                Log.d("MixtureAdapter", "  - 存在的字段tag: " + layoutTag);
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 查找ViewGroup中所有的TextInputLayout
+     */
+    private void findAllTextInputLayouts(ViewGroup viewGroup, List<TextInputLayout> results) {
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            
+            if (child instanceof TextInputLayout) {
+                results.add((TextInputLayout) child);
+            } else if (child instanceof ViewGroup) {
+                findAllTextInputLayouts((ViewGroup) child, results);
+            }
+        }
+    }
+    
+    /**
+     * 生成要尝试的不同tag格式
+     * 处理各种实验类型和字段命名的特殊情况
+     */
+    private String[] normalizeFieldTag(String tag) {
+        List<String> results = new ArrayList<>();
+        
+        // 原始tag
+        results.add(tag);
+        Log.d("MixtureAdapter", "正在标准化字段tag: " + tag);
+        
+        // 处理带实验名称前缀的情况
+        String[] experimentPrefixes = {
+            "马歇尔稳定度试验_", 
+            "针入度试验_", 
+            "软化点试验_", 
+            "延度试验_",
+            "密度试验_",
+            "稳定度试验_"
+        };
+        
+        boolean foundPrefix = false;
+        String withoutPrefix = tag;
+        
+        for (String prefix : experimentPrefixes) {
+            if (tag.startsWith(prefix)) {
+                // 去掉实验类型前缀
+                withoutPrefix = tag.substring(prefix.length());
+                results.add(withoutPrefix);
+                foundPrefix = true;
+                Log.d("MixtureAdapter", "去除前缀后的tag: " + withoutPrefix);
+                break;
+            }
+        }
+        
+        // 如果没有找到前缀，但包含实验名称，也尝试提取后半部分
+        if (!foundPrefix) {
+            for (String prefix : experimentPrefixes) {
+                String prefixWithoutUnderscore = prefix.substring(0, prefix.length() - 1); // 去掉下划线
+                if (tag.contains(prefixWithoutUnderscore)) {
+                    int startIdx = tag.indexOf(prefixWithoutUnderscore) + prefixWithoutUnderscore.length();
+                    if (startIdx < tag.length()) {
+                        String extracted = tag.substring(startIdx);
+                        if (extracted.startsWith("_")) {
+                            extracted = extracted.substring(1); // 去掉可能的下划线
+                        }
+                        results.add(extracted);
+                        Log.d("MixtureAdapter", "从中间提取tag部分: " + extracted);
+                    }
+                }
+            }
+        }
+        
+        // 如果有下划线，尝试以下变体
+        if (tag.contains("_")) {
+            // 完全去除下划线
+            results.add(tag.replace("_", ""));
+            
+            // 只保留下划线前的部分（如stability_1 -> stability）
+            String[] parts = tag.split("_");
+            if (parts.length > 0) {
+                results.add(parts[parts.length - 1]); // 最后一部分，如stability_1中的1
+                if (parts.length > 1) {
+                    results.add(parts[parts.length - 2]); // 倒数第二部分，如stability_1中的stability
+                }
+                for (String part : parts) {
+                    results.add(part);
+                    Log.d("MixtureAdapter", "添加tag部分: " + part);
+                }
+            }
+        }
+        
+        // 处理常见字段类型
+        if (tag.contains("stability") || tag.contains("稳定度")) {
+            results.add("stability");
+            results.add("稳定度");
+            results.add("stability_1");
+            results.add("stability1");
+            results.add("稳定度1");
+            results.add("稳定度_1");
+        } else if (tag.contains("flow") || tag.contains("流值")) {
+            results.add("flow");
+            results.add("流值");
+            results.add("flow_1");
+            results.add("flow1");
+            results.add("流值1");
+            results.add("流值_1");
+        } else if (tag.contains("density") || tag.contains("密度")) {
+            results.add("density");
+            results.add("密度");
+            results.add("density_1");
+            results.add("density1");
+            results.add("密度1");
+            results.add("密度_1");
+        }
+        
+        // 删除重复项
+        Set<String> uniqueResults = new LinkedHashSet<>(results);
+        String[] finalResults = uniqueResults.toArray(new String[0]);
+        
+        Log.d("MixtureAdapter", "字段标准化生成了 " + finalResults.length + " 个备选tag");
+        for (String normalizedTag : finalResults) {
+            Log.d("MixtureAdapter", "  - 备选tag: " + normalizedTag);
+        }
+        return finalResults;
+    }
+    
+    /**
+     * 递归查找带有指定tag的EditText (精确匹配)
+     */
+    private TextInputEditText findEditTextByExactTag(ViewGroup viewGroup, String tag) {
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            
+            if (child instanceof TextInputLayout) {
+                TextInputLayout textInputLayout = (TextInputLayout) child;
+                String childTag = (String) textInputLayout.getTag();
+                
+                if (childTag != null && tag.equals(childTag) && textInputLayout.getEditText() instanceof TextInputEditText) {
+                    Log.d("MixtureAdapter", "找到精确匹配tag: " + childTag + " 在 " + textInputLayout.getClass().getSimpleName());
+                    return (TextInputEditText) textInputLayout.getEditText();
+                }
+                
+                // 尝试包含匹配，有时tag可能是更长的字符串包含我们要找的部分
+                if (childTag != null && childTag.contains(tag) && textInputLayout.getEditText() instanceof TextInputEditText) {
+                    Log.d("MixtureAdapter", "找到包含匹配tag: " + childTag + " 包含 " + tag);
+                    return (TextInputEditText) textInputLayout.getEditText();
+                }
+            } else if (child instanceof ViewGroup) {
+                // 递归查找嵌套布局中的字段
+                TextInputEditText foundEditText = findEditTextByExactTag((ViewGroup) child, tag);
+                if (foundEditText != null) {
+                    return foundEditText;
+                }
+            }
+        }
+        
+        return null;
     }
 }

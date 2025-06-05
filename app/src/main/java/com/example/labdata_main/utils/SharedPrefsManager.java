@@ -26,9 +26,14 @@ public class SharedPrefsManager {
     private static final String KEY_ALLOW_ADD_ASPHALT = "allowAddAsphalt";
     private static final String KEY_ALLOW_ADD_MIXRATIO = "allowAddMixratio";
     
+    // 实验类型选择
+    private static final String KEY_SELECTED_EXPERIMENT_TYPE = "selectedExperimentType";
+    
     // 新增JWT相关的键
     private static final String KEY_AUTH_TOKEN = "authToken";
     private static final String KEY_TOKEN_TYPE = "tokenType";
+    private static final String KEY_LOGIN_TIME = "loginTime";
+    private static final String KEY_USER_REAL_NAME = "userRealName";
 
     private final SharedPreferences sharedPreferences;
     private final SharedPreferences.Editor editor;
@@ -60,6 +65,9 @@ public class SharedPrefsManager {
         editor.putString(KEY_USER_COMPANY, company);
         editor.putString(KEY_USER_PHONE, phone);
         editor.putInt(KEY_USER_TYPE, userType);
+        editor.putString(KEY_USER_REAL_NAME, name);
+        // 保存登录时间
+        editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
         editor.apply();
     }
     
@@ -81,6 +89,9 @@ public class SharedPrefsManager {
         editor.putString(KEY_USER_COMPANY, company);
         editor.putString(KEY_USER_PHONE, phone);
         editor.putInt(KEY_USER_TYPE, "admin".equals(userType) ? 1 : 0); // admin类型为1，其他类型为0
+        editor.putString(KEY_USER_REAL_NAME, name);
+        // 保存登录时间
+        editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
         editor.apply();
     }
     
@@ -92,6 +103,8 @@ public class SharedPrefsManager {
     public void saveAuthToken(String token, String tokenType) {
         editor.putString(KEY_AUTH_TOKEN, token);
         editor.putString(KEY_TOKEN_TYPE, tokenType);
+        // 每次保存新令牌时更新登录时间
+        editor.putLong(KEY_LOGIN_TIME, System.currentTimeMillis());
         editor.apply();
     }
     
@@ -114,6 +127,35 @@ public class SharedPrefsManager {
      */
     public String getAuthToken() {
         return sharedPreferences.getString(KEY_AUTH_TOKEN, "");
+    }
+    
+    /**
+     * 保存用户选择的实验类型
+     * @param experimentType 实验类型（如"沥青混合料试验"或"沥青试验"）
+     */
+    public void saveSelectedExperimentType(String experimentType) {
+        editor.putString(KEY_SELECTED_EXPERIMENT_TYPE, experimentType);
+        editor.apply();
+    }
+    
+    /**
+     * 获取用户选择的实验类型
+     * @param defaultType 默认实验类型
+     * @return 保存的实验类型，如果没有则返回defaultType
+     */
+    public String getSelectedExperimentType(String defaultType) {
+        return sharedPreferences.getString(KEY_SELECTED_EXPERIMENT_TYPE, defaultType);
+    }
+    
+    // 保存整数值
+    public void saveInt(String key, int value) {
+        editor.putInt(key, value);
+        editor.apply();
+    }
+    
+    // 获取整数值
+    public int getInt(String key, int defaultValue) {
+        return sharedPreferences.getInt(key, defaultValue);
     }
 
     /**
@@ -232,6 +274,22 @@ public class SharedPrefsManager {
         int userType = sharedPreferences.getInt(KEY_USER_TYPE, -1);
         android.util.Log.d("SharedPrefsManager", "Getting user type: " + userType);
         return userType;
+    }
+    
+    /**
+     * 获取登录时间
+     * @return 登录时间的毫秒数
+     */
+    public long getLoginTime() {
+        return sharedPreferences.getLong(KEY_LOGIN_TIME, 0);
+    }
+    
+    /**
+     * 获取用户真实姓名
+     * @return 用户真实姓名，如果未设置返回null
+     */
+    public String getUserRealName() {
+        return sharedPreferences.getString(KEY_USER_REAL_NAME, null);
     }
     
     /**
